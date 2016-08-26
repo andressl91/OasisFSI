@@ -13,26 +13,19 @@ VVQ = MixedFunctionSpace([V1,Q])
 # BOUNDARIES
 
 Inlet = AutoSubDomain(lambda x: "on_boundary" and near(x[0],0))
-Outlet = AutoSubDomain(lambda x: "on_boundary" and near(x[0],2.5))
+Outlet = AutoSubDomain(lambda x: "on_boundary" and near(x[0],2.2))
 Up = AutoSubDomain(lambda x: "on_boundary" and near(x[1],0.41))
 Down = AutoSubDomain(lambda x: "on_boundary" and near(x[1],0))
-#Circle = AutoSubDomain(lambda x: "on_boundary" and not (near(x[0],0) or near(x[0],2.2) or near(x[1],0) or near(x[1],0.41)))
-class Circle(SubDomain):
-	def inside(self, x, on_boundary):
-		return on_boundary and not (near(x[0],0) or near(x[0],2.5) or near(x[1],0) or near(x[1],0.41))
-
-
-
 #Bar = AutoSubDomain(lambda x: "on_boundary" and (near(x[1], 0.21)) or near(x[1], 0.19) or near(x[0], 0.6 ) )
 #Circle =  AutoSubDomain(lambda x: "on_boundary" and (( (x[0] - 0.2)*(x[0] - 0.2) + (x[1] - 0.2)*(x[1] - 0.2)  < 0.0505*0.0505 )  ))
 #BarLeftSide =  AutoSubDomain(lambda x: "on_boundary" and (( (x[0] - 0.2)*(x[0] - 0.2) + (x[1] - 0.2)*(x[1] - 0.2)  < 0.0505*0.0505 )  and x[1]>=0.19 and x[1]<=0.21 and x[0]>0.2 ))
 #Circle_and_Bar = AutoSubDomain(lambda x: "on_boundary" and (( (x[0] - 0.2)*(x[0] - 0.2) + (x[1] - 0.2)*(x[1] - 0.2)  < 0.0505*0.0505 )  ) or \
 #(near(x[1], 0.21)) or near(x[1], 0.19) or near(x[0], 0.6 ))
 test = DomainBoundary()
-circle=Circle()
+
 boundaries = FacetFunction("size_t",mesh)
 boundaries.set_all(0)
-circle.mark(boundaries, 1)
+test.mark(boundaries, 1)
 Inlet.mark(boundaries, 2)
 Outlet.mark(boundaries, 3)
 Up.mark(boundaries,4)
@@ -53,7 +46,7 @@ Um = 0.2
 H = 0.41
 U_mean = 2.0*Um/3.0
 inlet = Expression(("1.5*Um*x[1]*(H-x[1])/pow(H/2.0,2)","0"),t=0.0,Um = Um,H=H)
-#inlet= Expression(("4.0*Um*x[1]*(H-x[1])/pow(H,2)","0"),t=0.0,Um = Um,H=H)
+#inlet_test = Expression(("4.0*Um*x[1]*(H-x[1])/pow(H,2)","0"),t=0.0,Um = Um,H=H)
 
 u_inlet = DirichletBC(VVQ.sub(0), (inlet), boundaries, 2)
 p_0 = DirichletBC(VVQ.sub(1), Constant(0.0), boundaries,3)
@@ -90,7 +83,7 @@ k = Constant(dt)
 #E = Constant(float(EkPa))
 
 rho_f = 1000.0
-nu = 0.001
+nu = 1e-3
 mu_f = rho_f*nu
 #nu = mu_f/rho_f
 lamda = Constant("0.0105e9")
@@ -102,7 +95,7 @@ def sigma_structure(d):
     return 2*mu_s*sym(grad(d)) + lamda*tr(sym(grad(d)))*Identity(2)
 
 def sigma_fluid(p,u):
-    return -p*Identity(2) + mu_f * (nabla_grad(u) + nabla_grad(u).T)#sym(grad(u))
+    return -p*Identity(2) + mu_f * sym(grad(u))
 
 
 # Fluid variational form
@@ -138,9 +131,9 @@ def integrateFluidStress(u, p):
     fX      = assemble(forceX)
     fY      = assemble(forceY)
 
-    return fX, fY
+    return (fX, fY)
 
-T = 1.0
+T = 10.0
 t = 0.0
 up = Function(VVQ)
 
@@ -170,7 +163,7 @@ while t < T:
     solve(a==L,up,bcs)
     u_,p_ = up.split(True)
 
-    drag,lift =integrateFluidStress(u_, p_)
+    (drag,lift) =integrateFluidStress(u, p)
     print "Time: ",t ," drag: ",drag, "lift: ",lift
 
     #print "Inlet velocity ", assemble(dot(u_,n)*ds(2))
@@ -184,28 +177,25 @@ while t < T:
     #U1.vector = w_.vector()[:]
     #ALE.move(mesh,w_)
     #mesh.bounding_box_tree().build(mesh)
-    u1.assign(u_)
 
     #plot(u_)
     #CALCULATE LIFT AND Drag
-    R = VectorFunctionSpace(mesh, 'R', 0)
-    c = TestFunction(R)
-    tau = -p_*Identity(2)+mu_f*(grad(u1)+grad(u_).T)
-    forces = -assemble(dot(dot(tau, n), c)*ds(1)).array()
-    Drag.append(forces[0]); Lift.append(forces[1])
+    #R = VectorFunctionSpace(mesh, 'R', 0)
+    #c = TestFunction(R)
+    #tau = -p_*Identity(2)+mu_f*(grad(u_)+grad(u_).T)
+    #forces = -assemble(dot(dot(tau, n), c)*ds(1)).array()
+    #Drag.append(forces[0]); Lift.append(forces[1])
     #p1 = p_.compute_vertex_values()
     #diff_p = p1[x0[0]]-p1[x1[0]]
     #del_p.append(diff_p)
     #time.append(t)
-    print "At time t=", t, "   Drag", forces[0], "lift", forces[1]
+    #print "At time t=", t, "   Drag", Drag[-1], "lift", Lift[-1]
 
+    u1.assign(u_)
     u_file << u_
     #print "Time:",t
 
     t += dt
-Drag[0] = 0; Lift[0] = 0
-print "max Drag",max(Drag), "max Lift",max(Lift)
-
 np.savetxt('results/drag.txt', Drag, delimiter=',')
 np.savetxt('results/left.txt', Lift, delimiter=',')
 np.savetxt('results/pressure.txt', del_p, delimiter=',')
