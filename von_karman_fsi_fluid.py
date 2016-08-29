@@ -1,7 +1,10 @@
 from dolfin import *
 import numpy as np
+set_log_active(False)
 
-mesh = Mesh("von_karman_street_FSI_fluid.xml")
+#mesh = Mesh("von_karman_street_FSI_fluid.xml")
+N = 10
+mesh = UnitSquareMesh(N,N)
 #plot(mesh,interactive=True)
 
 V1 = VectorFunctionSpace(mesh, "CG", 2) # Fluid velocity
@@ -11,7 +14,16 @@ Q  = FunctionSpace(mesh, "CG", 1)       # Fluid Pressure
 VVQ = MixedFunctionSpace([V1,Q])
 
 # BOUNDARIES
-
+In = AutoSubDomain(lambda x: "on_boundary" and near(x[0],0))
+Out = AutoSubDomain(lambda x: "on_boundary" and near(x[0],1))
+NOS = DomainBoundary()
+boundaries = FacetFunction("size_t",mesh)
+boundaries.set_all(0)
+NOS.mark(boundaries,1)
+In.mark(boundaries,2)
+Out.mark(boundaries,3)
+#plot(boundaries,interactive=True)
+"""
 Inlet = AutoSubDomain(lambda x: "on_boundary" and near(x[0],0))
 Outlet = AutoSubDomain(lambda x: "on_boundary" and near(x[0],2.5))
 Up = AutoSubDomain(lambda x: "on_boundary" and near(x[1],0.41))
@@ -20,7 +32,7 @@ Down = AutoSubDomain(lambda x: "on_boundary" and near(x[1],0))
 class Circle(SubDomain):
 	def inside(self, x, on_boundary):
 		return on_boundary and not (near(x[0],0) or near(x[0],2.5) or near(x[1],0) or near(x[1],0.41))
-
+"""
 
 
 #Bar = AutoSubDomain(lambda x: "on_boundary" and (near(x[1], 0.21)) or near(x[1], 0.19) or near(x[0], 0.6 ) )
@@ -28,7 +40,7 @@ class Circle(SubDomain):
 #BarLeftSide =  AutoSubDomain(lambda x: "on_boundary" and (( (x[0] - 0.2)*(x[0] - 0.2) + (x[1] - 0.2)*(x[1] - 0.2)  < 0.0505*0.0505 )  and x[1]>=0.19 and x[1]<=0.21 and x[0]>0.2 ))
 #Circle_and_Bar = AutoSubDomain(lambda x: "on_boundary" and (( (x[0] - 0.2)*(x[0] - 0.2) + (x[1] - 0.2)*(x[1] - 0.2)  < 0.0505*0.0505 )  ) or \
 #(near(x[1], 0.21)) or near(x[1], 0.19) or near(x[0], 0.6 ))
-test = DomainBoundary()
+"""test = DomainBoundary()
 circle=Circle()
 boundaries = FacetFunction("size_t",mesh)
 boundaries.set_all(0)
@@ -36,14 +48,14 @@ circle.mark(boundaries, 1)
 Inlet.mark(boundaries, 2)
 Outlet.mark(boundaries, 3)
 Up.mark(boundaries,4)
-Down.mark(boundaries,5)
+Down.mark(boundaries,5)"""
 
 
 
 ds = Measure("ds", subdomain_data = boundaries)
 dS = Measure("dS", subdomain_data = boundaries)
 n = FacetNormal(mesh)
-plot(boundaries,interactive=True)
+#plot(boundaries,interactive=True)
 
 
 
@@ -53,15 +65,17 @@ Um = 0.2
 H = 0.41
 U_mean = 2.0*Um/3.0
 inlet = Expression(("1.5*Um*x[1]*(H-x[1])/pow(H/2.0,2)","0"),t=0.0,Um = Um,H=H)
+
 #inlet= Expression(("4.0*Um*x[1]*(H-x[1])/pow(H,2)","0"),t=0.0,Um = Um,H=H)
 
-u_inlet = DirichletBC(VVQ.sub(0), (inlet), boundaries, 2)
+#u_inlet = DirichletBC(VVQ.sub(0), ((0.0)), boundaries, 2)
+p_1 = DirichletBC(VVQ.sub(1), Constant(1.0), boundaries, 2)
 p_0 = DirichletBC(VVQ.sub(1), Constant(0.0), boundaries,3)
 nos = DirichletBC(VVQ.sub(0), ((0, 0)), boundaries, 1)
-down = DirichletBC(VVQ.sub(0), ((0, 0)), boundaries, 4)
-up = DirichletBC(VVQ.sub(0), ((0, 0)), boundaries, 5)
+#down = DirichletBC(VVQ.sub(0), ((0, 0)), boundaries, 4)
+#up = DirichletBC(VVQ.sub(0), ((0, 0)), boundaries, 5)
 
-bcs = [nos,u_inlet, down, up,p_0]#,bc1]
+bcs = [nos,p_0,p_1]#,u_inlet, down, up,p_0]#,bc1]
 
 # AREAS
 
@@ -140,7 +154,7 @@ def integrateFluidStress(u, p):
 
     return fX, fY
 
-T = 1.0
+T = 10.0
 t = 0.0
 up = Function(VVQ)
 
@@ -155,7 +169,7 @@ x0 = np.where(mesh.coordinates()[:,0]==0.6)
 x1 = np.where(mesh.coordinates()[:,0]==0.15)
 
 #A = assemble(a)
-
+counter = 0
 while t < T:
     #if MPI.rank(mpi_comm_world()) == 0:
     eps = 10
@@ -169,9 +183,15 @@ while t < T:
     #solve(A,up.vector(),b)
     solve(a==L,up,bcs)
     u_,p_ = up.split(True)
-
-    drag,lift =integrateFluidStress(u_, p_)
-    print "Time: ",t ," drag: ",drag, "lift: ",lift
+    print "Timestep: ", t
+    #if (counter%100)==0:
+    plot(u_,rescale = True)
+    plot(p_,rescale = True)
+    #su_file << u_
+	#print "Counter: ",counter
+    #counter += 1
+    #drag,lift =integrateFluidStress(u_, p_)
+    #print "Time: ",t ," drag: ",drag, "lift: ",lift
 
     #print "Inlet velocity ", assemble(dot(u_,n)*ds(2))
     #print norm(u_), norm(u1)
@@ -188,26 +208,26 @@ while t < T:
 
     #plot(u_)
     #CALCULATE LIFT AND Drag
-    R = VectorFunctionSpace(mesh, 'R', 0)
-    c = TestFunction(R)
-    tau = -p_*Identity(2)+mu_f*(grad(u1)+grad(u_).T)
-    forces = -assemble(dot(dot(tau, n), c)*ds(1)).array()
-    Drag.append(forces[0]); Lift.append(forces[1])
+    #R = VectorFunctionSpace(mesh, 'R', 0)
+    #c = TestFunction(R)
+    #tau = -p_*Identity(2)+mu_f*(grad(u_)+grad(u_).T)
+    #forces = -assemble(dot(dot(tau, n), c)*ds(1)).array()
+    #Drag.append(forces[0]); Lift.append(forces[1])
     #p1 = p_.compute_vertex_values()
     #diff_p = p1[x0[0]]-p1[x1[0]]
     #del_p.append(diff_p)
     #time.append(t)
-    print "At time t=", t, "   Drag", forces[0], "lift", forces[1]
+    #print "At time t=", t, "   Drag", forces[0], "lift", forces[1]
 
-    u_file << u_
+
     #print "Time:",t
 
     t += dt
-Drag[0] = 0; Lift[0] = 0
-print "max Drag",max(Drag), "max Lift",max(Lift)
+#Drag[0] = 0; Lift[0] = 0
+#print "max Drag",max(Drag), "max Lift",max(Lift)
 
-np.savetxt('results/drag.txt', Drag, delimiter=',')
-np.savetxt('results/left.txt', Lift, delimiter=',')
-np.savetxt('results/pressure.txt', del_p, delimiter=',')
-np.savetxt('results/time.txt', time, delimiter=',')
+##np.savetxt('results/drag.txt', Drag, delimiter=',')
+#np.savetxt('results/left.txt', Lift, delimiter=',')
+#np.savetxt('results/pressure.txt', del_p, delimiter=',')
+#np.savetxt('results/time.txt', time, delimiter=',')
 plot(u_,interactive=True)
