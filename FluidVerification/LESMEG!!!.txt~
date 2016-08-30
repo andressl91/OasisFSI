@@ -1,0 +1,60 @@
+Denne mappen inneholder programmer for å verifisere variasjonsformen a fluid delen i FSI løseren.
+
+
+#########################
+fluid_verification.py
+#########################
+- Har til hensikt å verifisere variasjonsformen opp mot data fra Turek numerical benchmark paper
+- Her er coupled implementert.. så simuleringer tar tid
+
+Hvor er vi?
+- Jobber med CFD1 testen i Turek.
+
+Problemer ? 
+Løseren gir for lave verdier opp mot referanseverdiene for lift (14.29) og drag(1.119).
+Får typisk 10.75, og 0.06.. 
+
+Veien videre ->
+Blir beregningen av løft og drag riktig evaluert?
+#############################################################################
+
+#########################
+TG2D.py
+#########################
+- Har til hensikt å verifisere variasjonsformen opp mot TaylorGreen2D, i form av L2 norm og order of convergence
+-Her er coupled implementert.. så simuleringer tar tid
+
+Hvor er vi?
+- Newton og Piccard er implementert og kan kjøres ved eks: 
+mpirun -np 3 python TG2D.py -T 0.5 -dt 0.05 0.01 0.005 -N 32 -con True -rho 20 -mu 1 -solver Newton
+mpirun -np 3 python TG2D.py -T 0.5 -dt 0.01 0.005 -N 8 16 32 -con True -solver Piccard
+
+####Så langt må error_tollerance og max_iterations endres i selve koden. ###
+
+parameterne -dt og -N kan ta flere input for å sjekke flere verdier
+default values ligger i koden om parametere ikke oppgis
+
+
+Problemer ? 
+Order of convergence blir veldig lav.. her fra simpel Piccard
+#################################### - L2 NORM - ####################################
+
+╒═════╤═════════════╤═══════════╤═════════════╤═══════════╤══════════════╤═══════════╕
+│   N │   dt = 0.05 │   Runtime │   dt = 0.01 │   Runtime │   dt = 0.005 │   Runtime │
+╞═════╪═════════════╪═══════════╪═════════════╪═══════════╪══════════════╪═══════════╡
+│  32 │    0.128995 │   19.3347 │    0.109212 │   73.1707 │     0.107888 │   160.542 │
+╘═════╧═════════════╧═══════════╧═════════════╧═══════════╧══════════════╧═══════════╛
+
+############################### - CONVERGENCE RATE - ###############################
+
+╒═════╤════════════════╤═════════════════╕
+│   N │   0.05 to 0.01 │   0.01 to 0.005 │
+╞═════╪════════════════╪═════════════════╡
+│  32 │       0.103445 │       0.0175929 │
+╘═════╧════════════════╧═════════════════╛
+
+Bedre kjøringer vil kommer etter retur fra Ferie!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+
+Veien videre ->
+Om normen brukt i order of convergence er gjort riktig, bruker vi feil norm? 
