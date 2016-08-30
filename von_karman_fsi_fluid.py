@@ -2,9 +2,10 @@ from dolfin import *
 import numpy as np
 set_log_active(False)
 
-#mesh = Mesh("von_karman_street_FSI_fluid.xml")
-N = 10
-mesh = UnitSquareMesh(N,N)
+mesh = Mesh("von_karman_street_FSI_fluid.xml")
+
+#N = 10
+#mesh = UnitSquareMesh(N,N)
 #plot(mesh,interactive=True)
 
 V1 = VectorFunctionSpace(mesh, "CG", 2) # Fluid velocity
@@ -13,26 +14,11 @@ Q  = FunctionSpace(mesh, "CG", 1)       # Fluid Pressure
 
 VVQ = MixedFunctionSpace([V1,Q])
 
+print "Dofs: ",V1.dim(), "Cells:", mesh.num_cells()
+
+
 # BOUNDARIES
-In = AutoSubDomain(lambda x: "on_boundary" and near(x[0],0))
-Out = AutoSubDomain(lambda x: "on_boundary" and near(x[0],1))
-NOS = DomainBoundary()
-boundaries = FacetFunction("size_t",mesh)
-boundaries.set_all(0)
-NOS.mark(boundaries,1)
-In.mark(boundaries,2)
-Out.mark(boundaries,3)
-#plot(boundaries,interactive=True)
-"""
-Inlet = AutoSubDomain(lambda x: "on_boundary" and near(x[0],0))
-Outlet = AutoSubDomain(lambda x: "on_boundary" and near(x[0],2.5))
-Up = AutoSubDomain(lambda x: "on_boundary" and near(x[1],0.41))
-Down = AutoSubDomain(lambda x: "on_boundary" and near(x[1],0))
-#Circle = AutoSubDomain(lambda x: "on_boundary" and not (near(x[0],0) or near(x[0],2.2) or near(x[1],0) or near(x[1],0.41)))
-class Circle(SubDomain):
-	def inside(self, x, on_boundary):
-		return on_boundary and not (near(x[0],0) or near(x[0],2.5) or near(x[1],0) or near(x[1],0.41))
-"""
+
 
 
 #Bar = AutoSubDomain(lambda x: "on_boundary" and (near(x[1], 0.21)) or near(x[1], 0.19) or near(x[0], 0.6 ) )
@@ -40,15 +26,19 @@ class Circle(SubDomain):
 #BarLeftSide =  AutoSubDomain(lambda x: "on_boundary" and (( (x[0] - 0.2)*(x[0] - 0.2) + (x[1] - 0.2)*(x[1] - 0.2)  < 0.0505*0.0505 )  and x[1]>=0.19 and x[1]<=0.21 and x[0]>0.2 ))
 #Circle_and_Bar = AutoSubDomain(lambda x: "on_boundary" and (( (x[0] - 0.2)*(x[0] - 0.2) + (x[1] - 0.2)*(x[1] - 0.2)  < 0.0505*0.0505 )  ) or \
 #(near(x[1], 0.21)) or near(x[1], 0.19) or near(x[0], 0.6 ))
-"""test = DomainBoundary()
-circle=Circle()
+Inlet  = AutoSubDomain(lambda x: "on_boundary" and near(x[0], 0))
+Outlet = AutoSubDomain(lambda x: "on_boundary" and near(x[0], 2.5))
+Walls  = AutoSubDomain(lambda x: "on_boundary" and near(x[1],0) or near(x[1], 0.41))
+test = DomainBoundary()
+#circle=Circle()
 boundaries = FacetFunction("size_t",mesh)
 boundaries.set_all(0)
-circle.mark(boundaries, 1)
+test.mark(boundaries,1)
 Inlet.mark(boundaries, 2)
 Outlet.mark(boundaries, 3)
-Up.mark(boundaries,4)
-Down.mark(boundaries,5)"""
+Walls.mark(boundaries,4)
+#Up.mark(boundaries,4)
+#Down.mark(boundaries,5)
 
 
 
@@ -68,14 +58,15 @@ inlet = Expression(("1.5*Um*x[1]*(H-x[1])/pow(H/2.0,2)","0"),t=0.0,Um = Um,H=H)
 
 #inlet= Expression(("4.0*Um*x[1]*(H-x[1])/pow(H,2)","0"),t=0.0,Um = Um,H=H)
 
-#u_inlet = DirichletBC(VVQ.sub(0), ((0.0)), boundaries, 2)
-p_1 = DirichletBC(VVQ.sub(1), Constant(1.0), boundaries, 2)
+u_inlet = DirichletBC(VVQ.sub(0), ((inlet)), boundaries, 2)
+#p_1 = DirichletBC(VVQ.sub(1), Constant(1.0), boundaries, 2)
 p_0 = DirichletBC(VVQ.sub(1), Constant(0.0), boundaries,3)
-nos = DirichletBC(VVQ.sub(0), ((0, 0)), boundaries, 1)
+bc1 = DirichletBC(VVQ.sub(0), ((0, 0)), boundaries, 1)
+bc2 = DirichletBC(VVQ.sub(0), ((0, 0)), boundaries, 4)
 #down = DirichletBC(VVQ.sub(0), ((0, 0)), boundaries, 4)
 #up = DirichletBC(VVQ.sub(0), ((0, 0)), boundaries, 5)
 
-bcs = [nos,p_0,p_1]#,u_inlet, down, up,p_0]#,bc1]
+bcs = [u_inlet,p_0,bc1,bc2]#,u_inlet, down, up,p_0]#,bc1]
 
 # AREAS
 
@@ -116,7 +107,7 @@ def sigma_structure(d):
     return 2*mu_s*sym(grad(d)) + lamda*tr(sym(grad(d)))*Identity(2)
 
 def sigma_fluid(p,u):
-    return -p*Identity(2) + mu_f * (nabla_grad(u) + nabla_grad(u).T)#sym(grad(u))
+    return -p*Identity(2) + mu_f * (grad(u) + grad(u).T)#sym(grad(u))
 
 
 # Fluid variational form
@@ -168,43 +159,36 @@ time = []
 x0 = np.where(mesh.coordinates()[:,0]==0.6)
 x1 = np.where(mesh.coordinates()[:,0]==0.15)
 
-#A = assemble(a)
+A = assemble(a)
 counter = 0
 while t < T:
-    #if MPI.rank(mpi_comm_world()) == 0:
-    eps = 10
-    k_iter = 0
-    max_iter = 10
-    #while eps > 1E-6 and k_iter < max_iter:
-    #b = assemble(L)
+	#if MPI.rank(mpi_comm_world()) == 0:
+	eps = 10
+	k_iter = 0
+	max_iter = 10
+	#while eps > 1E-6 and k_iter < max_iter:
+	b = assemble(L)
 
-    #A.ident_zeros()
-    #[bc.apply(A,b) for bc in bcs]
-    #solve(A,up.vector(),b)
-    solve(a==L,up,bcs)
-    u_,p_ = up.split(True)
-    print "Timestep: ", t
-    #if (counter%100)==0:
-    plot(u_,rescale = True)
-    plot(p_,rescale = True)
-    #su_file << u_
+	#A.ident_zeros()
+	[bc.apply(A,b) for bc in bcs]
+	solve(A,up.vector(),b)
+	#solve(a==L,up,bcs)
+	u_,p_ = up.split(True)
+	print "Timestep: ", t
+	if (counter%100)==0:
+		plot(u_,rescale = True)
+		plot(p_,rescale = True)
+		drag,lift = integrateFluidStress(u_, p_)
+		print "Time: ",t ," drag: ",drag, "lift: ",lift
+	#su_file << u_
 	#print "Counter: ",counter
-    #counter += 1
-    #drag,lift =integrateFluidStress(u_, p_)
-    #print "Time: ",t ," drag: ",drag, "lift: ",lift
+	counter += 1
 
-    #print "Inlet velocity ", assemble(dot(u_,n)*ds(2))
-    #print norm(u_), norm(u1)
-    #eps = errornorm(u_,u0,degree_rise=3)
-    #k_iter += 1
-    #print "k: ",k_iter, "error: %.3e" %eps
-    #u0.assign(u_)
-    #w0.assign(w_)
-    #w_.vector()[:] *= float(k)
-    #U1.vector = w_.vector()[:]
-    #ALE.move(mesh,w_)
-    #mesh.bounding_box_tree().build(mesh)
-    u1.assign(u_)
+
+	#print "Inlet velocity ", assemble(dot(u_,n)*ds(2))
+	#print norm(u_), norm(u1)
+
+	u1.assign(u_)
 
     #plot(u_)
     #CALCULATE LIFT AND Drag
@@ -222,7 +206,7 @@ while t < T:
 
     #print "Time:",t
 
-    t += dt
+	t += dt
 #Drag[0] = 0; Lift[0] = 0
 #print "max Drag",max(Drag), "max Lift",max(Lift)
 

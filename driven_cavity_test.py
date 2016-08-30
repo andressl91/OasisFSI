@@ -33,7 +33,7 @@ n = FacetNormal(mesh)
 nos = DirichletBC(VQ.sub(0), ((0, 0)), boundaries, 1)
 top = DirichletBC(VQ.sub(0), ((1, 0)), boundaries, 2)
 
-bcs = [nos,top]#,u_inlet, down, up,p_0]#,bc1]
+bcs = [nos,top]
 
 
 
@@ -44,7 +44,7 @@ u,p = TrialFunctions(VQ)
 u0 = Function(V1)
 u1 = Function(V1)
 
-dt = 0.1
+dt = 0.01
 k = Constant(dt)
 #EkPa = '62500'
 #E = Constant(float(EkPa))
