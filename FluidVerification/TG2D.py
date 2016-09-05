@@ -1,13 +1,13 @@
 from dolfin import *
 import numpy as np
 import sys, shutil, os
-sys.path.append('/uio/hume/student-u86/andressl/Desktop/Sandbox/TG2D/tabulate-0.7.5')
+#sys.path.append('/uio/hume/student-u86/andressl/Desktop/Sandbox/TG2D/tabulate-0.7.5')
 
 from tabulate import tabulate
 
 #default values
 T = 1.0; dt = []; rho  = 10.0; mu = 1.0; N = []; L = 1;
-solver = "Newton"; save_step = 1; fig = False; con = True
+solver = "Newton"; fig = False; con = True
 
 #command line arguments
 while len(sys.argv) > 1:
@@ -44,7 +44,7 @@ if len(N) == 0:
 if len(dt) == 0:
     dt = [0.1, 0.01]
 
-def NS(N, dt, T, L, rho, mu, solver):
+def NS(N, dt, T, L, rho, mu, solver, check):
     tic()
 
     mesh = RectangleMesh(Point(-1, -1), Point(1, 1), N, N)
@@ -108,14 +108,14 @@ def NS(N, dt, T, L, rho, mu, solver):
         u, p = split(up)
 
         # Fluid variational form
-        F = (1./k)*inner(u - u0, phi)*dx \
-            + inner(dot(u, grad(u)), phi) * dx \
-            + (1./rho)*inner(sigma_fluid(p,u), grad(phi))*dx - inner(div(u),eta)*dx
+        F = (rho/k)*inner(u - u0, phi)*dx \
+            + rho*inner(dot(u, grad(u)), phi) * dx \
+            + inner(sigma_fluid(p,u), grad(phi))*dx - inner(div(u),eta)*dx
 
         t = 0
 
         if MPI.rank(mpi_comm_world()) == 0:
-            print "Computing for N = %g, t = %g" % (N, dt)
+            print "Starting Newton iterations \nComputing for N = %g, t = %g" % (N, dt)
 
         while t < T:
             if MPI.rank(mpi_comm_world()) == 0:
@@ -127,9 +127,9 @@ def NS(N, dt, T, L, rho, mu, solver):
             solver  = NonlinearVariationalSolver(problem)
 
             prm = solver.parameters
-            prm['newton_solver']['absolute_tolerance'] = 1E-6
-            prm['newton_solver']['relative_tolerance'] = 1E-5
-            prm['newton_solver']['maximum_iterations'] = 25
+            prm['newton_solver']['absolute_tolerance'] = 1E-10
+            prm['newton_solver']['relative_tolerance'] = 1E-9
+            prm['newton_solver']['maximum_iterations'] = 40
             prm['newton_solver']['relaxation_parameter'] = 0.9
 
 
@@ -141,20 +141,13 @@ def NS(N, dt, T, L, rho, mu, solver):
             t += dt
 
     if solver == "Piccard":
-        """
-        guess = Expression(("-cos(pi*x[0])*sin(pi*x[1])*exp(-2*t*nu*pi*pi)",\
-                        "cos(pi*x[1])*sin(pi*x[0])*exp(-2*t*nu*pi*pi)", \
-                        "-0.25*(cos(2*pi*x[0]) + cos(2*pi*x[1]))*exp(-4*t*nu*pi*pi )"),\
-                         nu=nu, t=0.0)
-        fh_ = interpolate(guess, VQ)
-        fh_1 = Function(VQ)
-        """
+
         u, p = TrialFunctions(VQ)
         up = Function(VQ)
 
-        F = (1./k)*inner(u - u1, phi)*dx \
-            + inner(dot(u0, grad(u)), phi) * dx \
-            + (1./rho)*inner(sigma_fluid(p,u), grad(phi))*dx - inner(div(u),eta)*dx
+        F = (rho/k)*inner(u - u1, phi)*dx \
+            + rho*inner(dot(u0, grad(u)), phi) * dx \
+            + inner(sigma_fluid(p,u), grad(phi))*dx - inner(div(u),eta)*dx
 
         t = 0
         count = 0;
@@ -187,15 +180,21 @@ def NS(N, dt, T, L, rho, mu, solver):
     u_e = interpolate(u_e, V)
 
     #Oasis way
-    uen = norm(u_e.vector())
-    u_e.vector().axpy(-1, u0.vector())
-    final_error = norm(u_e.vector())/uen
-    E.append(final_error)
+    #uen = norm(u_e.vector())
+    #u_e.vector().axpy(-1, u0.vector())
+    #final_error = norm(u_e.vector())/uen
+    #E.append(final_error)
 
-    #L2_u= errornorm(u_e, u0, norm_type='l2', degree_rise=3)
-    #E.append(L2_u);
+    L2_u= errornorm(u_e, u0, norm_type='l2', degree_rise=3)
+    #H1 = errornorm(u_e, u0, norm_type='h1', degree_rise=2)
+    E.append(L2_u);
 
-    h.append(mesh.hmin())
+    if check_val == "N":
+        h.append(mesh.hmin())
+
+    if check_val == "dt":
+        h.append(dt)
+    #h.append(dt)
     #degree = V.dim() #DOF Degrees of freedom
 
 
@@ -207,22 +206,24 @@ nu = mu/rho
 
 if MPI.rank(mpi_comm_world()) == 0:
     print "SOLVING Reynolds number %.2f\n" % ((2./nu))
+if len(dt) < len(N):
+    check = N; opp = dt; check_val = "N"
+    for t in dt:
+        for n in N:
+            NS(n, t, T, L, rho, mu, solver, check_val)
+if len(dt) >= len(N):
+    check = dt; opp = N; check_val = "dt"
+    for n in N:
+        for t in dt:
+            NS(n, t, T, L, rho, mu, solver, check_val)
 
 #dt = [0.1, 0.05, 0.01]#, 0.005, 0.001]
 #N = [8, 16, 32]
 
-for t in dt:
-    for n in N:
-        NS(n, t, T, L, rho, mu, solver)
 
-
-if MPI.rank(mpi_comm_world()) == 0:
-    if len(dt) == 1:
-        check = N; opp = dt
-    else:
-        check = dt; opp = N
 
     #check = N if len(Time) is 1 if Time is len(N) is 1 else 0
+if MPI.rank(mpi_comm_world()) == 0:
 
     if fig == True:
         import matplotlib.pyplot as plt
@@ -231,22 +232,24 @@ if MPI.rank(mpi_comm_world()) == 0:
         plt.loglog(check, E)
         plt.show()
 
-if MPI.rank(mpi_comm_world()) == 0:
+
     print
     print "#################################### - L2 NORM - ####################################\n"
     table = []
-    headers = ['N']
-    for i in range(len(N)):
+    headers = ["N" if opp is N else "dt"]
+    for i in range(len(opp)):
         li = []
-        li.append(str(N[i]))
-        for t in range(len(dt)):
-            li.append("%e" % E[len(N)*t + i])
-            li.append("%e" % time[len(N)*t + i])
+        li.append(str(opp[i]))
+        for t in range(len(check)):
+            li.append("%e" % E[i*len(check) + t])
+            li.append("%e" % time[i*len(check) + t]) #SJEKKKKK!!
         table.append(li)
-    for i in range(len(dt)):
-        headers.append("dt = %.g" % dt[i])
+    for i in range(len(check)):
+        headers.append("dt = %.g" % check[i] if check is dt else "N = %g" % check[i])
         headers.append("Runtime")
     print tabulate(table, headers, tablefmt="fancy_grid")
+
+
 
 
     if con == True:
@@ -254,15 +257,18 @@ if MPI.rank(mpi_comm_world()) == 0:
         print "############################### - CONVERGENCE RATE - ###############################\n"
 
         table = []
-        headers = ['N']
+        headers = ["N" if opp is N else "dt"]
         #for i in range(len(N)):
+        print h
+        print E
         for n in range(len(opp)):
             li = []
             li.append(str(opp[n]))
             for i in range(len(check)-1):
                 #conv = np.log(E[i+1]/E[i])/np.log(check[i+1]/check[i])
-                E_1 =  E[(i+1)*len(opp) + n]; E_0 =  E[i*len(opp) + n]
-                conv = np.log(E_1/E_0)/np.log(check[i+1]/check[i])
+                error = E[n*len(check) + (i+1)] / E[n*len(check) + i]
+                h_ = h[n*len(check) + (i+1)] / h[n*len(check) + i]
+                conv = np.log(error)/np.log(h_) #h is determined in main solve method
 
                 li.append(conv)
             table.append(li)
