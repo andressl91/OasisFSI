@@ -8,8 +8,7 @@ for coord in mesh.coordinates():
     if coord[0]==0.6 and (0.199<=coord[1]<=0.2001):
         print coord
         break
-#N = 10
-#mesh = UnitSquareMesh(N,N)
+
 #plot(mesh,interactive=True)
 
 #V1 = VectorFunctionSpace(mesh, "CG", 2) # Fluid velocity
@@ -20,7 +19,6 @@ V = VectorFunctionSpace(mesh, "CG", 1) # Mesh movement
 
 print "Dofs: ",V.dim(), "Cells:", mesh.num_cells()
 
-
 BarLeftSide =  AutoSubDomain(lambda x: "on_boundary" and (( (x[0] - 0.2)*(x[0] - 0.2) + (x[1] - 0.2)*(x[1] - 0.2)  < 0.0505*0.0505 )  and x[1]>=0.19 and x[1]<=0.21 and x[0]>0.2 ))
 
 boundaries = FacetFunction("size_t",mesh)
@@ -30,56 +28,47 @@ plot(boundaries,interactive=True)
 bc1 = DirichletBC(V, ((0,0)),boundaries, 1)
 bcs = [bc1]
 
-"""Pr = 0.479
-rho_s = Constant(1.75*rho_f)
-lamda = Constant(E*Pr/((1.0+Pr)*(1.0-2*Pr)))
-mu_s = Constant(E/(2*(1.0+Pr)))"""
 
-rho_s = 1.0E3
-mu_s = 0.5E6
+
+rho_s = 1.0e3
+mu_s = 2.0e6
 nu_s = 0.4
-E = 1.4E6
-lamda = Constant(E*nu_s/((1.0+nu_s)*(1.0-2*nu_s)))
-g = Constant((0,-2*rho_s))
+E_1 = 5.6e6
+#lamda = Constant(E_1*nu_s/((1.0+nu_s)*(1.0-2*nu_s)))
+lamda = nu_s*2*mu_s/(1-2*nu_s)
 
 
 
-def sigma_structure(d):
-    return 2*mu_s*sym(grad(d)) + lamda*tr(sym(grad(d)))*Identity(2)
+
+def sigma_structure(U):
+    return 2*mu_s*sym(grad(U)) + lamda*tr(sym(grad(U)))*Identity(2)
+
+def s_s_n_l(U):
+    I = Identity(2)
+    F = I + grad(U)
+    E = 0.5*((F.T*F)-I)
+    return lamda*tr(E)*I + 2*mu_s*E
 
 # TEST TRIAL FUNCTIONS
 psi = TestFunction(V)
-w = TrialFunction(V)
+U =Function(V)
 
-#w = Function(V)
-w0 = Function(V)
-U1 = Function(V)
 
 dt = 0.01
 k = Constant(dt)
 
 #Structure Variational form
-U = U1 + k*w
+g = Constant((0,-2*rho_s))
 
-G = rho_s*((1./k)*inner(w-w0,psi))*dx + rho_s*inner(dot(grad(w0),w),psi)*dx \
-+ inner(sigma_structure(U),grad(psi))*dx \
+G = inner(s_s_n_l(U),grad(psi))*dx \
 - inner(g,psi)*dx
-#rho_s*((1./k)*inner(w-w0,psi))*dx
-a = lhs(G)
-L = rhs(G)
-
-A = assemble(a)
-counter = 0
-t = 0
-T = 10.0
-w_ = Function(V)
-"""solve(a==L,w_,bcs)
-w_.vector()[:] *= float(k)
-U1.vector()[:] += w_.vector()[:]
-print (U1(coord)), coord
-plot(U1,interactive=True)"""
+solve(G == 0, U, bcs, solver_parameters={"newton_solver": {"relative_tolerance": 1e-8}})
+print "Ux: %1.4e , Uy: %2.4e "%(U(coord)[0],U(coord)[1])
+plot(U,mode="displacement",interactive=True)
 
 
+
+"""
 while t < T:
     print "Time: ",t
     b = assemble(L)
@@ -93,7 +82,7 @@ while t < T:
     U1.vector()[:] += w_.vector()[:]
     #
 
-    plot(U1,mode="displacement")#, interactive=True)
-    print coord
-    print "U1: ", U1(coord)
-    print "w: ", w_(coord)
+plot(U1,mode="displacement")#, interactive=True)
+print coord
+print "U1: ", U1(coord)
+print "w: ", w_(coord)"""
