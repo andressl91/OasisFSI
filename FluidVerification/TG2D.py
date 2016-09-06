@@ -232,7 +232,11 @@ if MPI.rank(mpi_comm_world()) == 0:
         import matplotlib.pyplot as plt
         plt.figure(1)
         plt.title("Log plot of E and h")
-        plt.loglog(h, E)
+        for i in range(len(opp)):
+            y = [E[i*len(check) + j] for j in range(len(check))]
+            x = [h[i*len(check) + j] for j in range(len(check))]
+            plt.loglog(x, y,marker='o', linestyle='--', label = 'Conv %g' % opp[i])
+        plt.legend(loc=2)
         plt.show()
 
 
