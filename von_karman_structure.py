@@ -11,11 +11,7 @@ for coord in mesh.coordinates():
 
 #plot(mesh,interactive=True)
 
-#V1 = VectorFunctionSpace(mesh, "CG", 2) # Fluid velocity
 V = VectorFunctionSpace(mesh, "CG", 1) # Mesh movement
-#Q  = FunctionSpace(mesh, "CG", 1)       # Fluid Pressure
-
-#VVQ = MixedFunctionSpace([V1,V2,Q])
 
 print "Dofs: ",V.dim(), "Cells:", mesh.num_cells()
 
@@ -31,10 +27,9 @@ bcs = [bc1]
 
 
 rho_s = 1.0e3
-mu_s = 2.0e6
+mu_s = 0.5e6
 nu_s = 0.4
-E_1 = 5.6e6
-#lamda = Constant(E_1*nu_s/((1.0+nu_s)*(1.0-2*nu_s)))
+E_1 = 1.4e6
 lamda = nu_s*2*mu_s/(1-2*nu_s)
 
 
@@ -59,13 +54,16 @@ k = Constant(dt)
 
 #Structure Variational form
 g = Constant((0,-2*rho_s))
+#U = U1 + k*w
 
-G = inner(s_s_n_l(U),grad(psi))*dx \
+G = rho_s*inner(dot(grad(U),U),psi)*dx + inner(s_s_n_l(U),grad(psi))*dx \
 - inner(g,psi)*dx
-solve(G == 0, U, bcs, solver_parameters={"newton_solver": {"relative_tolerance": 1e-8}})
+solve(G == 0, U, bcs, solver_parameters={"newton_solver": \
+{"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100}})
 print "Ux: %1.4e , Uy: %2.4e "%(U(coord)[0],U(coord)[1])
 plot(U,mode="displacement",interactive=True)
-
+#w_.vector()[:] *= float(k)
+#U.vector()[:] += w_.vector()[:]
 
 
 """
