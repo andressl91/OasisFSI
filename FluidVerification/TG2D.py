@@ -201,7 +201,8 @@ set_log_active(False)
 
 time = []; E = []; h = []
 u_dof = []; cells = []
-N = [int(10*np.sqrt(2)**i) for i in range(1, 5)]
+#N = [int(10*np.sqrt(2)**i) for i in range(1, 7)]
+
 #print N
 #exit(1)
 
@@ -220,12 +221,6 @@ if len(dt) >= len(N):
         for t in dt:
             NS(n, t, T, L, rho, mu, solver, check_val)
 
-#dt = [0.1, 0.05, 0.01]#, 0.005, 0.001]
-#N = [8, 16, 32]
-
-
-
-    #check = N if len(Time) is 1 if Time is len(N) is 1 else 0
 if MPI.rank(mpi_comm_world()) == 0:
 
     if fig == True:
