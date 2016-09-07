@@ -78,11 +78,11 @@ def NS(N, dt, T, L, rho, mu, solver, check):
     u_e = Expression(("-cos(pi*x[0])*sin(pi*x[1])*exp(-2*t*nu*pi*pi)",\
                     "cos(pi*x[1])*sin(pi*x[0])*exp(-2*t*nu*pi*pi)"), nu=nu, t=0)
 
-    V = VectorFunctionSpace(mesh, "CG", 2) # Fluid velocity
-    Q  = FunctionSpace(mesh, "CG", 1)       # Fluid Pressure
+    V = VectorFunctionSpace(mesh, "CG", 1, constrained_domain = test) # Fluid velocity
+    Q  = FunctionSpace(mesh, "CG", 1, constrained_domain = test)       # Fluid Pressure
 
-    U_dof = V.dim()
-    mesh_cells = mesh.num_cells()
+    u_dof.append(V.dim())
+    cells.append(mesh.num_cells())
 
     VQ = MixedFunctionSpace([V,Q])
 
@@ -127,10 +127,10 @@ def NS(N, dt, T, L, rho, mu, solver, check):
             solver  = NonlinearVariationalSolver(problem)
 
             prm = solver.parameters
-            prm['newton_solver']['absolute_tolerance'] = 1E-10
-            prm['newton_solver']['relative_tolerance'] = 1E-9
+            prm['newton_solver']['absolute_tolerance'] = 1E-6
+            prm['newton_solver']['relative_tolerance'] = 1E-6
             prm['newton_solver']['maximum_iterations'] = 40
-            prm['newton_solver']['relaxation_parameter'] = 0.9
+            prm['newton_solver']['relaxation_parameter'] = 1.0
 
 
             solver.solve()
@@ -152,12 +152,12 @@ def NS(N, dt, T, L, rho, mu, solver, check):
         t = 0
         count = 0;
         if MPI.rank(mpi_comm_world()) == 0:
-            print "Computing for N = %g, t = %g" % (N, dt)
+            print "Starting Piccard iterations \nComputing for N = %g, t = %g" % (N, dt)
         while t < T:
             #b = assemble(L)
             eps = 10
             k_iter = 0
-            max_iter = 3
+            max_iter = 20
             while eps > 1E-6 and k_iter < max_iter:
                 solve(lhs(F) == rhs(F), up, bcu)
 
@@ -186,7 +186,6 @@ def NS(N, dt, T, L, rho, mu, solver, check):
     #E.append(final_error)
 
     L2_u= errornorm(u_e, u0, norm_type='l2', degree_rise=3)
-    #H1 = errornorm(u_e, u0, norm_type='h1', degree_rise=2)
     E.append(L2_u);
 
     if check_val == "N":
@@ -201,6 +200,10 @@ def NS(N, dt, T, L, rho, mu, solver, check):
 set_log_active(False)
 
 time = []; E = []; h = []
+u_dof = []; cells = []
+N = [int(10*np.sqrt(2)**i) for i in range(1, 5)]
+#print N
+#exit(1)
 
 nu = mu/rho
 
@@ -229,7 +232,11 @@ if MPI.rank(mpi_comm_world()) == 0:
         import matplotlib.pyplot as plt
         plt.figure(1)
         plt.title("Log plot of E and h")
-        plt.loglog(check, E)
+        for i in range(len(opp)):
+            y = [E[i*len(check) + j] for j in range(len(check))]
+            x = [h[i*len(check) + j] for j in range(len(check))]
+            plt.loglog(x, y,marker='o', linestyle='--', label = 'Conv %g' % opp[i])
+        plt.legend(loc=2)
         plt.show()
 
 
@@ -249,7 +256,21 @@ if MPI.rank(mpi_comm_world()) == 0:
         headers.append("Runtime")
     print tabulate(table, headers, tablefmt="fancy_grid")
 
-
+    print
+    print "#################################### - Data - ####################################\n"
+    table = []
+    headers = ["N" if opp is N else "dt"]
+    for i in range(len(opp)):
+        li = []
+        li.append(str(opp[i]))
+        for t in range(len(check)):
+            li.append("%e" % u_dof[i*len(check) + t])
+            li.append("%e" % cells[i*len(check) + t]) #SJEKKKKK!!
+        table.append(li)
+    for i in range(len(check)):
+        headers.append("U_DOF dt = %.g" % check[i] if check is dt else "U_DOF N = %g" % check[i])
+        headers.append("CELLS")
+    print tabulate(table, headers, tablefmt="fancy_grid")
 
 
     if con == True:
