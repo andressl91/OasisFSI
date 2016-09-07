@@ -1,0 +1,11 @@
+{ "onelab":{
+  "creator":"",
+  "date":"Wed Sep  7 13:39:07 2016",
+  "parameters":[ 
+    { "type":"string", "version":"1.1", "name":"Gmsh/Action", "label":"", "help":"", "neverChanged":true", "visible":false", "readOnly":false", "attributes":{ "Closed":"1" }, "clients":{ "Gmsh":false }, "value":"", "kind":"generic", "choices":[  ] }
+    { "type":"number", "version":"1.1", "name":"Gmsh/Model dimension", "label":"", "help":"", "neverChanged":false", "visible":false", "readOnly":true", "attributes":{ "Closed":"1" }, "clients":{ "Gmsh":false }, "value":2, "min":-1e+200, "max":1e+200, "step":0, "index":-1, "choices":[  ], "valueLabels":{  } }
+    { "type":"string", "version":"1.1", "name":"Gmsh/Model name", "label":"", "help":"", "neverChanged":true", "visible":false", "readOnly":true", "attributes":{ "Closed":"1" }, "clients":{ "Gmsh":false }, "value":"/Users/TheDude/Documents/master/OasisFSI/StructureVerification/von_karman_street_FSI_structure.geo", "kind":"generic", "choices":[  ] }
+    { "type":"string", "version":"1.1", "name":"Gmsh/MshFileName", "label":"Mesh name", "help":"", "neverChanged":false", "visible":true", "readOnly":false", "attributes":{ "Closed":"1" }, "clients":{ "Gmsh":false }, "value":".msh", "kind":"file", "choices":[  ] }
+    { "type":"number", "version":"1.1", "name":"Gmsh/Number of physical groups", "label":"", "help":"", "neverChanged":false", "visible":false", "readOnly":true", "attributes":{ "Closed":"1" }, "clients":{ "Gmsh":false }, "value":0, "min":-1e+200, "max":1e+200, "step":0, "index":-1, "choices":[  ], "valueLabels":{  } }
+    { "type":"string", "version":"1.1", "name":"von_karman_fsi_fluid_25_08/Action", "label":"", "help":"", "neverChanged":true", "visible":false", "readOnly":false", "attributes":{  }, "clients":{  }, "value":"compute", "kind":"generic", "choices":[  ] }
+] }

@@ -1,2 +1,0 @@
-# OasisFSI
-Framework for FSI
