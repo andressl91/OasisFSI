@@ -1,5 +1,6 @@
 from dolfin import *
 import numpy as np
+import matplotlib.pyplot as plt
 set_log_active(False)
 
 mesh = Mesh("von_karman_street_FSI_structure.xml")
@@ -26,10 +27,10 @@ bcs = [bc1]
 
 
 
-rho_s = 1.0e3
-mu_s = 0.5e6
+rho_s = 1.0E3
+mu_s = 0.5E6
 nu_s = 0.4
-E_1 = 1.4e6
+E_1 = 1.4E6
 lamda = nu_s*2*mu_s/(1-2*nu_s)
 
 
@@ -46,41 +47,44 @@ def s_s_n_l(U):
 
 # TEST TRIAL FUNCTIONS
 psi = TestFunction(V)
-U =Function(V)
-
+w = Function(V)
+w0 = Function(V)
+U1 = Function(V)
 
 dt = 0.01
 k = Constant(dt)
 
 #Structure Variational form
 g = Constant((0,-2*rho_s))
-#U = U1 + k*w
+U = U1 + k*w
 
-G = rho_s*inner(dot(grad(U),U),psi)*dx + inner(s_s_n_l(U),grad(psi))*dx \
+G =rho_s*((1./k)*inner(w-w0,psi))*dx + rho_s*inner(dot(grad(w),w),psi)*dx + inner(s_s_n_l(U),grad(psi))*dx \
 - inner(g,psi)*dx
-solve(G == 0, U, bcs, solver_parameters={"newton_solver": \
-{"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100}})
-print "Ux: %1.4e , Uy: %2.4e "%(U(coord)[0],U(coord)[1])
-plot(U,mode="displacement",interactive=True)
-#w_.vector()[:] *= float(k)
-#U.vector()[:] += w_.vector()[:]
+
+dis_x = []
+dis_y = []
 
 
-"""
+
+T = 5.0
+t = 0
+time = np.linspace(0,T,(T/dt)+1)
+print "time len",len(time)
 while t < T:
     print "Time: ",t
-    b = assemble(L)
-    #A.ident_zeros()
-    [bc.apply(A,b) for bc in bcs]
-    solve(A,w_.vector(),b)
-    #solve(a==L,w_,bcs)
+    solve(G == 0, w, bcs, solver_parameters={"newton_solver": \
+    {"relative_tolerance": 1E-10,"absolute_tolerance":1E-10,"maximum_iterations":1000}})
+    w0.assign(w)
+    w.vector()[:] *= float(k)
+    U1.vector()[:] += w.vector()[:]
+    #print "Ux: %1.4e , Uy: %2.4e "%(U1(coord)[0],U1(coord)[1])
     t += dt
-    w0.assign(w_)
-    w_.vector()[:] *= float(k)
-    U1.vector()[:] += w_.vector()[:]
-    #
+    dis_x.append(U1(coord)[0])
+    dis_y.append(U1(coord)[1])
 
-plot(U1,mode="displacement")#, interactive=True)
-print coord
-print "U1: ", U1(coord)
-print "w: ", w_(coord)"""
+print "Ux: %1.4e , Uy: %2.4e "%(U1(coord)[0],U1(coord)[1])
+print len(dis_x), len(time)
+plt.plot(time,dis_x,); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
+plt.show()
+plt.plot(time,dis_y);plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
+plt.show()
