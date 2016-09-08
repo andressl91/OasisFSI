@@ -42,7 +42,8 @@ n = FacetNormal(mesh)
 Um = 0.2
 H = 0.41
 L = 2.5
-inlet = Expression(("1.5*Um*4.0/0.1681*x[1]*(H-x[1])", "0"), t = 0.0, Um = Um, H = H)
+inlet = Expression(("1.5*Um*x[1]*(H - x[1]) / pow((H/2.0), 2) * (1 - cos(t*pi/2))/2"\
+,"0"), t = 0.0, Um = Um, H = H)
 
 #Fluid velocity conditions
 u_inlet  = DirichletBC(VVQ.sub(0), inlet, boundaries, 3)
@@ -77,10 +78,12 @@ plot(domains,interactive = True)
 
 # TEST TRIAL FUNCTIONS
 phi, psi, eta = TestFunctions(VVQ)
-u, w, p = TrialFunctions(VVQ)
+#u, w, p = TrialFunctions(VVQ)
+uwp = Function(VVQ)
+u, w, p  = split(uwp)
 
+#u1 = Function(V1) Piccard
 u0 = Function(V1)
-u1 = Function(V1)
 w0 = Function(V2)
 U1 = Function(V2)
 
@@ -101,12 +104,12 @@ lamda_s = nu_s*2*mu_s/(1 - nu_s*2)
 
 print "Re = %f" % (Um/(mu_f/rho_f))
 
-def sigma_s(t): #NONLINEAR
+def sigma_s(U): #NONLINEAR
     g = Constant(9.81)
     B = Constant((0, g*rho_s))
     T = Constant((0, 0))
 
-    F = Identity(2) + grad(0.5*(t))
+    F = Identity(2) + grad(0.5*(U))
     #F = Identity(2) + grad(0.5*(t))
     C = F.T*F
 
@@ -120,76 +123,72 @@ def sigma_s(t): #NONLINEAR
 def sigma_structure(d): #HOOKES LAW
     return 2*mu_s*sym(grad(d)) + lamda_s*tr(sym(grad(d)))*Identity(2)
 
-def sigma_fluid(p,u): #NEWTONIAN FLUID
+def s_s_n_l(U):
+    I = Identity(2)
+    F = I + grad(U)
+    E = 0.5*((F.T*F)-I)
+    return lamda_s*tr(E)*I + 2*mu_s*E
+
+def sigma_fluid(p, u): #NEWTONIAN FLUID
     return -p*Identity(2) + 2*mu_f * sym(grad(u))
 
 # Fluid variational form
-F = rho_f*((1./k)*inner(u-u1,phi)*dx(1) \
-+ inner(grad(u0)*( u - w), phi) * dx(1)
-+ inner(sigma_fluid(p,u),grad(phi))*dx(1)) - inner(div(u),eta)*dx(1)
+F_fluid = ( (rho_f/k)*inner(u -u0,phi) + rho_f*inner(grad(u)*(u - w), phi) \
+- inner( div(w)* u, phi) \
++ inner(sigma_fluid(p, u), grad(phi)) \
+- inner(div(u),eta))*dx(1)
 
 #deformation formulation as a function of mesh velocity
 U = U1 + w*k
 
 # Structure Variational form
-G = rho_s*(1./k*inner(w - w0, psi))*dx(2) +  inner(sigma_structure(U), grad(psi))*dx(2) \
-#+ inner(u,phi)*dx(2) - inner(w,phi)*dx(2)
+F_solid = ((rho_s/k)*inner(w - w0, psi))*dx(2) + rho_s*inner(dot(grad(w), w), psi)*dx(2)\
++ inner(sigma_s(U),grad(psi))*dx(2) \
 
-# Mesh movement, solving the equation laplace -nabla(grad(d)) = 0
-H = inner(grad(U),grad(psi))*dx(1) - inner(grad(U("-"))*n("-"),psi("-"))*dS(5)
 
-a = lhs(F) - lhs(G) - lhs(H)
-L = rhs(F) - rhs(G) - rhs(H)
+# Mesh velocity function in fluid domain
+F_meshvel = inner(grad(U),grad(psi))*dx(1) - inner(grad(U("-"))*n("-"),psi("-"))*dS(5)
 
-#F1 = F-G-H
+#a = lhs(F) - lhs(G) - lhs(H)
+#L = rhs(F) - rhs(G) - rhs(H)
 
-T = 10.0
+F = F_fluid - F_solid - F_meshvel
+
+T = 0.1
 t = 0.0
-uwp = Function(VVQ)
 
-u_file = File("mvelocity/velocity.pvd")
-u_file << u0
-Lift = []; t_list = []
-while t < T:
-    #if MPI.rank(mpi_comm_world()) == 0:
-    t_list.append(t)
-    b = assemble(L)
-    eps = 10
-    k_iter = 0
-    max_iter = 1
-    while eps > 1E-6 and k_iter < max_iter:
-        A = assemble(a)
-        A.ident_zeros()
-        [bc.apply(A,b) for bc in bcs]
-        solve(A,uwp.vector(),b)
-        u_,w_,p_ = uwp.split(True)
-        eps = errornorm(u_,u0,degree_rise=3)
-        k_iter += 1
-        print "k: ",k_iter, "error: %.3e" %eps
-        u0.assign(u_)
+#u_file = File("mvelocity/velocity.pvd")
+#u_file << u0
+
+while t <= T:
+    if MPI.rank(mpi_comm_world()) == 0:
+        print "Time t = %.3f" % t
+
+    if t < 2:
+        inlet.t = t;
+    if t >= 2:
+        inlet.t = 2;
+
+    J = derivative(F, uwp)
+
+    problem = NonlinearVariationalProblem(F, uwp, bcs, J)
+    solver  = NonlinearVariationalSolver(problem)
+
+    prm = solver.parameters
+    prm['newton_solver']['absolute_tolerance'] = 1E-6
+    prm['newton_solver']['relative_tolerance'] = 1E-6
+    prm['newton_solver']['maximum_iterations'] = 10
+    prm['newton_solver']['relaxation_parameter'] = 0.8
+
+
+    solver.solve()
+
+    u_, w_, p_ = uwp.split(True)
+    u0.assign(u_)
     w0.assign(w_) #Assigning new mesh velocity
-    u1.assign(u_) #Assigning new fluid velocity
     w_.vector()[:] *= float(k) #Computing new deformation
     U1.vector = w_.vector()[:] #Applying new deformation, and updating
     ALE.move(mesh,w_)
     mesh.bounding_box_tree().build(mesh)
 
-
-    #Calculate lift on bar and circle
-    Force_lift = assemble(dot(sigma_fluid(p_, u_), n)[1]*ds(5) + \
-                          dot(sigma_fluid(p_, u_), n)[1]*ds(6))
-    Lift.append(Force_lift)
-
-    u_file << u_
-    print "Time:",t
-
     t += dt
-
-plot(u_, interactive=True)
-
-import matplotlib.pyplot as plt
-plt.figure(1)
-plt.plot(t_list, Lift)
-plt.show()
-
-#plot(u_,interactive=True)
