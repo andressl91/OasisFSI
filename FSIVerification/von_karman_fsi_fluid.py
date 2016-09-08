@@ -134,7 +134,6 @@ def sigma_fluid(p, u): #NEWTONIAN FLUID
 
 # Fluid variational form
 F_fluid = ( (rho_f/k)*inner(u -u0,phi) + rho_f*inner(grad(u)*(u - w), phi) \
-- inner( div(w)* u, phi) \
 + inner(sigma_fluid(p, u), grad(phi)) \
 - inner(div(u),eta))*dx(1)
 
@@ -143,7 +142,7 @@ U = U1 + w*k
 
 # Structure Variational form
 F_solid = ((rho_s/k)*inner(w - w0, psi))*dx(2) + rho_s*inner(dot(grad(w), w), psi)*dx(2)\
-+ inner(sigma_s(U),grad(psi))*dx(2) \
++ inner(s_s_n_l(U),grad(psi))*dx(2) \
 
 
 # Mesh velocity function in fluid domain
@@ -177,8 +176,8 @@ while t <= T:
     prm = solver.parameters
     prm['newton_solver']['absolute_tolerance'] = 1E-6
     prm['newton_solver']['relative_tolerance'] = 1E-6
-    prm['newton_solver']['maximum_iterations'] = 10
-    prm['newton_solver']['relaxation_parameter'] = 0.8
+    prm['newton_solver']['maximum_iterations'] = 5
+    prm['newton_solver']['relaxation_parameter'] = 1.0
 
 
     solver.solve()
