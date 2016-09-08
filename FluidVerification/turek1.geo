@@ -32,4 +32,4 @@ Line Loop(15) = {6, 12, 13, 14, 8, 9, 5};
 
 
 Line Loop(16) = {12, 13, 14, -7};
-Plane Surface(17) = {16};
+Plane Surface(17) = {10, 15};
