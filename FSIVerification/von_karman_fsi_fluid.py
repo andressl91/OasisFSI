@@ -141,15 +141,15 @@ F_fluid = ( (rho_f/k)*inner(u -u0,phi) + rho_f*inner(grad(u)*(u - w), phi) \
 U = U1 + w*k
 
 # Structure Variational form
-F_solid = ((rho_s/k)*inner(w - w0, psi))*dx(2) + rho_s*inner(dot(grad(w), w), psi)*dx(2)\
-+ inner(s_s_n_l(U),grad(psi))*dx(2) \
+#F_solid = ((rho_s/k)*inner(w - w0, psi))*dx(2) + rho_s*inner(dot(grad(w), w), psi)*dx(2)\
+#+ inner(s_s_n_l(U),grad(psi))*dx(2) \
+## FERNANDEZ
+
+F_solid = ((2*rho_s/(k*k))*inner(U - U1 - k*w0, psi))*dx(2) + inner(sigma_s(U),grad(psi))*dx(2)
 
 
 # Mesh velocity function in fluid domain
 F_meshvel = inner(grad(U),grad(psi))*dx(1) - inner(grad(U("-"))*n("-"),psi("-"))*dS(5)
-
-#a = lhs(F) - lhs(G) - lhs(H)
-#L = rhs(F) - rhs(G) - rhs(H)
 
 F = F_fluid - F_solid - F_meshvel
 
