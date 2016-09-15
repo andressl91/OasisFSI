@@ -35,7 +35,7 @@ while len(sys.argv) > 1:
         print sys.argv[0], ': invalid option', option
 
 if len(dt) == 0:
-    dt = [0.1, 0.01]
+    dt = [0.1]
 
 def fluid(mesh_file, T, dt, solver, steady, fig, v_deg, p_deg):
     if mesh_file == None:
@@ -87,7 +87,7 @@ def fluid(mesh_file, T, dt, solver, steady, fig, v_deg, p_deg):
 
     p_out = DirichletBC(VQ.sub(1), 0, boundaries, 3)
 
-    bcs = [u_inlet, nos_geo, nos_wall]
+    bcs = [u_inlet, nos_geo, nos_wall, p_out]
 
 
     # TEST TRIAL FUNCTIONS
@@ -234,7 +234,11 @@ def fluid(mesh_file, T, dt, solver, steady, fig, v_deg, p_deg):
 
         # Fluid variational form
         F =  rho*inner(dot(u, grad(u)), phi) * dx \
-        + inner(sigma_fluid(p,u), grad(phi))*dx - inner(div(u),eta)*dx
+        + inner(sigma_fluid(p, u), grad(phi))*dx - inner(div(u),eta)*dx
+
+        #F OASIS
+        #F =  rho*inner(dot(u, grad(u)), phi) * dx \
+        #+ mu*inner(grad(u), grad(phi))*dx - inner(p, div(phi))*dx - inner(eta, div(u))*dx
 
         if MPI.rank(mpi_comm_world()) == 0:
             print "Starting Newton iterations \n STEADY_STATE"
@@ -246,7 +250,7 @@ def fluid(mesh_file, T, dt, solver, steady, fig, v_deg, p_deg):
 
         prm = solver.parameters
         prm['newton_solver']['absolute_tolerance'] = 1E-6
-        prm['newton_solver']['relative_tolerance'] = 1E-7
+        prm['newton_solver']['relative_tolerance'] = 1E-6
         prm['newton_solver']['maximum_iterations'] = 50
         prm['newton_solver']['relaxation_parameter'] = 1.0
 
@@ -273,7 +277,7 @@ def fluid(mesh_file, T, dt, solver, steady, fig, v_deg, p_deg):
 
 
 count = 1;
-for m in ["course.xml", "turek1.xml"]:
+for m in ["course.xml", "turek1.xml", "turek2.xml"]:
     if MPI.rank(mpi_comm_world()) == 0:
         plt.figure(count)
     for t in dt:
