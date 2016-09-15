@@ -128,7 +128,7 @@ def fluid(mesh_file, T, dt, solver, steady, fig, v_deg, p_deg):
 
         return fX, fY
 
-    Re = Um*(0.05*2)/(mu/rho)
+    Re = Um*0.1rho/mu
     print "SOLVING FOR Re = %f" % Re #0.1 Cylinder diameter
     print "DOF = %f,  cells = %f" % (U_dof, mesh_cells)
 
