@@ -201,8 +201,8 @@ set_log_active(False)
 
 time = []; E = []; h = []
 u_dof = []; cells = []
-#N = [int(10*np.sqrt(2)**i) for i in range(1, 7)]
-
+#N = [int(10*np.sqrt(2)**i) for i in range(1, 5)]
+dt = [0.01 ,0.005, 0.001]
 #print N
 #exit(1)
 

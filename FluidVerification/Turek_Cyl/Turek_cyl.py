@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 #default values
 T = 1.0; dt = []; rho  = 10.0; mu = 1.0; v_deg = 1; p_deg = 1
-solver = "Newton"; steady = False; fig = False;
+solver = "Newton"; fig = False;
 
 #command line arguments
 while len(sys.argv) > 1:
@@ -15,18 +15,15 @@ while len(sys.argv) > 1:
     elif option == "-dt":
         dt.append(float(sys.argv[1])); del sys.argv[1]
     elif option == "-v_deg":
-        v_deg = float(sys.argv[1]); del sys.argv[1]
+        v_deg = int(sys.argv[1]); del sys.argv[1]
     elif option == "-p_deg":
-        p_deg = float(sys.argv[1]); del sys.argv[1]
+        p_deg = int(sys.argv[1]); del sys.argv[1]
     elif option == "-rho":
         rho = Constant(float(sys.argv[1])); del sys.argv[1]
     elif option == "-mu":
         mu = float(sys.argv[1]); del sys.argv[1]
     elif option == "-solver":
         solver = str(sys.argv[1]); del sys.argv[1]
-    elif option == "-steady":
-        steady = True
-        #steady = bool(sys.argv[1]); del sys.argv[1]
     elif option == "-fig":
         fig = bool(sys.argv[1]); del sys.argv[1]
     elif option.isdigit() == False:
@@ -35,16 +32,18 @@ while len(sys.argv) > 1:
         print sys.argv[0], ': invalid option', option
 
 if len(dt) == 0:
-    dt = [0.1, 0.01]
+    dt = [0.1]
 
-def fluid(mesh_file, T, dt, solver, steady, fig, v_deg, p_deg):
+def fluid(mesh_file, T, dt, solver, fig, v_deg, p_deg):
     if mesh_file == None:
         mesh = Mesh("course.xml")
     mesh = Mesh(mesh_file)
+    #plot(mesh)
+    #interactive()
 
     #plot(mesh,interactive=True)
-    V = VectorFunctionSpace(mesh, "CG", 1) # Fluid velocity
-    Q  = FunctionSpace(mesh, "CG", 1)       # Fluid Pressure
+    V = VectorFunctionSpace(mesh, "CG", v_deg) # Fluid velocity
+    Q  = FunctionSpace(mesh, "CG", p_deg)       # Fluid Pressure
 
     U_dof = V.dim()
     mesh_cells = mesh.num_cells()
@@ -52,42 +51,41 @@ def fluid(mesh_file, T, dt, solver, steady, fig, v_deg, p_deg):
     VQ = MixedFunctionSpace([V,Q])
 
     # BOUNDARIES
+    H = 0.41
 
     Inlet  = AutoSubDomain(lambda x: "on_boundary" and near(x[0], 0))
-    Outlet = AutoSubDomain(lambda x: "on_boundary" and near(x[0], 2.5))
-    Walls  = AutoSubDomain(lambda x: "on_boundary" and near(x[1],0) or near(x[1], 0.41))
+    Outlet = AutoSubDomain(lambda x: "on_boundary" and near(x[0], 2.2))
+    Walls = AutoSubDomain(lambda x: "on_boundary" and ( near(x[1], 0) or near(x[1], 0.41) ))
+    Cyl = AutoSubDomain(lambda x, on_bnd: on_bnd and x[0]>1e-6 and x[0]<1 and x[1] < 3*H/4 and x[1] > H/4)
 
     boundaries = FacetFunction("size_t",mesh)
     boundaries.set_all(0)
-    DomainBoundary().mark(boundaries, 1)
+    Cyl.mark(boundaries, 1) #Circle gets overwritten, need separate nos for integration
     Inlet.mark(boundaries, 2)
     Outlet.mark(boundaries, 3)
     Walls.mark(boundaries, 4)
 
-
     ds = Measure("ds", subdomain_data = boundaries)
     n = FacetNormal(mesh)
-    #plot(boundaries,interactive=True)
+    plot(boundaries,interactive=True)
 
     #BOUNDARY CONDITIONS
 
-    Um = 0.2
+    Um = 0.3
     H = 0.41
+    D = 0.1
 
-    ##UNSTEADY FLOW
-    inlet = Expression(("1.5*Um*x[1]*(H - x[1]) / pow((H/2.0), 2) * (1 - cos(t*pi/2))/2"\
-    ,"0"), t = 0.0, Um = Um, H = H)
     #STEADY FLOW
-    #inlet = Expression(("1.5*Um*x[1]*(H - x[1]) / (H/2.0*H/2.0)"\
-    #,"0"), Um = Um, H = H)
+    inlet = Expression(("4*Um*x[1]*(H - x[1]) / pow(H, 2)"\
+    ,"0"), Um = Um, H = H)
 
-    u_inlet = DirichletBC(VQ.sub(0), inlet, boundaries, 2)
-    nos_geo = DirichletBC(VQ.sub(0), ((0, 0)), boundaries, 1)
+    u_inlet  = DirichletBC(VQ.sub(0), inlet,    boundaries, 2)
+    nos_circ = DirichletBC(VQ.sub(0), ((0, 0)), boundaries, 1)
     nos_wall = DirichletBC(VQ.sub(0), ((0, 0)), boundaries, 4)
 
-    p_out = DirichletBC(VQ.sub(1), 0, boundaries, 3)
+    p_out    = DirichletBC(VQ.sub(1), 0, boundaries, 3)
 
-    bcs = [u_inlet, nos_geo, nos_wall]
+    bcs = [u_inlet, nos_wall, nos_circ]
 
 
     # TEST TRIAL FUNCTIONS
@@ -97,24 +95,18 @@ def fluid(mesh_file, T, dt, solver, steady, fig, v_deg, p_deg):
     u0 = Function(V)
     u1 = Function(V)
 
-
-    #dt = 0.001
+    #Physical parameter
     k = Constant(dt)
-    #T = 10.0
     t = 0.0
 
-    #Physical parameter
-
-    rho = 1000.0
+    rho = 1.0
     nu = 0.001
-    mu = rho*nu
-
-
+    mu = nu*rho
 
     def sigma_fluid(p,u):
-        return -p*Identity(2) + mu * (grad(u) + grad(u).T)#sym(grad(u))
-
-    def integrateFluidStress(u, p):
+        return -p*Identity(2) + mu * (grad(u) + grad(u).T)
+    #MY WAY
+    def integrateFluidStress(p, u):
 
         eps   = 0.5*(grad(u) + grad(u).T)
         sig   = -p*Identity(2) + 2.0*mu*eps
@@ -128,7 +120,46 @@ def fluid(mesh_file, T, dt, solver, steady, fig, v_deg, p_deg):
 
         return fX, fY
 
-    Re = Um*(0.05*2)/(mu/rho)
+    #MEK4300 WAY
+    def iintegrateFluidStress(p, u):
+    	n = -FacetNormal(mesh)
+    	n1 = as_vector((1.0,0)) ; n2 = as_vector((0,1.0))
+    	nx = dot(n,n1) ; ny = dot(n,n2)
+    	nt = as_vector((ny,-nx))
+
+    	#mf = FacetFunction("size_t", mesh)
+    	#mf.set_all(0)
+    	#Cyl.mark(mf, 1)
+    	#dS = ds[mf]
+
+        ut = dot(nt,u_)
+    	Uav = (2*Um)/3
+    	Fd = assemble((rho*nu*dot(grad(ut),n)*ny-p_*nx)*ds(1))
+    	Fl = assemble(-(rho*nu*dot(grad(ut),n)*nx+p_*ny)*ds(1))
+    	#Cd = (2*Fd)/(rho*Uav**2*D)
+    	#Cl = (2*Fl)/(rho*Uav**2*D)
+
+        return Fd, Fl
+
+
+    #OASIS WAY
+    def iintegrateFluidStress(p, u):
+        D = 0.1
+        tau = -p*Identity(2) + mu*(grad(u)+grad(u).T)
+        R = VectorFunctionSpace(mesh, 'R', 0)
+        c = TestFunction(R)
+        ff = FacetFunction("size_t", mesh, 0)
+        Cyl.mark(ff, 1)
+        df = ds[ff]
+        U_mean = Um*2./3
+        #forces = assemble(dot(dot(tau, -n), c)*df(1)).array()*2/U_mean**2/D
+        #print "Cd = {}, CL = {}".format(*forces)
+        forces = assemble(dot(dot(tau, -n), c)*ds(1))
+
+        return forces[0], forces[1]
+
+
+    Re = 2/3*Um*D/nu
     print "SOLVING FOR Re = %f" % Re #0.1 Cylinder diameter
     print "DOF = %f,  cells = %f" % (U_dof, mesh_cells)
 
@@ -164,7 +195,7 @@ def fluid(mesh_file, T, dt, solver, steady, fig, v_deg, p_deg):
             prm = solver.parameters
             prm['newton_solver']['absolute_tolerance'] = 1E-6
             prm['newton_solver']['relative_tolerance'] = 1E-6
-            prm['newton_solver']['maximum_iterations'] = 40
+            prm['newton_solver']['maximum_iterations'] = 6
             prm['newton_solver']['relaxation_parameter'] = 1.0
 
 
@@ -173,9 +204,13 @@ def fluid(mesh_file, T, dt, solver, steady, fig, v_deg, p_deg):
             u_, p_ = up.split(True)
             u0.assign(u_)
 
-            drag, lift =integrateFluidStress(u_, p_)
+            drag, lift =integrateFluidStress(p_, u_)
+
+            c_d = 2*drag/(rho*Um*Um*0.1)
+            c_l = 2*lift/(rho*Um*Um*0.1)
             if MPI.rank(mpi_comm_world()) == 0:
-                print "Time: ",t ," drag: ",drag, "lift: ",lift
+                print  "Time: ", t ,"C_d: ",c_d, "    C_l: ",c_l
+
         	Drag.append(drag)
         	Lift.append(lift)
 
@@ -230,11 +265,13 @@ def fluid(mesh_file, T, dt, solver, steady, fig, v_deg, p_deg):
         up = Function(VQ)
         u, p = split(up)
 
-        inlet.t = 2
-
         # Fluid variational form
         F =  rho*inner(dot(u, grad(u)), phi) * dx \
-        + inner(sigma_fluid(p,u), grad(phi))*dx - inner(div(u),eta)*dx
+        + inner(sigma_fluid(p, u), grad(phi))*dx - inner(div(u),eta)*dx
+
+        #F OASIS
+        F =  inner(dot(u, grad(u)), phi) * dx \
+        + nu*inner(grad(u), grad(phi))*dx - inner(p, div(phi))*dx - inner(eta, div(u))*dx
 
         if MPI.rank(mpi_comm_world()) == 0:
             print "Starting Newton iterations \n STEADY_STATE"
@@ -245,22 +282,31 @@ def fluid(mesh_file, T, dt, solver, steady, fig, v_deg, p_deg):
         solver  = NonlinearVariationalSolver(problem)
 
         prm = solver.parameters
-        prm['newton_solver']['absolute_tolerance'] = 1E-6
-        prm['newton_solver']['relative_tolerance'] = 1E-7
-        prm['newton_solver']['maximum_iterations'] = 50
+        prm['newton_solver']['absolute_tolerance'] = 1E-10
+        prm['newton_solver']['relative_tolerance'] = 1E-10
+        prm['newton_solver']['maximum_iterations'] = 7
         prm['newton_solver']['relaxation_parameter'] = 1.0
 
 
         solver.solve()
 
         u_, p_ = up.split(True)
-        u0.assign(u_)
 
-        drag, lift =integrateFluidStress(u_, p_)
+        u_file = File("velocity.pvd")
+        u_file << u_
+
+        p_file = File("pressure.pvd")
+        p_file << p_
+
+        drag, lift = integrateFluidStress(p_, u_)
+
+        U_m = 2./3.*Um
+
+        c_d = 2.*drag/(rho*U_m*U_m*D)
+        c_l = 2.*lift/(rho*U_m*U_m*D)
         if MPI.rank(mpi_comm_world()) == 0:
-            print  "drag: ",drag, "lift: ",lift
-        Drag.append(drag)
-        Lift.append(lift)
+            print  "C_d: ",c_d, "    C_l: ",c_l
+
 
     if fig == True:
         if MPI.rank(mpi_comm_world()) == 0:
@@ -273,12 +319,12 @@ def fluid(mesh_file, T, dt, solver, steady, fig, v_deg, p_deg):
 
 
 count = 1;
-for m in ["course.xml", "turek1.xml"]:
+for m in ["course.xml"]:#, "cylinder.xml"]:
     if MPI.rank(mpi_comm_world()) == 0:
         plt.figure(count)
     for t in dt:
         Drag = []; Lift = []; time = []
-        fluid(m, T, t, solver, steady, fig, v_deg, p_deg)
+        fluid(m, T, t, solver, fig, v_deg, p_deg)
     count += 1;
 
 
