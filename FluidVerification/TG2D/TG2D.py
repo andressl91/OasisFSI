@@ -1,7 +1,7 @@
 from dolfin import *
 import numpy as np
 import sys, shutil, os
-#sys.path.append('/uio/hume/student-u86/andressl/Desktop/Sandbox/TG2D/tabulate-0.7.5')
+sys.path.append('/uio/hume/student-u86/andressl/Desktop/Sandbox/TG2D/tabulate-0.7.5')
 
 from tabulate import tabulate
 
@@ -99,8 +99,7 @@ def NS(N, dt, T, L, rho, mu, solver, check):
     k = Constant(dt)
     rho = Constant(rho)
     mu = Constant(mu)
-    def sigma_fluid(p,u):
-        return -p*Identity(2) + mu * (grad(u) + grad(u).T)#sym(grad(u))
+
 
 
     if solver == "Newton":
@@ -110,7 +109,7 @@ def NS(N, dt, T, L, rho, mu, solver, check):
         # Fluid variational form
         F = (rho/k)*inner(u - u0, phi)*dx \
             + rho*inner(dot(u, grad(u)), phi) * dx \
-            + inner(sigma_fluid(p,u), grad(phi))*dx - inner(div(u),eta)*dx
+            + mu*inner(grad(u), grad(phi))*dx - div(phi)*p*dx - eta*div(u)*dx
 
         t = 0
 
@@ -147,7 +146,7 @@ def NS(N, dt, T, L, rho, mu, solver, check):
 
         F = (rho/k)*inner(u - u1, phi)*dx \
             + rho*inner(dot(u0, grad(u)), phi) * dx \
-            + inner(sigma_fluid(p,u), grad(phi))*dx - inner(div(u),eta)*dx
+            + mu*inner(grad(u), grad(phi))*dx - div(phi)*p*dx - eta*div(u)*dx
 
         t = 0
         count = 0;
@@ -201,7 +200,7 @@ set_log_active(False)
 
 time = []; E = []; h = []
 u_dof = []; cells = []
-#N = [int(10*np.sqrt(2)**i) for i in range(1, 5)]
+#N = [int(10*np.sqrt(2)**i) for i in range(1, 6)]
 dt = [0.01 ,0.005, 0.001]
 #print N
 #exit(1)
