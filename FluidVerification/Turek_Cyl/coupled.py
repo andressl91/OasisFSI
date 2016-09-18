@@ -78,9 +78,6 @@ def fluid(mesh, solver, fig, v_deg, p_deg):
 
   #Physical parameter
   t = 0.0
-
-  def sigma_fluid(p,u):
-	return -p*Identity(2) + mu * (grad(u) + grad(u).T)
  
   #MEK4300 WAY
   def FluidStress(p, u):
@@ -133,14 +130,20 @@ def fluid(mesh, solver, fig, v_deg, p_deg):
 	solver  = NonlinearVariationalSolver(problem)
 
 	prm = solver.parameters
-	prm['newton_solver']['absolute_tolerance'] = 1E-19
+	prm['newton_solver']['absolute_tolerance'] = 1E-10
 	prm['newton_solver']['relative_tolerance'] = 1E-10
-	prm['newton_solver']['maximum_iterations'] = 20
+	prm['newton_solver']['maximum_iterations'] = 40
 	prm['newton_solver']['relaxation_parameter'] = 1.0
 
 
 	solver.solve()
 	u_ , p_ = up.split(True)
+	
+	file_v = File("velocity.pvd")
+	file_v << u_
+	
+	file_p = File("pressure.pvd")
+	file_p << p_
 
 		
   if solver == "Piccard":
@@ -151,9 +154,9 @@ def fluid(mesh, solver, fig, v_deg, p_deg):
 	  print "Starting Piccard iterations"
 	eps = 10
 	k_iter = 0
-	max_iter = 10
+	max_iter = 20
 
-	while eps > 1E-6 and k_iter < max_iter:
+	while eps > 1E-10 and k_iter < max_iter:
 
 	  #SGIMA WRITTEN OUT
 	  F = mu*inner(grad(u), grad(phi))*dx + inner(grad(u)*u0, phi)*dx \
@@ -172,7 +175,11 @@ def fluid(mesh, solver, fig, v_deg, p_deg):
 	u_ , p_ = up.split(True)
 	#u_ , p_ = split(up)
 
+	file_v = File("velocity.pvd")
+	file_v << u_
 	
+	file_p = File("pressure.pvd")
+	file_p << p_
 
   drag, lift = integrateFluidStress(p_, u_)
 
@@ -183,7 +190,6 @@ def fluid(mesh, solver, fig, v_deg, p_deg):
 
   press = p_.compute_vertex_values()
   dp = press[5]-press[7]
-
   u,v = u_.split(True)
   uvals = u.compute_vertex_values()
   xmax = 0
@@ -192,14 +198,15 @@ def fluid(mesh, solver, fig, v_deg, p_deg):
 		if mesh.coordinates()[j][0] > xmax:
 			xmax = mesh.coordinates()[j][0]
   La = xmax - 0.25
-  print('U_Dof= %d, cells = %d, Cd = %f, Cl = %f, dp = %f La = %f' \
-  % (V.dim(), mesh.num_cells(), Cd, Cl, dp, La))
+  print('U_Dof= %d, cells = %d, v_deg = %d, p_deg = %d, \
+	Cd = %f, Cl = %f, La = %f' \
+  % (V.dim(), mesh.num_cells(), v_deg, p_deg, Cd, Cl,  La))
 
 set_log_active(False)
 for m in ["course.xml"]:
   mesh = Mesh(m)
   print "SOLVING FOR MESH %s" % m
-  for i in range(2):
+  for i in range(1):
 		if i > 0:
 		  mesh = refine(mesh)
 		Drag = []; Lift = []; time = []
