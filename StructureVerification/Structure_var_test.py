@@ -6,7 +6,7 @@ set_log_active(False)
 
 def solver_structure(N,dt):
     mesh = UnitSquareMesh(N,N)
-    mesh2 = UnitSquareMesh(50,50)
+    mesh2 = UnitSquareMesh(110,110)
     V = VectorFunctionSpace(mesh,"CG",1)
     V2 = VectorFunctionSpace(mesh2,"CG",2)
 
@@ -64,6 +64,7 @@ def solver_structure(N,dt):
         solve(G==0,u,bcs,solver_parameters={"newton_solver": \
         {"relative_tolerance": 1E-6,"absolute_tolerance":1E-6,"maximum_iterations":100,"relaxation_parameter":1.0}})
         #plot(u,mode="displacement")
+
         u_new = interpolate(u,V2)
         e_list.append(errornorm(u_, u_new, norm_type="l2",degree_rise=3))
 
@@ -72,7 +73,7 @@ def solver_structure(N,dt):
         print "Timestep: ",t#,"Error: ",e_list[counter]
         t += dt
         counter += 1
-    return np.mean(e_list), mesh.hmin()
+    return np.mean(e_list), dt
 
 
 #solver_structure(50,0.01)
@@ -89,13 +90,13 @@ for j in range(len(dt_list)):
 #plt.show()
     #print "Error: %2.2E ,dt: %.f: "%(E[j],dt_list[j])
 
-N_list = [2,4,8,16,32]
+#N_list = [2,4,8,16,32]
 
-#dt_list = [0.2, 0.1, 0.05, 0.025, 0.0125, 0.0125/2.0]
-E = np.zeros(len(N_list))
-h = np.zeros(len(N_list))
-for j in range(len(N_list)):
-    E[j],h[j]=solver_structure(N_list[j],dt=0.1)
+dt_list = [0.2, 0.1, 0.05, 0.025, 0.0125]#, 0.0125/2.0]
+E = np.zeros(len(dt_list))
+h = np.zeros(len(dt_list))
+for j in range(len(dt_list)):
+    E[j],h[j]=solver_structure(N=100,dt=dt_list[j])
     #print "Error: %2.2E ,dt: %.f: "%(E[j],dt_list[j])
 for i in range(1, len(E)):
     r = np.log(E[i]/E[i-1])/np.log(h[i]/h[i-1])
