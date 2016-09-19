@@ -35,10 +35,10 @@ def dolfincode(expr, assign_to=None, **settings):
 def find_my_f():
     x,y,t,mu_s,rho_s,lamda = sp.symbols('x y t mu_s rho_s lamda')
 
-    #u = x**2 + t**2
-    #v = y**2 + t**2
-    u = sp.sin(2*sp.pi*t) + sp.sin(2*sp.pi*x)*sp.sin(2*sp.pi*y)
-    v = sp.cos(2*sp.pi*t) + sp.cos(2*sp.pi*x)*sp.cos(2*sp.pi*y)
+    u = t**2
+    v = t**2
+    #u = sp.sin(2*sp.pi*t) + sp.sin(2*sp.pi*x)*sp.sin(2*sp.pi*y)
+    #v = sp.cos(2*sp.pi*t) + sp.cos(2*sp.pi*x)*sp.cos(2*sp.pi*y)
     var = [u,v]
     #u = sin(2*pi*t) + sin(2*pi*x)*sin(2*pi*y)
     #v = cos(2*pi*t) + cos(2*pi*x)*cos(2*pi*y)
@@ -56,7 +56,7 @@ def find_my_f():
     Ex = 0.5*((ux+1)**2 + (vx)**2 - 1 + (ux+1)*uy+vx*(vy+1))
     sigma_x = Fx*(lamda*trE + 2*mu_s*Ex)
     F1 =rho_s*utt - sp.diff(sigma_x,x)
-    #print simplify(F1)
+    #print sp.simplify(F1)
 
 
     # y-direction:
@@ -65,7 +65,7 @@ def find_my_f():
     Ey = 0.5*(uy*(ux+1)+(vy+1)*vx + uy**2+(vy+1)**2-1)
     sigma_y = Fy*(lamda*trE + 2*mu_s*Ey)
     F2 = rho_s*vtt - sp.diff(sigma_y,y)
-    #print simplify(F2)
+    #print sp.simplify(F2)
     f = (F1, F2)
     f = dolfincode(f)
     # Expression for the source term in the MMS
