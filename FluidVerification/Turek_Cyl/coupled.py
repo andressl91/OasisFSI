@@ -118,7 +118,7 @@ def fluid(mesh, solver, fig, v_deg, p_deg):
 	u, p = split(up)
 
 	# Fluid variational form
-	F = mu*inner(grad(u), grad(phi))*dx + inner(grad(u)*u, phi)*dx \
+	F = mu*inner(grad(u), grad(phi))*dx + rho*inner(grad(u)*u, phi)*dx \
 	- div(phi)*p*dx - eta*div(u)*dx
 
 	if MPI.rank(mpi_comm_world()) == 0:
@@ -159,7 +159,7 @@ def fluid(mesh, solver, fig, v_deg, p_deg):
 	while eps > 1E-10 and k_iter < max_iter:
 
 	  #SGIMA WRITTEN OUT
-	  F = mu*inner(grad(u), grad(phi))*dx + inner(grad(u)*u0, phi)*dx \
+	  F = mu*inner(grad(u), grad(phi))*dx + rho*inner(grad(u)*u0, phi)*dx \
 	  - div(phi)*p*dx - eta*div(u)*dx
 	
 	  solve(lhs(F) == rhs(F), up, bcs)
