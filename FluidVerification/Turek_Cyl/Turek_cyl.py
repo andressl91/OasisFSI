@@ -144,7 +144,6 @@ def fluid(mesh_file, T, dt, solver, fig, v_deg, p_deg):
 				print "Time t = %.3f" % t
 				
 			J = derivative(F, up)
-			#solve(F == 0, up, bcu, J=J)
 
 			problem = NonlinearVariationalProblem(F, up, bcs, J)
 			solver  = NonlinearVariationalSolver(problem)
@@ -152,7 +151,7 @@ def fluid(mesh_file, T, dt, solver, fig, v_deg, p_deg):
 			prm = solver.parameters
 			prm['newton_solver']['absolute_tolerance'] = 1E-6
 			prm['newton_solver']['relative_tolerance'] = 1E-6
-			prm['newton_solver']['maximum_iterations'] = 6
+			prm['newton_solver']['maximum_iterations'] = 40
 			prm['newton_solver']['relaxation_parameter'] = 1.0
 
 
@@ -178,6 +177,7 @@ def fluid(mesh_file, T, dt, solver, fig, v_deg, p_deg):
 		% (V.dim(), mesh.num_cells(), Cd_max, Cl_max))
 
 	if solver == "Piccard":
+		Cl_max = 0; Cd_max = 0
 		up = Function(VQ)
 
 		F = (rho/k)*inner(u - u1, phi)*dx \
@@ -195,6 +195,7 @@ def fluid(mesh_file, T, dt, solver, fig, v_deg, p_deg):
 			k_iter = 0
 			max_iter = 20
 			while eps > 1E-6 and k_iter < max_iter:
+			  
 				solve(lhs(F) == rhs(F), up, bcs)
 
 				u_, p_ = up.split(True)
@@ -207,7 +208,7 @@ def fluid(mesh_file, T, dt, solver, fig, v_deg, p_deg):
 				print "iterations: %d  error: %.3e" %(k_iter, eps)
 
 			u1.assign(u_)
-			drag, lift =integrateFluidStress(u_, p_)
+			drag, lift =integrateFluidStress(p_, u_)
 			
 			Cd = 2*drag/(rho*Um*Um*0.1)
 			Cl = 2*lift/(rho*Um*Um*0.1)
@@ -219,7 +220,10 @@ def fluid(mesh_file, T, dt, solver, fig, v_deg, p_deg):
 			Lift.append(lift)
 
 			t += dt
-
+		print('U_Dof= %d, cells = %d, Cd_max = %f, Cl_max = %f' \
+		% (V.dim(), mesh.num_cells(), Cd_max, Cl_max))
+	  
+	  
 	if fig == True:
 		if MPI.rank(mpi_comm_world()) == 0:
 			plt.figure(1)
