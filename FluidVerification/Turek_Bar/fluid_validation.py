@@ -159,9 +159,7 @@ def fluid(mesh_file, T, dt, solver, steady, fig, v_deg, p_deg):
 
 		while t <= T:
 			time.append(t)
-			if MPI.rank(mpi_comm_world()) == 0:
-				print "Time t = %.3f" % t
-
+	
 			if t < 2:
 				inlet.t = t;
 			if t >= 2:
@@ -241,6 +239,7 @@ def fluid(mesh_file, T, dt, solver, steady, fig, v_deg, p_deg):
 
 	if fig == True:
 		if MPI.rank(mpi_comm_world()) == 0:
+			plt.figure(1)
 			plt.title("LIFT \n Re = %.1f, dofs = %d, cells = %d" % (Re, U_dof, mesh_cells))
 			plt.xlabel("Time Seconds")
 			plt.ylabel("Lift force Newton")
@@ -249,14 +248,12 @@ def fluid(mesh_file, T, dt, solver, steady, fig, v_deg, p_deg):
 
 
 
-count = 1;
 for m in ["turek2.xml"]:
-    if MPI.rank(mpi_comm_world()) == 0:
-        plt.figure(count)
-    for t in dt:
-        Drag = []; Lift = []; time = []
-        fluid(m, T, t, solver, steady, fig, v_deg, p_deg)
-    count += 1;
+	if MPI.rank(mpi_comm_world()) == 0:
+	  for t in dt:
+		  Drag = []; Lift = []; time = []
+		  fluid(m, T, t, solver, steady, fig, v_deg, p_deg)
+	  count += 1;
 
 
 if fig == True:
