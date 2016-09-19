@@ -5,9 +5,10 @@ mesh = Mesh("von_karman_street_FSI_fluid.xml")
 
 V1 = VectorFunctionSpace(mesh, "CG", 2) # Fluid velocity
 V2 = VectorFunctionSpace(mesh, "CG", 1) # Mesh movement
+V3 = VectorFunctionSpace(mesh, "CG", 1) # Displacement
 Q  = FunctionSpace(mesh, "CG", 1)       # Fluid Pressure
 
-VVQ = MixedFunctionSpace([V1,V2,Q])
+VVQ = MixedFunctionSpace([V1, V2, V3, Q])
 
 # BOUNDARIES
 
@@ -58,12 +59,16 @@ w_outlet  = DirichletBC(VVQ.sub(1), ((0, 0)), boundaries, 4)
 w_cirlce  = DirichletBC(VVQ.sub(1), ((0, 0)), boundaries, 6)
 w_barwall = DirichletBC(VVQ.sub(1), ((0, 0)), boundaries, 7)
 
+#deformation condition
+d_barwall = DirichletBC(VVQ.sub(2), ((0, 0)), boundaries, 7)
+
 #Pressure Conditions
-p_out = DirichletBC(VVQ.sub(2), 0, boundaries, 4)
+p_out = DirichletBC(VVQ.sub(3), 0, boundaries, 4)
 
 #Assemble boundary conditions
 bcs = [u_inlet, u_wall, u_circ, u_bar, \
-       w_wall, w_inlet, w_outlet]
+       w_wall, w_inlet, w_outlet, \
+       d_barwall]
 # AREAS
 
 Bar_area = AutoSubDomain(lambda x: (0.19 <= x[1] <= 0.21) and 0.24<= x[0] <= 0.6) # only the "flag" or "bar"
@@ -76,15 +81,15 @@ plot(domains,interactive = True)
 
 
 # TEST TRIAL FUNCTIONS
-phi, psi, eta = TestFunctions(VVQ)
+phi, psi, gamma, eta = TestFunctions(VVQ)
 #u, w, p = TrialFunctions(VVQ)
 uwp = Function(VVQ)
-u, w, p  = split(uwp)
+u, w, d, p  = split(uwp)
 
-#u1 = Function(V1) Piccard
-u0 = Function(V1)
-w0 = Function(V2)
-U1 = Function(V2)
+#uwp0 = Function(VVQ)
+#u0, w0, d0, p0  = split(uwp)
+
+u0 = Function(V1); w0 = Function(V2); d0 =  Function(V3)
 
 dt = 0.01
 k = Constant(dt)
@@ -99,17 +104,17 @@ mu_f    = Constant(1)
 mu_s    = Constant(10E12)
 rho_s   = Constant(10E6)
 nu_s    = Constant(mu_s/rho_s)
-lamda_s = nu_s*2*mu_s/(1 - nu_s*2)
+lamda_s = nu_s*2.*mu_s/(1 - nu_s*2)
 
 print "Re = %f" % (Um/(mu_f/rho_f))
 
-def sigma_s(U): #NONLINEAR
+def sigma_s(U1, U0): #NONLINEAR
     g = Constant(9.81)
     B = Constant((0, g*rho_s))
     T = Constant((0, 0))
 
-    F = Identity(2) + grad(0.5*(U))
-    #F = Identity(2) + grad(0.5*(t))
+    #F = Identity(2) + grad(0.5*(U1 - U0))
+    F = Identity(2) + grad(U0)
     C = F.T*F
 
     E = 0.5 * (C - Identity(2))
@@ -119,10 +124,10 @@ def sigma_s(U): #NONLINEAR
     P = F*S
     return P
 
-def sigma_structure(d): #HOOKES LAW
+def sigma_structure(d, d0): #HOOKES LAW
     return 2*mu_s*sym(grad(d)) + lamda_s*tr(sym(grad(d)))*Identity(2)
 
-def s_s_n_l(U):
+def s_s_n_l(U, U0):
     I = Identity(2)
     F = I + grad(U)
     E = 0.5*((F.T*F)-I)
@@ -132,24 +137,32 @@ def sigma_fluid(p, u): #NEWTONIAN FLUID
     return -p*Identity(2) + 2*mu_f * sym(grad(u))
 
 # Fluid variational form
-F_fluid = ( (rho_f/k)*inner(u -u0,phi) + rho_f*inner(grad(u)*(u - w), phi) \
-+ inner(sigma_fluid(p, u), grad(phi)) \
-- inner(div(u),eta))*dx(1)
-
-#deformation formulation as a function of mesh velocity
-U = U1 + w*k
+#F_fluid = ( (rho_f/k)*inner(u -u0,phi) + rho_f*inner(grad(u)*(u - w), phi) \
+#+ inner(sigma_fluid(p, u), grad(phi)) \
+#- inner(div(u),eta))*dx(1)
 
 # Structure Variational form
-F_solid = ((rho_s/k)*inner(w - w0, psi))*dx(2) + rho_s*inner(dot(grad(w), w), psi)*dx(2)\
-+ inner(s_s_n_l(U),grad(psi))*dx(2) \
+#F_solid = ((rho_s/k)*inner(w - w0, psi))*dx(2) + rho_s*inner(dot(grad(w), w), psi)*dx(2)\
+#+ inner(s_s_n_l(U),grad(psi))*dx(2) \
 
-## FERNANDEZ
-#F_solid = ((2*rho_s/(k*k))*inner(U - U1 - k*w0, psi))*dx(2) + inner(sigma_s(U),grad(psi))*dx(2)
+## Fernandez ######################
+F_fluid = ( (rho_f/k)*inner(u -u0,phi) + rho_f*inner(grad(u)*(u - w), phi) \
+- rho_f*inner(div(w)*u, phi) \
++ inner(sigma_fluid(p, u), grad(phi)) \
++ inner(div(u),eta))*dx(1)
+
+F_solid = ((2.*rho_s/(k*k))*inner(d - d0 - k*w0, psi))*dx(2) + inner(sigma_s(d, d0),grad(psi))*dx(2)
+###################################
+
+
+## FENICS COURSE SOLID FORMULATION
+#F_solid = rho_s*dot((w - w0), psi)*dx + dt*inner(sigma_structure(d, d0), grad(psi))*dx + dot((d - d0),gamma)*dx \
+#    - dt*dot((w + w0)/2., gamma)*dx
 
 # Mesh velocity function in fluid domain
-F_meshvel = inner(grad(U),grad(psi))*dx(1) - inner(grad(U("-"))*n("-"),psi("-"))*dS(5)
+F_meshvel = inner(grad(d),grad(gamma))*dx(1) - inner(grad(d("-"))*n("-"),gamma("-"))*dS(5)
 
-F = F_fluid - F_solid - F_meshvel
+F = F_fluid + F_solid #- F_meshvel
 
 T = 0.1
 t = 0.0
@@ -172,20 +185,20 @@ while t <= T:
     solver  = NonlinearVariationalSolver(problem)
 
     prm = solver.parameters
-    prm['newton_solver']['absolute_tolerance'] = 1E-6
-    prm['newton_solver']['relative_tolerance'] = 1E-6
+    prm['newton_solver']['absolute_tolerance'] = 1E-8
+    prm['newton_solver']['relative_tolerance'] = 1E-8
     prm['newton_solver']['maximum_iterations'] = 5
     prm['newton_solver']['relaxation_parameter'] = 1.0
 
 
     solver.solve()
 
-    u_, w_, p_ = uwp.split(True)
+    u_, w_, d_, p_ = uwp.split(True)
     u0.assign(u_)
     w0.assign(w_) #Assigning new mesh velocity
-    w_.vector()[:] *= float(k) #Computing new deformation
-    U1.vector = w_.vector()[:] #Applying new deformation, and updating
-    ALE.move(mesh,w_)
+    d0.assign(d_)
+    ALE.move(mesh, d_)
     mesh.bounding_box_tree().build(mesh)
+    #uwp0.assign(uwp)
 
     t += dt
