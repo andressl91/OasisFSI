@@ -35,8 +35,8 @@ def dolfincode(expr, assign_to=None, **settings):
 def find_my_f():
     x,y,t,mu_s,rho_s,lamda = sp.symbols('x y t mu_s rho_s lamda')
 
-    u = t**2
-    v = t**2
+    u = x**2+t**2
+    v = y**2+t**2
     #u = sp.sin(2*sp.pi*t) + sp.sin(2*sp.pi*x)*sp.sin(2*sp.pi*y)
     #v = sp.cos(2*sp.pi*t) + sp.cos(2*sp.pi*x)*sp.cos(2*sp.pi*y)
     var = [u,v]
