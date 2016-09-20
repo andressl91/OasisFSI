@@ -45,10 +45,7 @@ nu = 0.001
 rho = 10**3
 mu = rho*nu
 
-def fluid(mesh_file, T, dt, solver, steady, fig, v_deg, p_deg):
-	if mesh_file == None:
-		mesh = Mesh("course.xml")
-	mesh = Mesh(mesh_file)
+def fluid(mesh, T, dt, solver, steady, fig, v_deg, p_deg):
 
 	#plot(mesh,interactive=True)
 	V = VectorFunctionSpace(mesh, "CG", 1) # Fluid velocity
@@ -183,9 +180,10 @@ def fluid(mesh_file, T, dt, solver, steady, fig, v_deg, p_deg):
 			u_, p_ = up.split(True)
 			u0.assign(u_)
 
+			
 			drag, lift =integrateFluidStress(p_, u_)
 			if MPI.rank(mpi_comm_world()) == 0:
-				print "Time: ",t ," drag: ",drag, "lift: ",lift
+			  print "Time: ",t ," drag: ",drag, "lift: ",lift
 			Drag.append(drag)
 			Lift.append(lift)
 
@@ -201,7 +199,7 @@ def fluid(mesh_file, T, dt, solver, steady, fig, v_deg, p_deg):
 			mu*inner(grad(u), grad(phi))*dx - \
 			div(phi)*p*dx - eta*div(u)*dx
 
-		count = 0;
+
 		if MPI.rank(mpi_comm_world()) == 0:
 			print "Starting Piccard iterations \nt = %g" % (dt)
 
@@ -224,7 +222,6 @@ def fluid(mesh_file, T, dt, solver, steady, fig, v_deg, p_deg):
 				k_iter += 1
 				u0.assign(u_)
 			if MPI.rank(mpi_comm_world()) == 0:
-				print "Time t = %.3f" % t
 				print "iterations: %d  error: %.3e" %(k_iter, eps)
 
 			drag, lift =integrateFluidStress(p_, u_)
@@ -245,15 +242,22 @@ def fluid(mesh_file, T, dt, solver, steady, fig, v_deg, p_deg):
 			plt.ylabel("Lift force Newton")
 			plt.plot(time, Lift, label='dt  %g' % dt)
 			plt.legend(loc=4)
+			
+			plt.figure(2)
+			plt.title("DRAG \n Re = %.1f, dofs = %d, cells = %d" % (Re, U_dof, mesh_cells))
+			plt.xlabel("Time Seconds")
+			plt.ylabel("Drag force Newton")
+			plt.plot(time, Drag, label='dt  %g' % dt)
+			plt.legend(loc=4)
+
 
 
 
 for m in ["turek2.xml"]:
-	if MPI.rank(mpi_comm_world()) == 0:
-	  for t in dt:
-		  Drag = []; Lift = []; time = []
-		  fluid(m, T, t, solver, steady, fig, v_deg, p_deg)
-	  count += 1;
+	mesh = Mesh(m)
+	for t in dt:
+		Drag = []; Lift = []; time = []
+		fluid(mesh, T, t, solver, steady, fig, v_deg, p_deg)
 
 
 if fig == True:

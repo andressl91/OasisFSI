@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 #default values
-v_deg = 1; p_deg = 1
+v_deg = 2; p_deg = 1
 solver = "Newton"; fig = False;
 
 #command line arguments
@@ -142,7 +142,7 @@ def fluid(mesh, solver, fig, v_deg, p_deg):
 	prm = solver.parameters
 	prm['newton_solver']['absolute_tolerance'] = 1E-10
 	prm['newton_solver']['relative_tolerance'] = 1E-10
-	prm['newton_solver']['maximum_iterations'] = 40
+	prm['newton_solver']['maximum_iterations'] = 10
 	prm['newton_solver']['relaxation_parameter'] = 1.0
 
 
