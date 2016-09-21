@@ -246,6 +246,7 @@ def fluid(mesh, T, dt, solver, steady, fig, v_deg, p_deg):
         plt.ylabel("Lift force Newton")
         plt.plot(time, Lift, label='dt  %g' % dt)
         plt.legend(loc=4)
+        plt.savefig("lift.jpeg")
 
         plt.figure(2)
         plt.title("DRAG \n Re = %.1f, dofs = %d, cells = %d" % (Re, U_dof, mesh_cells))
@@ -253,6 +254,7 @@ def fluid(mesh, T, dt, solver, steady, fig, v_deg, p_deg):
         plt.ylabel("Drag force Newton")
         plt.plot(time, Drag, label='dt  %g' % dt)
         plt.legend(loc=4)
+        plt.savefig("drag.jpeg")
         plt.show()
 
 
