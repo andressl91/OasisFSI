@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 #default values
-v_deg = 2; p_deg = 1
+v_deg = 1; p_deg = 1
 solver = "Newton"; fig = False;
 
 #command line arguments
@@ -79,7 +79,7 @@ def fluid(mesh, solver, fig, v_deg, p_deg):
   # TEST TRIAL FUNCTIONS
   phi, eta = TestFunctions(VQ)
   u ,p = TrialFunctions(VQ)
-  
+
   ug, pg = TrialFunctions(VQ)
   phig, etag = TestFunctions(VQ)
 
@@ -88,7 +88,7 @@ def fluid(mesh, solver, fig, v_deg, p_deg):
 
   #Physical parameter
   t = 0.0
- 
+
   #MEK4300 WAY
   def FluidStress(p, u):
 	print "MEK4300 WAY"
@@ -122,7 +122,7 @@ def fluid(mesh, solver, fig, v_deg, p_deg):
 
   Re = Um*D/nu
   print "SOLVING FOR Re = %f" % Re #0.1 Cylinder diameter
-  
+
   if solver == "Newton":
 	up = Function(VQ)
 	u, p = split(up)
@@ -148,27 +148,27 @@ def fluid(mesh, solver, fig, v_deg, p_deg):
 
 	solver.solve()
 	u_ , p_ = up.split(True)
-	
+
 	#plot(u_, interactive())
-	
+
 	file_v = File("velocity.pvd")
 	file_v << u_
-	
+
 	file_p = File("pressure.pvd")
 	file_p << p_
 
 	drag, lift = integrateFluidStress(p_, u_)
 
 	U_m = 2./3.*Um
-	
+
 	print('U_Dof= %d, cells = %d, v_deg = %d, p_deg = %d, \
 	  Drag = %f, Lift = %f' \
 	% (V.dim(), mesh.num_cells(), v_deg, p_deg, drag, lift))
-		
+
   if solver == "Piccard":
 
 	up = Function(VQ)
-	
+
 	if MPI.rank(mpi_comm_world()) == 0:
 	  print "Starting Piccard iterations"
 	eps = 10
@@ -180,23 +180,23 @@ def fluid(mesh, solver, fig, v_deg, p_deg):
 	  #SGIMA WRITTEN OUT
 	  F = mu*inner(grad(u), grad(phi))*dx + rho*inner(grad(u)*u0, phi)*dx \
 	  - div(phi)*p*dx - eta*div(u)*dx
-	
+
 	  solve(lhs(F) == rhs(F), up, bcs)
 	  u_ , p_ = up.split(True)
 	  eps = errornorm(u_, u0, degree_rise=3)
 	  u0.assign(u_)
 
 	  k_iter += 1
-	  
+
 	  if MPI.rank(mpi_comm_world()) == 0:
 		print "iterations: %d  error: %.3e" %(k_iter, eps)
-  
+
 	u_ , p_ = up.split(True)
 	#u_ , p_ = split(up)
 
 	file_v = File("velocity.pvd")
 	file_v << u_
-	
+
 	file_p = File("pressure.pvd")
 	file_p << p_
 
@@ -212,11 +212,8 @@ def fluid(mesh, solver, fig, v_deg, p_deg):
 for m in ["turek1.xml"]:
   mesh = Mesh(m)
   print "SOLVING FOR MESH %s" % m
-  for i in range(3):
+  for i in range(2):
 		if i > 0:
 		  mesh = refine(mesh)
 		Drag = []; Lift = []; time = []
 		fluid(mesh, solver, fig, v_deg, p_deg)
-
-
-
