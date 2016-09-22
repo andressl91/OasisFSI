@@ -168,9 +168,9 @@ def fluid(mesh, T, dt, solver, steady, fig, v_deg, p_deg):
     		solver  = NonlinearVariationalSolver(problem)
 
     		prm = solver.parameters
-    		prm['newton_solver']['absolute_tolerance'] = 1E-5
-    		prm['newton_solver']['relative_tolerance'] = 1E-5
-    		prm['newton_solver']['maximum_iterations'] = 40
+    		prm['newton_solver']['absolute_tolerance'] = 1E-10
+    		prm['newton_solver']['relative_tolerance'] = 1E-10
+    		prm['newton_solver']['maximum_iterations'] = 100
     		prm['newton_solver']['relaxation_parameter'] = 1.0
 
 
