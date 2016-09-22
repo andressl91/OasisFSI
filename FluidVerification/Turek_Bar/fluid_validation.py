@@ -82,6 +82,9 @@ def fluid(mesh, T, dt, solver, steady, fig, v_deg, p_deg):
     inlet = Expression(("1.5*Um*x[1]*(H - x[1]) / pow((H/2.0), 2) * (1 - cos(t*pi/2))/2"\
     ,"0"), t = 0.0, Um = Um, H = H)
 
+    inlet_steady = Expression(("1.5*Um*x[1]*(H - x[1]) / (pow((H/2.0), 2)) "\
+    ,"0"), Um = Um, H = H)
+
 
     u_inlet = DirichletBC(VQ.sub(0), inlet, boundaries, 2)
     nos_geo = DirichletBC(VQ.sub(0), ((0, 0)), boundaries, 1)
@@ -157,7 +160,7 @@ def fluid(mesh, T, dt, solver, steady, fig, v_deg, p_deg):
     		if t < 2:
     			inlet.t = t;
     		if t >= 2:
-    			inlet.t = 2;
+    			inlet = inlet_steady;
 
     		J = derivative(F, up)
 
@@ -165,8 +168,8 @@ def fluid(mesh, T, dt, solver, steady, fig, v_deg, p_deg):
     		solver  = NonlinearVariationalSolver(problem)
 
     		prm = solver.parameters
-    		prm['newton_solver']['absolute_tolerance'] = 1E-6
-    		prm['newton_solver']['relative_tolerance'] = 1E-6
+    		prm['newton_solver']['absolute_tolerance'] = 1E-5
+    		prm['newton_solver']['relative_tolerance'] = 1E-5
     		prm['newton_solver']['maximum_iterations'] = 40
     		prm['newton_solver']['relaxation_parameter'] = 1.0
 
@@ -174,7 +177,7 @@ def fluid(mesh, T, dt, solver, steady, fig, v_deg, p_deg):
     		solver.solve()
 
     		u_, p_ = up.split(True)
-                vel_file << u_
+                #vel_file << u_
     		u0.assign(u_)
 
 
@@ -230,6 +233,12 @@ def fluid(mesh, T, dt, solver, steady, fig, v_deg, p_deg):
         	u1.assign(u_)
         	t += dt
 
+    print "Max Lift Force %.4f" % max(Lift)
+    print "Max Drag Force %.4f" % max(Drag)
+    print "Min Lift Force %.4f" % max(Lift)
+    print "Min Drag Force %.4f" % max(Drag)
+
+
     print "Mean Lift force %.4f" % (0.5*(max(Lift) + min(Lift) ))
     print "Mean Drag force %.4f" % (0.5*(max(Drag) + min(Drag) ))
 
@@ -265,7 +274,10 @@ for m in ["course.xml"]:
     for t in dt:
         Drag = []; Lift = []; time = []
         fluid(mesh, T, t, solver, steady, fig, v_deg, p_deg)
-
+if MPI.rank(mpi_comm_world()) == 0:
+    np.savetxt("results/Lift.txt", Lift, delimiter=',')
+    np.savetxt("results/Drag.txt", Drag, delimiter=',')
+    np.savetxt("results/time.txt", time, delimiter=',')
 import numpy as np
 
 x = np.linspace(0, 1, 100)
