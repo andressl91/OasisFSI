@@ -3,6 +3,7 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 
+print mesh
 #default values
 T = 1.0; dt = []; rho  = 10.0; mu = 1.0; v_deg = 1; p_deg = 1
 solver = "Newton"; steady = False; fig = True;
@@ -265,6 +266,7 @@ def fluid(mesh, T, dt, solver, steady, fig, v_deg, p_deg):
         plt.legend(loc=4)
         plt.savefig("drag.png")
         plt.show()
+
 
 
 
