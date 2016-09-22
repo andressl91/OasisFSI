@@ -268,9 +268,9 @@ def fluid(mesh, T, dt, solver, steady, fig, v_deg, p_deg):
 
 
 
-for m in ["course.xml"]:
+for m in ["turek1.xml"]:
     mesh = Mesh(m)
-    mesh = refine(mesh)
+    #mesh = refine(mesh)
     for t in dt:
         Drag = []; Lift = []; time = []
         fluid(mesh, T, t, solver, steady, fig, v_deg, p_deg)
@@ -278,9 +278,3 @@ if MPI.rank(mpi_comm_world()) == 0:
     np.savetxt("results/Lift.txt", Lift, delimiter=',')
     np.savetxt("results/Drag.txt", Drag, delimiter=',')
     np.savetxt("results/time.txt", time, delimiter=',')
-import numpy as np
-
-x = np.linspace(0, 1, 100)
-plt.figure(1)
-plt.plot(x)
-plt.show()
