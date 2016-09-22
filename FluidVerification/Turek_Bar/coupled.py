@@ -120,6 +120,9 @@ def fluid(mesh, solver, fig, v_deg, p_deg):
 
 	return fX, fY
 
+  def sigma_f(p, u):
+      return - p*Identity(2) + mu*(grad(u) + grad(u).T)
+
   Re = Um*D/nu
   print "SOLVING FOR Re = %f" % Re #0.1 Cylinder diameter
 
@@ -127,9 +130,13 @@ def fluid(mesh, solver, fig, v_deg, p_deg):
 	up = Function(VQ)
 	u, p = split(up)
 
-	# Fluid variational form
-	F = mu*inner(grad(u), grad(phi))*dx + rho*inner(grad(u)*u, phi)*dx \
-	- div(phi)*p*dx - eta*div(u)*dx
+    # Fluid variational form
+    #F = mu*inner(grad(u), grad(phi))*dx + rho*inner(grad(u)*u, phi)*dx \
+    #- div(phi)*p*dx - eta*div(u)*dx
+
+        F = rho*inner(grad(u)*u, phi)*dx+ \
+            inner(sigma_f(p, u), grad(phi))*dx- \
+            eta*div(u)*dx
 
 	if MPI.rank(mpi_comm_world()) == 0:
 	  print "Starting Newton iterations"
@@ -140,8 +147,8 @@ def fluid(mesh, solver, fig, v_deg, p_deg):
 	solver  = NonlinearVariationalSolver(problem)
 
 	prm = solver.parameters
-	prm['newton_solver']['absolute_tolerance'] = 1E-10
-	prm['newton_solver']['relative_tolerance'] = 1E-10
+	prm['newton_solver']['absolute_tolerance'] = 1E-6
+	prm['newton_solver']['relative_tolerance'] = 1E-6
 	prm['newton_solver']['maximum_iterations'] = 10
 	prm['newton_solver']['relaxation_parameter'] = 1.0
 
@@ -175,11 +182,15 @@ def fluid(mesh, solver, fig, v_deg, p_deg):
 	k_iter = 0
 	max_iter = 20
 
-	while eps > 1E-10 and k_iter < max_iter:
+	while eps > 1E-7 and k_iter < max_iter:
 
 	  #SGIMA WRITTEN OUT
-	  F = mu*inner(grad(u), grad(phi))*dx + rho*inner(grad(u)*u0, phi)*dx \
-	  - div(phi)*p*dx - eta*div(u)*dx
+	  #F = mu*inner(grad(u), grad(phi))*dx + rho*inner(grad(u)*u0, phi)*dx \
+	  #- div(phi)*p*dx - eta*div(u)*dx
+
+          F = rho*inner(grad(u)*u0, phi)*dx +\
+          inner(sigma_f(p, u), grad(phi))*dx- \
+          eta*div(u)*dx
 
 	  solve(lhs(F) == rhs(F), up, bcs)
 	  u_ , p_ = up.split(True)
