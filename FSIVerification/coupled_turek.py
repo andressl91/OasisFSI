@@ -2,7 +2,8 @@ from dolfin import *
 
 
 
-mesh = Mesh("von_karman_street_FSI_fluid.xml")
+#mesh = Mesh("von_karman_street_FSI_fluid.xml")
+mesh = Mesh("fluid_new.xml")
 #plot(mesh,interactive=True)
 
 V1 = VectorFunctionSpace(mesh, "CG", 2) # Fluid velocity
@@ -25,14 +26,14 @@ Allboundaries = DomainBoundary()
 
 boundaries = FacetFunction("size_t",mesh)
 boundaries.set_all(0)
-Allboundaries.mark(boundaries, 1)
+#Allboundaries.mark(boundaries, 1)
 Wall.mark(boundaries, 2)
 Inlet.mark(boundaries, 3)
 Outlet.mark(boundaries, 4)
 Bar.mark(boundaries, 5)
 Circle.mark(boundaries, 6)
 Barwall.mark(boundaries, 7)
-plot(boundaries,interactive=True)
+#plot(boundaries,interactive=True)
 
 
 ds = Measure("ds", subdomain_data = boundaries)
@@ -41,11 +42,17 @@ n = FacetNormal(mesh)
 
 #BOUNDARY CONDITIONS
 
+################################################33
+PRØV 4 functionspaces!!
+
 Um = 0.2
 H = 0.41
 L = 2.5
+D = 0.1
+
+# t = 2.0 implies steady flow
 inlet = Expression(("1.5*Um*x[1]*(H - x[1]) / pow((H/2.0), 2) * (1 - cos(t*pi/2))/2"\
-,"0"), t = 0.0, Um = Um, H = H)
+,"0"), t = 2.0, Um = Um, H = H)
 
 #Fluid velocity conditions
 u_inlet  = DirichletBC(VVQ.sub(0), inlet, boundaries, 3)
@@ -65,7 +72,7 @@ p_out = DirichletBC(VVQ.sub(2), 0, boundaries, 4)
 
 #Assemble boundary conditions
 bcs = [u_inlet, u_wall, u_circ, u_bar, \
-       w_wall, w_inlet, w_outlet]
+       w_inlet, w_wall, w_cirlce, w_outlet, w_barwall]
 # AREAS
 
 Bar_area = AutoSubDomain(lambda x: (0.19 <= x[1] <= 0.21) and 0.24<= x[0] <= 0.6) # only the "flag" or "bar"
@@ -88,22 +95,37 @@ u0 = Function(V1)
 w0 = Function(V2)
 U1 = Function(V2)
 
-dt = 0.01
-k = Constant(dt)
 #EkPa = '62500'
 #E = Constant(float(EkPa))
 
 #Fluid properties
-rho_f   = Constant(100.0)
-mu_f    = Constant(1)
+rho_f   = Constant(1000.0)
+mu_f    = Constant(1.0)
+nu_f = mu_f/rho_f
 
 #Structure properties
 mu_s    = Constant(10E12)
 rho_s   = Constant(10E6)
 nu_s    = Constant(mu_s/rho_s)
-lamda_s = nu_s*2*mu_s/(1 - nu_s*2)
+lamda_s = nu_s*2.*mu_s/(1 - nu_s*2)
 
-print "Re = %f" % (Um/(mu_f/rho_f))
+Re = Um*D/nu_f
+print "SOLVING FOR Re = %f" % Re #0.1 Cylinder diameter
+
+def integrateFluidStress(p, u):
+	print "MY WAY!"
+
+	eps   = 0.5*(grad(u) + grad(u).T)
+	sig   = -p*Identity(2) + 2.0*mu_f*eps
+
+	traction  = dot(sig, -n)
+
+	forceX  = traction[0]*dS(5)
+	forceY  = traction[1]*dS(5)
+	fX      = assemble(forceX)
+	fY      = assemble(forceY)
+
+	return fX, fY
 
 def sigma_s(U): #NONLINEAR
     g = Constant(9.81)
@@ -132,16 +154,16 @@ def s_s_n_l(U):
 
 
 # Fluid variational form
-F_fluid = ( (rho_f/k)*inner(u -u0,phi) + rho_f*inner(grad(u)*(u - w), phi) \
-	  mu*inner(grad(u), grad(phi) )  \
-	- div(phi)*p - eta*div(u) ) * dx(1)
+F_fluid = ( rho_f*inner(grad(u)*(u - w), phi) \
+	 + mu_f*inner(grad(u), grad(phi) )  \
+	 - div(phi)*p - eta*div(u) ) * dx(1)
 
 #deformation formulation as a function of mesh velocity
-U = U1 + w*k
+U = U1 #+ w*k
 
 # Structure Variational form
-F_solid = ((rho_s/k)*inner(w - w0, psi))*dx(2) + rho_s*inner(dot(grad(w), w), psi)*dx(2)\
-+ inner(s_s_n_l(U),grad(psi))*dx(2) \
+F_solid = (rho_s*inner(dot(grad(w), w), psi)\
+           + inner(sigma_structure(U),grad(psi)) )*dx(2) \
 
 ## FERNANDEZ
 #F_solid = ((2*rho_s/(k*k))*inner(U - U1 - k*w0, psi))*dx(2) + inner(sigma_s(U),grad(psi))*dx(2)
@@ -149,43 +171,40 @@ F_solid = ((rho_s/k)*inner(w - w0, psi))*dx(2) + rho_s*inner(dot(grad(w), w), ps
 # Mesh velocity function in fluid domain
 F_meshvel = inner(grad(U),grad(psi))*dx(1) - inner(grad(U("-"))*n("-"),psi("-"))*dS(5)
 
-F = F_fluid - F_solid - F_meshvel
-
-T = 0.1
-t = 0.0
+F = F_fluid + F_solid + F_meshvel
 
 #u_file = File("mvelocity/velocity.pvd")
 #u_file << u0
 
-while t <= T:
-    if MPI.rank(mpi_comm_world()) == 0:
-        print "Time t = %.3f" % t
-
-    if t < 2:
-        inlet.t = t;
-    if t >= 2:
-        inlet.t = 2;
-
-    J = derivative(F, uwp)
-
-    problem = NonlinearVariationalProblem(F, uwp, bcs, J)
-    solver  = NonlinearVariationalSolver(problem)
-
-    prm = solver.parameters
-    prm['newton_solver']['absolute_tolerance'] = 1E-6
-    prm['newton_solver']['relative_tolerance'] = 1E-6
-    prm['newton_solver']['maximum_iterations'] = 5
-    prm['newton_solver']['relaxation_parameter'] = 1.0
 
 
-    solver.solve()
+J = derivative(F, uwp)
 
-    u_, w_, p_ = uwp.split(True)
-    u0.assign(u_)
-    w0.assign(w_) #Assigning new mesh velocity
-    w_.vector()[:] *= float(k) #Computing new deformation
-    U1.vector = w_.vector()[:] #Applying new deformation, and updating
-    ALE.move(mesh,w_)
-    mesh.bounding_box_tree().build(mesh)
+problem = NonlinearVariationalProblem(F, uwp, bcs, J)
+solver  = NonlinearVariationalSolver(problem)
 
-    t += dt
+prm = solver.parameters
+prm['newton_solver']['absolute_tolerance'] = 1E-6
+prm['newton_solver']['relative_tolerance'] = 1E-6
+prm['newton_solver']['maximum_iterations'] = 5
+prm['newton_solver']['relaxation_parameter'] = 1.0
+
+
+solver.solve()
+
+u_, w_, p_ = uwp.split(True)
+
+plot(u_, interactive=True)
+
+drag, lift = integrateFluidStress(p_, u_)
+print('Drag = %f, Lift = %f' \
+	%  (drag, lift))
+
+#u0.assign(u_)
+#w0.assign(w_) #Assigning new mesh velocity
+#w_.vector()[:] *= float(k) #Computing new deformation
+#U1.vector = w_.vector()[:] #Applying new deformation, and updating
+#ALE.move(mesh,w_)
+#mesh.bounding_box_tree().build(mesh)
+
+
