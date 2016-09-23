@@ -277,6 +277,6 @@ for m in ["turek2.xml"]:
         Drag = []; Lift = []; time = []
         fluid(mesh, T, t, solver, steady, fig, v_deg, p_deg)
 if MPI.rank(mpi_comm_world()) == 0:
-    np.savetxt("results/Lift.txt", Lift, delimiter=',')
-    np.savetxt("results/Drag.txt", Drag, delimiter=',')
-    np.savetxt("results/time.txt", time, delimiter=',')
+    np.savetxt("Lift.txt", Lift, delimiter=',')
+    np.savetxt("Drag.txt", Drag, delimiter=',')
+    np.savetxt("time.txt", time, delimiter=',')
