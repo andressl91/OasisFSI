@@ -270,7 +270,7 @@ def fluid(mesh, T, dt, solver, steady, fig, v_deg, p_deg):
 
 
 
-for m in ["turek2.xml"]:
+for m in ["turek1.xml"]:
     mesh = Mesh(m)
     #mesh = refine(mesh)
     for t in dt:
