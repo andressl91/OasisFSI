@@ -4,4 +4,4 @@ mesh = turek1.xml
 Turek Case CFD3
 Abacus
 dt = 0.001
-T = 200
+T = 20
