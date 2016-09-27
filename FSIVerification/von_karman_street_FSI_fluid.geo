@@ -29,6 +29,30 @@ Line(13) = {12, 11};
 Line(14) = {11, 15};
 Line Loop(15) = {6, 12, 13, 14, 8, 9, 5};
 
-Plane Surface(16) = {10, 15};
-Line Loop(17) = {12, 13, 14, -7};
-Plane Surface(18) = {17};
+Point(17) = {0.6, 0.2, 0, 0.01};
+
+
+Delete {
+  Line{13};
+}
+Delete {
+  Line{13};
+}
+Delete {
+  Line{13};
+}
+Delete {
+  Line{13};
+}
+Delete {
+  Line{13};
+}
+Delete {
+  Line{13};
+}
+Line(16) = {12, 17};
+Line(17) = {17, 11};
+Line Loop(18) = {6, 12, 16, 17, 14, 8, 9, 5};
+Plane Surface(19) = {10, 18};
+Line Loop(20) = {12, 16, 17, 14, -7};
+Plane Surface(21) = {20};

@@ -2,6 +2,10 @@ from dolfin import *
 
 mesh = Mesh("von_karman_street_FSI_fluid.xml")
 #plot(mesh,interactive=True)
+print "hei"
+for coord in mesh.coordinates():
+    if coord[0]==0.6 and (0.199<=coord[1]<=0.2001):
+        print coord
 
 V1 = VectorFunctionSpace(mesh, "CG", 2) # Fluid velocity
 V2 = VectorFunctionSpace(mesh, "CG", 1) # Mesh movement
@@ -84,21 +88,22 @@ u, w, p  = split(uwp)
 #u1 = Function(V1) Piccard
 u0 = Function(V1)
 w0 = Function(V2)
-U1 = Function(V2)
+U1 = Function(V1)
 
-dt = 0.01
+dt = 0.1
 k = Constant(dt)
 #EkPa = '62500'
 #E = Constant(float(EkPa))
 
 #Fluid properties
-rho_f   = Constant(100.0)
-mu_f    = Constant(1)
+rho_f   = Constant(1000.0)
+mu_f    = Constant(1.0)
+
 
 #Structure properties
-mu_s    = Constant(10E12)
-rho_s   = Constant(10E6)
-nu_s    = Constant(mu_s/rho_s)
+mu_s    = Constant(0.5E6)
+rho_s   = Constant(10E3)
+nu_s    = 0.4
 lamda_s = nu_s*2*mu_s/(1 - nu_s*2)
 
 print "Re = %f" % (Um/(mu_f/rho_f))
@@ -126,13 +131,13 @@ def s_s_n_l(U):
     I = Identity(2)
     F = I + grad(U)
     E = 0.5*((F.T*F)-I)
-    return lamda_s*tr(E)*I + 2*mu_s*E
+    return F*(lamda_s*tr(E)*I + 2*mu_s*E)
 
 def sigma_fluid(p, u): #NEWTONIAN FLUID
     return -p*Identity(2) + 2*mu_f * sym(grad(u))
 
 # Fluid variational form
-F_fluid = ( (rho_f/k)*inner(u -u0,phi) + rho_f*inner(grad(u)*(u - w), phi) \
+F_fluid = ( (rho_f/k)*inner(u -u0,phi) + rho_f*inner(grad(u)*(u0 - w0), phi) \
 + inner(sigma_fluid(p, u), grad(phi)) \
 - inner(div(u),eta))*dx(1)
 
@@ -140,14 +145,14 @@ F_fluid = ( (rho_f/k)*inner(u -u0,phi) + rho_f*inner(grad(u)*(u - w), phi) \
 U = U1 + w*k
 
 # Structure Variational form
-F_solid = ((rho_s/k)*inner(w - w0, psi))*dx(2) + rho_s*inner(dot(grad(w), w), psi)*dx(2)\
-+ inner(s_s_n_l(U),grad(psi))*dx(2) \
+F_solid = ((rho_s/k)*inner(w - w0, psi))*dx(2) + rho_s*inner(dot(grad(w), w0), psi)*dx(2)\
++ inner(sigma_structure(U),grad(psi))*dx(2)
 
 ## FERNANDEZ
 #F_solid = ((2*rho_s/(k*k))*inner(U - U1 - k*w0, psi))*dx(2) + inner(sigma_s(U),grad(psi))*dx(2)
 
 # Mesh velocity function in fluid domain
-F_meshvel = inner(grad(U),grad(psi))*dx(1) - inner(grad(U("-"))*n("-"),psi("-"))*dS(5)
+F_meshvel = inner(grad(U),grad(phi))*dx(1) - inner(grad(U("-"))*n("-"),phi("-"))*dS(5)
 
 F = F_fluid - F_solid - F_meshvel
 
@@ -156,6 +161,9 @@ t = 0.0
 
 #u_file = File("mvelocity/velocity.pvd")
 #u_file << u0
+dis_x = [] # store values at endpoint of bar
+dis_y = []
+
 
 while t <= T:
     if MPI.rank(mpi_comm_world()) == 0:
@@ -166,9 +174,9 @@ while t <= T:
     if t >= 2:
         inlet.t = 2;
 
-    J = derivative(F, uwp)
+    #J = derivative(F, uwp)
 
-    problem = NonlinearVariationalProblem(F, uwp, bcs, J)
+    """problem = NonlinearVariationalProblem(F, uwp, bcs, J)
     solver  = NonlinearVariationalSolver(problem)
 
     prm = solver.parameters
@@ -178,14 +186,23 @@ while t <= T:
     prm['newton_solver']['relaxation_parameter'] = 1.0
 
 
-    solver.solve()
+    solver.solve()"""
+    solve(lhs(F)== rhs(F), uwp, bcs, solver_parameters={"newton_solver": \
+    {"relative_tolerance": 1E-9,"absolute_tolerance":1E-9,"maximum_iterations":100,"relaxation_parameter":1.0}})
+
 
     u_, w_, p_ = uwp.split(True)
     u0.assign(u_)
     w0.assign(w_) #Assigning new mesh velocity
     w_.vector()[:] *= float(k) #Computing new deformation
     U1.vector = w_.vector()[:] #Applying new deformation, and updating
+    dis_x.append(U1(coord)[0]) #x-value av bar endpoint
+    dis_y.append(U1(coord)[1]) #y-value av bar endpoint
     ALE.move(mesh,w_)
     mesh.bounding_box_tree().build(mesh)
 
     t += dt
+plt.plot(time,dis_x,); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
+plt.show()
+plt.plot(time,dis_y);plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
+plt.show()
