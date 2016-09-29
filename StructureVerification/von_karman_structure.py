@@ -3,6 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 set_log_active(False)
+if len(sys.argv) != 2:
+    print "Usage: %s [implementation (1/2/3)]" % sys.argv[0]
+    sys.exit(0)
 implementation = sys.argv[1]
 print implementation
 
