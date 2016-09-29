@@ -58,6 +58,7 @@ if implementation =="1":
     d = Function(V)
     d0 = Function(V)
     d1 = Function(V)
+
     G =rho_s*((1./k**2)*inner(d - 2*d0 + d1,psi))*dx \
     + inner(s_s_n_l(0.5*(d+d1)),grad(psi))*dx - inner(g,psi)*dx
 
@@ -74,6 +75,7 @@ elif implementation =="2":
 
     G =rho_s*((1./k)*inner(w-w0,psi))*dx + rho_s*inner(dot(grad(0.5*(w+w0)),0.5*(w+w0)),psi)*dx + inner(s_s_n_l(0.5*(d+d0)),grad(psi))*dx \
     - inner(g,psi)*dx - dot(d-d0,phi)*dx + k*dot(0.5*(w+w0),phi)*dx
+
 elif implementation == "3":
     bc1 = DirichletBC(V, ((0,0)),boundaries, 1)
     bcs = [bc1]
@@ -82,10 +84,9 @@ elif implementation == "3":
     w0 = Function(V)
     d0 = Function(V)
     d = d0 + w*k
+
     G =rho_s*((1./k)*inner(w-w0,psi))*dx + rho_s*inner(dot(grad(0.5*(w+w0)),0.5*(w+w0)),psi)*dx \
     + inner(s_s_n_l(0.5*(d+d0)),grad(psi))*dx - inner(g,psi)*dx
-
-
 
 
 dis_x = []
@@ -107,6 +108,7 @@ while t < T:
         #plot(d,mode="displacement")
         dis_x.append(d(coord)[0])
         dis_y.append(d(coord)[1])
+
     elif implementation == "2":
         solve(G == 0, wd, bcs, solver_parameters={"newton_solver": \
         {"relative_tolerance": 1E-9,"absolute_tolerance":1E-9,"maximum_iterations":100,"relaxation_parameter":1.0}})
@@ -115,6 +117,7 @@ while t < T:
         #plot(d,mode="displacement")
         dis_x.append(d(coord)[0])
         dis_y.append(d(coord)[1])
+
     elif implementation == "3":
         solve(G == 0, w, bcs, solver_parameters={"newton_solver": \
         {"relative_tolerance": 1E-9,"absolute_tolerance":1E-9,"maximum_iterations":100,"relaxation_parameter":1.0}})
@@ -123,6 +126,7 @@ while t < T:
         #plot(d0,mode="displacement")
         dis_x.append(d0(coord)[0])
         dis_y.append(d0(coord)[1])
+
     t += dt
 
 print len(dis_x), len(time)
