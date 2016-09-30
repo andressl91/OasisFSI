@@ -3,9 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 set_log_active(False)
-if len(sys.argv) != 2:
+"""if len(sys.argv) != 2:
     print "Usage: %s [implementation (1/2/3)]" % sys.argv[0]
-    sys.exit(0)
+    sys.exit(0)"""
 implementation = sys.argv[1]
 print implementation
 
@@ -35,7 +35,7 @@ nu_s = 0.4
 E_1 = 1.4E6
 lamda = nu_s*2*mu_s/(1-2*nu_s)
 g = Constant((0,-2*rho_s))
-dt = 0.02
+dt = float(sys.argv[2])
 k = Constant(dt)
 
 #Hookes
@@ -44,6 +44,12 @@ def sigma_structure(d):
 
 #Second piola stress
 def s_s_n_l(d):
+    I = Identity(2)
+    F = I + grad(d)
+    E = 0.5*((F.T*F)-I)
+    J = det(F)
+    return (1/J)*F*(lamda*tr(E)*I + 2*mu_s*E)*F.T
+def s_s_n_l_2(d):
     I = Identity(2)
     F = I + grad(d)
     E = 0.5*((F.T*F)-I)
@@ -89,7 +95,7 @@ elif implementation == "3":
     d = d0 + w*k
 
     G =rho_s*((1./k)*inner(w-w0,psi))*dx + rho_s*inner(dot(grad(0.5*(w+w0)),0.5*(w+w0)),psi)*dx \
-    + inner(s_s_n_l(0.5*(d+d0)),grad(psi))*dx - inner(g,psi)*dx
+    + inner(s_s_n_l(d),grad(psi))*dx - inner(g,psi)*dx
 
 
 dis_x = []
@@ -108,28 +114,41 @@ while t < T:
         {"relative_tolerance": 1E-9,"absolute_tolerance":1E-9,"maximum_iterations":100,"relaxation_parameter":1.0}})
         d1.assign(d0)
         d0.assign(d)
-        #plot(d,mode="displacement")
+        plot(d,mode="displacement")
         dis_x.append(d(coord)[0])
         dis_y.append(d(coord)[1])
 
     elif implementation == "2":
         solve(G == 0, wd, bcs, solver_parameters={"newton_solver": \
-        {"relative_tolerance": 1E-9,"absolute_tolerance":1E-9,"maximum_iterations":100,"relaxation_parameter":1.0}})
+        {"relative_tolerance": 1E-7,"absolute_tolerance":1E-7,"maximum_iterations":100,"relaxation_parameter":1.0}})
         w0d0.assign(wd)
-        w,d = wd.split()
+        w0,d0 = w0d0.split(True)
+        w,d = wd.split(True)
         #plot(d,mode="displacement")
+        #w0.assign(w)
+        w.vector()[:] *= float(k)
+        d0.vector()[:] += w.vector()[:]
+        ALE.move(mesh,w)
+        mesh.bounding_box_tree().build(mesh)
+        plot(mesh)
         dis_x.append(d(coord)[0])
         dis_y.append(d(coord)[1])
+    
 
     elif implementation == "3":
         solve(G == 0, w, bcs, solver_parameters={"newton_solver": \
-        {"relative_tolerance": 1E-9,"absolute_tolerance":1E-9,"maximum_iterations":100,"relaxation_parameter":1.0}})
+        {"relative_tolerance": 1E-6,"absolute_tolerance":1E-6,"maximum_iterations":100,"relaxation_parameter":1.0}})
+        #w0.assign(w)
+        #d0.assign(d)
         w0.assign(w)
-        d0.assign(d)
-        #plot(d0,mode="displacement")
+        w.vector()[:] *= float(k)
+        d0.vector()[:] += w.vector()[:]
+        ALE.move(mesh,w)
+        mesh.bounding_box_tree().build(mesh)
+        plot(mesh)#,mode="displacement")
         dis_x.append(d0(coord)[0])
         dis_y.append(d0(coord)[1])
-
+        #sleep(0.11)
     t += dt
 
 print len(dis_x), len(time)
