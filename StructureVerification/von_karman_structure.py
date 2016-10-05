@@ -43,13 +43,13 @@ def sigma_structure(d):
     return 2*mu_s*sym(grad(d)) + lamda*tr(sym(grad(d)))*Identity(2)
 
 #Second piola stress
-def s_s_n_l(d):
+def s_s_n_l_2(d):
     I = Identity(2)
     F = I + grad(d)
     E = 0.5*((F.T*F)-I)
     J = det(F)
     return (1/J)*F*(lamda*tr(E)*I + 2*mu_s*E)*F.T
-def s_s_n_l_2(d):
+def s_s_n_l(d):
     I = Identity(2)
     F = I + grad(d)
     E = 0.5*((F.T*F)-I)
@@ -85,6 +85,7 @@ elif implementation =="2":
     G =rho_s*((1./k)*inner(w-w0,psi))*dx + rho_s*inner(dot(grad(0.5*(w+w0)),0.5*(w+w0)),psi)*dx + inner(s_s_n_l(0.5*(d+d0)),grad(psi))*dx \
     - inner(g,psi)*dx - dot(d-d0,phi)*dx + k*dot(0.5*(w+w0),phi)*dx
 
+#Solving for displacement velocity and updating for displacement. 
 elif implementation == "3":
     bc1 = DirichletBC(V, ((0,0)),boundaries, 1)
     bcs = [bc1]
@@ -92,10 +93,12 @@ elif implementation == "3":
     w = Function(V)
     w0 = Function(V)
     d0 = Function(V)
+    d = Function(V)
     d = d0 + w*k
+    #d = d0+0.5*(w+w0)*k
 
     G =rho_s*((1./k)*inner(w-w0,psi))*dx + rho_s*inner(dot(grad(0.5*(w+w0)),0.5*(w+w0)),psi)*dx \
-    + inner(s_s_n_l(d),grad(psi))*dx - inner(g,psi)*dx
+    + inner(s_s_n_l(0.5*(d+d0)),grad(psi))*dx - inner(g,psi)*dx
 
 
 dis_x = []
@@ -126,28 +129,32 @@ while t < T:
         w,d = wd.split(True)
         #plot(d,mode="displacement")
         #w0.assign(w)
-        w.vector()[:] *= float(k)
-        d0.vector()[:] += w.vector()[:]
-        ALE.move(mesh,w)
-        mesh.bounding_box_tree().build(mesh)
-        plot(mesh)
+        #w.vector()[:] *= float(k)
+        #d0.vector()[:] += w.vector()[:]
+        #plot(d,mode="displacement")
+
+        #ALE.move(mesh,w)
+        #mesh.bounding_box_tree().build(mesh)
+        #plot(mesh)
         dis_x.append(d(coord)[0])
         dis_y.append(d(coord)[1])
-    
+
 
     elif implementation == "3":
         solve(G == 0, w, bcs, solver_parameters={"newton_solver": \
         {"relative_tolerance": 1E-6,"absolute_tolerance":1E-6,"maximum_iterations":100,"relaxation_parameter":1.0}})
-        #w0.assign(w)
-        #d0.assign(d)
         w0.assign(w)
+        #d0.assign(d)
         w.vector()[:] *= float(k)
         d0.vector()[:] += w.vector()[:]
-        ALE.move(mesh,w)
-        mesh.bounding_box_tree().build(mesh)
-        plot(mesh)#,mode="displacement")
+        #d0.assign(d)
+        #ALE.move(mesh,w)
+        #mesh.bounding_box_tree().build(mesh)
+        plot(d0,mode="displacement")
         dis_x.append(d0(coord)[0])
         dis_y.append(d0(coord)[1])
+        #w0.assign(w)
+
         #sleep(0.11)
     t += dt
 
