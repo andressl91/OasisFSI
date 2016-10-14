@@ -55,7 +55,7 @@ def Venant_Kirchhof(d):
     F = I - grad(d)
     J = det(F)
     E = 0.5*((inv(F.T)*inv(F))-I)
-    return J*inv(F)*(2.*mu_s*E + lamda*tr(E)*I)*inv(F.T)
+    return inv(F)*(2.*mu_s*E + lamda*tr(E)*I)*inv(F.T)
 
 #Second piola stress
 def s_s_n_l_2(d):
@@ -135,7 +135,7 @@ elif implementation == "4":
 
     G = ( J_*rho_s/k*inner(w - w0, psi) \
     + rho_s*( J_*theta*inner(dot(grad(w), w), psi) + J_1*(1 - theta)*inner(dot(grad(w0), w0), psi) ) \
-    + inner(J_*theta*Venant_Kirchhof2(d) + (1 - theta)*J_1*Venant_Kirchhof2(d0) , grad(psi))  \
+    + inner(J_*theta*Venant_Kirchhof(d) + (1 - theta)*J_1*Venant_Kirchhof(d0) , grad(psi))  \
     - (theta*J_*inner(g, psi) + (1-theta)*J_1*inner(g, psi) ) ) * dx \
     + (dot(d - d0 + k*(theta*dot(grad(d), w) + (1-theta)*dot(grad(d0), w0) ) \
     - k*(theta*w + (1 -theta)*w0 ), phi) ) * dx
