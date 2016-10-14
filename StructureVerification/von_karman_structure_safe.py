@@ -56,7 +56,7 @@ def Venant_Kirchhof(d):
     F = I - grad(d)
     J = det(F)
     E = 0.5*((inv(F.T)*inv(F))-I)
-    return J*inv(F)*(2.*mu_s*E + lamda*tr(E)*I)*inv(F.T)
+    return inv(F)*(2.*mu_s*E + lamda*tr(E)*I)*inv(F.T)
 
 #Second piola stress
 def s_s_n_l_2(d):
@@ -131,8 +131,13 @@ elif implementation =="4":
         + ((1-2*beta)*0.5)*k*k*(inner(s_s_n_l(d0),grad(phi))-inner(g,phi))*dx \
         + beta*k*k*(inner(s_s_n_l(d),grad(phi))-inner(g,phi))*dx
 
+<<<<<<< HEAD:StructureVerification/von_karman_structure_safe.py
 #Full Eulerian formulation
 elif implementation == "5":
+=======
+#Full Eulerian formulation with theta-rule scheme
+elif implementation == "4":
+>>>>>>> 484fb4c146c08ae15af3c64cd3bbc446a5b2be2a:StructureVerification/von_karman_structure.py
     bc1 = DirichletBC(VV.sub(0), ((0,0)),boundaries, 1)
     bc2 = DirichletBC(VV.sub(1), ((0,0)),boundaries, 1)
     bcs = [bc1,bc2]
@@ -146,16 +151,17 @@ elif implementation == "5":
     I = Identity(2)
     F_ = I - grad(d) #d here must be the same as in variational formula
     J_ = det(F_)
+    F_1 = I - grad(d0)
+    J_1 = det(F_1)
+    theta = Constant(0.593)
+    #theta = Constant(0.61)
 
-    #WORKING BUT WITH DAMPING
-    G = ( J_*rho_s/k*inner(w - w0, psi) + J_*rho_s*inner(dot(grad(w), w), psi) \
-    + inner(Venant_Kirchhof(d), grad(psi)) - J_*inner(g, psi) ) * dx \
-    + inner((d - d0) + k*dot(grad(d), w) - k*w, phi) * dx
-
-    #Cranc Nic
-    #G = ( J_*rho_s/k*inner(w - w0, psi) + J_*rho_s*inner(dot(grad(0.5*(w+w0)), 0.5*(w + w0)), psi) \
-    #+ inner(Venant_Kirchhof(0.5*(d + d0)), grad(psi)) - J_*inner(g, psi) ) * dx \
-    #+ inner(d - d0 + k*dot(grad(d), w) - k*w0 , phi) * dx
+    G = ( J_*rho_s/k*inner(w - w0, psi) \
+    + rho_s*( J_*theta*inner(dot(grad(w), w), psi) + J_1*(1 - theta)*inner(dot(grad(w0), w0), psi) ) \
+    + inner(J_*theta*Venant_Kirchhof(d) + (1 - theta)*J_1*Venant_Kirchhof(d0) , grad(psi))  \
+    - (theta*J_*inner(g, psi) + (1-theta)*J_1*inner(g, psi) ) ) * dx \
+    + (dot(d - d0 + k*(theta*dot(grad(d), w) + (1-theta)*dot(grad(d0), w0) ) \
+    - k*(theta*w + (1 -theta)*w0 ), phi) ) * dx
 
 dis_x = []
 dis_y = []
@@ -234,13 +240,14 @@ while t < T:
     elif implementation == "5":
         solve(G == 0, wd, bcs, solver_parameters={"newton_solver": \
         {"relative_tolerance": 1E-9,"absolute_tolerance":1E-9,"maximum_iterations":100,"relaxation_parameter":1.0}})
-        w0d0.assign(wd)
+        w,d = wd.split(True)
         w0,d0 = w0d0.split(True)
-        d_disp.vector()[:] = w0.vector()[:]*float(k)
+        d_disp.vector()[:] = d.vector()[:] - d0.vector()[:]
         ALE.move(mesh, d_disp)
         mesh.bounding_box_tree().build(mesh)
+        w0d0.assign(wd)
 
-        #plot(d0, mode="displacement")
+        w0,d0 = w0d0.split(True)
         dis_x.append(d0(coord)[0])
         dis_y.append(d0(coord)[1])
     t += dt
@@ -256,10 +263,13 @@ elif implementation == "4":
     title = plt.title("Newmark MixedFunctionSpace")
 elif implementation == "5":
     title = plt.title("Eulerian MixedFunctionSpace")
-
+plt.figure(1)
+plt.title("Eulerian Mixed, schewed Crank-Nic")
 plt.plot(time,dis_x,);title; plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
-#plt.savefig("run_x.jpg")
-plt.show()
+plt.savefig("run_x.jpg")
+#plt.show()
+plt.figure(2)
+plt.title("Eulerian Mixed, schewed Crank-Nic")
 plt.plot(time,dis_y);title;plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
-#plt.savefig("run_y.jpg")
-plt.show()
+plt.savefig("run_y.jpg")
+#plt.show()
