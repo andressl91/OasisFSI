@@ -131,13 +131,9 @@ elif implementation =="4":
         + ((1-2*beta)*0.5)*k*k*(inner(s_s_n_l(d0),grad(phi))-inner(g,phi))*dx \
         + beta*k*k*(inner(s_s_n_l(d),grad(phi))-inner(g,phi))*dx
 
-<<<<<<< HEAD:StructureVerification/von_karman_structure_safe.py
-#Full Eulerian formulation
-elif implementation == "5":
-=======
+
 #Full Eulerian formulation with theta-rule scheme
-elif implementation == "4":
->>>>>>> 484fb4c146c08ae15af3c64cd3bbc446a5b2be2a:StructureVerification/von_karman_structure.py
+elif implementation == "5":
     bc1 = DirichletBC(VV.sub(0), ((0,0)),boundaries, 1)
     bc2 = DirichletBC(VV.sub(1), ((0,0)),boundaries, 1)
     bcs = [bc1,bc2]
