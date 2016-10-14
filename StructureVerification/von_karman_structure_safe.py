@@ -17,7 +17,7 @@ for coord in mesh.coordinates():
         break
 
 V = VectorFunctionSpace(mesh, "CG", 1)
-if implementation == "2" or "4":
+if implementation == "2" or "4" or "5":
     VV=V*V
 print "Dofs: ",V.dim(), "Cells:", mesh.num_cells()
 
@@ -37,6 +37,7 @@ lamda = nu_s*2*mu_s/(1-2*nu_s)
 g = Constant((0,-2*rho_s))
 dt = float(sys.argv[2])
 k = Constant(dt)
+beta = Constant(0.25)
 
 #Hookes
 def sigma_structure(d):
@@ -69,7 +70,7 @@ def s_s_n_l(d):
     F = I + grad(d)
     E = 0.5*((F.T*F)-I)
     #J = det(F)
-    return lamda*tr(E)*I + 2*mu_s*E
+    return F*(lamda*tr(E)*I + 2*mu_s*E)
 
 
 #Variational form with single space, just solving displacement
@@ -82,7 +83,7 @@ if implementation =="1":
     d1 = Function(V)
 
     G =rho_s*((1./k**2)*inner(d - 2*d0 + d1,psi))*dx \
-    + inner(s_s_n_l(0.5*(d+d1)),grad(psi))*dx - inner(g,psi)*dx
+    + inner(0.5*(s_s_n_l(d)+s_s_n_l(d1)),grad(psi))*dx - inner(g,psi)*dx
 
 #Variational form with double spaces
 elif implementation =="2":
@@ -95,7 +96,7 @@ elif implementation =="2":
     w0d0 = Function(VV)
     w0,d0 = split(w0d0)
 
-    G =rho_s*((1./k)*inner(w-w0,psi))*dx + rho_s*inner(dot(grad(0.5*(w+w0)),0.5*(w+w0)),psi)*dx + inner(s_s_n_l(0.5*(d+d0)),grad(psi))*dx \
+    G =rho_s*((1./k)*inner(w-w0,psi))*dx + rho_s*inner(dot(grad(0.5*(w+w0)),0.5*(w+w0)),psi)*dx + inner(0.5*(s_s_n_l(d)+s_s_n_l(d0)),grad(psi))*dx \
     - inner(g,psi)*dx - dot(d-d0,phi)*dx + k*dot(0.5*(w+w0),phi)*dx
 
 #Solving for displacement velocity and updating for displacement.
@@ -107,14 +108,31 @@ elif implementation == "3":
     w0 = Function(V)
     d0 = Function(V)
     d = Function(V)
-    d = d0 + w*k
+    #d = d0 + w*k
     #d = d0+0.5*(w+w0)*k
 
-    G =rho_s*((1./k)*inner(w-w0,psi))*dx + rho_s*inner(dot(grad(0.5*(w+w0)),0.5*(w+w0)),psi)*dx \
-    + inner(s_s_n_l(0.5*(d+d0)),grad(psi))*dx - inner(g,psi)*dx
+    G =rho_s*((1./k)*inner(w-w0,psi))*dx \
+    + inner(0.5*(s_s_n_l(d)+s_s_n_l(d0)),grad(psi))*dx - inner(g,psi)*dx
+
+elif implementation =="4":
+    bc1 = DirichletBC(VV.sub(0), ((0,0)),boundaries, 1)
+    bc2 = DirichletBC(VV.sub(1), ((0,0)),boundaries, 1)
+    bcs = [bc1,bc2]
+    psi,phi = TestFunctions(VV)
+    wd = Function(VV)
+    w,d = split(wd)
+    w0d0 = Function(VV)
+    w0,d0 = split(w0d0)
+
+    G = rho_s*inner(w-w0,psi)*dx + \
+    (k/2.)*inner(s_s_n_l(d)+s_s_n_l(d0),grad(psi))*dx -k*inner(g,psi)*dx + \
+        rho_s*inner(d-d0,phi)*dx - \
+        rho_s*k*inner(w0,phi)*dx \
+        + ((1-2*beta)*0.5)*k*k*(inner(s_s_n_l(d0),grad(phi))-inner(g,phi))*dx \
+        + beta*k*k*(inner(s_s_n_l(d),grad(phi))-inner(g,phi))*dx
 
 #Full Eulerian formulation
-elif implementation == "4":
+elif implementation == "5":
     bc1 = DirichletBC(VV.sub(0), ((0,0)),boundaries, 1)
     bc2 = DirichletBC(VV.sub(1), ((0,0)),boundaries, 1)
     bcs = [bc1,bc2]
@@ -142,10 +160,12 @@ elif implementation == "4":
 dis_x = []
 dis_y = []
 
-T = 10.0
+T = 10
 t = 0
 time = np.linspace(0,T,(T/dt)+1)
 print "time len",len(time)
+dis_file = File("results/x_direction.pvd")
+
 
 from time import sleep
 while t < T:
@@ -161,7 +181,7 @@ while t < T:
 
     elif implementation == "2":
         solve(G == 0, wd, bcs, solver_parameters={"newton_solver": \
-        {"relative_tolerance": 1E-7,"absolute_tolerance":1E-7,"maximum_iterations":100,"relaxation_parameter":1.0}})
+        {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
         w0d0.assign(wd)
         w0,d0 = w0d0.split(True)
         w,d = wd.split(True)
@@ -180,7 +200,7 @@ while t < T:
 
     elif implementation == "3":
         solve(G == 0, w, bcs, solver_parameters={"newton_solver": \
-        {"relative_tolerance": 1E-6,"absolute_tolerance":1E-6,"maximum_iterations":100,"relaxation_parameter":1.0}})
+        {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
         w0.assign(w)
         #d0.assign(d)
         w.vector()[:] *= float(k)
@@ -195,6 +215,23 @@ while t < T:
 
         #sleep(0.11)
     elif implementation == "4":
+        solve(G == 0, wd, bcs, solver_parameters={"newton_solver": \
+        {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
+        w0d0.assign(wd)
+        w0,d0 = w0d0.split(True)
+        w,d = wd.split(True)
+        dis_file << d
+        #w0.assign(w)
+        #w.vector()[:] *= float(k)
+        #d0.vector()[:] += w.vector()[:]
+        #plot(d,mode="displacement")
+
+        #ALE.move(mesh,w)
+        #mesh.bounding_box_tree().build(mesh)
+        #plot(mesh)
+        dis_x.append(d(coord)[0])
+        dis_y.append(d(coord)[1])
+    elif implementation == "5":
         solve(G == 0, wd, bcs, solver_parameters={"newton_solver": \
         {"relative_tolerance": 1E-9,"absolute_tolerance":1E-9,"maximum_iterations":100,"relaxation_parameter":1.0}})
         w0d0.assign(wd)
@@ -216,6 +253,8 @@ elif implementation == "2":
 elif implementation == "3":
     title = plt.title("Single space solving w")
 elif implementation == "4":
+    title = plt.title("Newmark MixedFunctionSpace")
+elif implementation == "5":
     title = plt.title("Eulerian MixedFunctionSpace")
 
 plt.plot(time,dis_x,);title; plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
