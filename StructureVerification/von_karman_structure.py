@@ -201,7 +201,6 @@ while t < T:
         w,d = wd.split(True)
         w0,d0 = w0d0.split(True)
         d_disp.vector()[:] = d.vector()[:] - d0.vector()[:]
-        dis_4 << d0
         ALE.move(mesh, d_disp)
         mesh.bounding_box_tree().build(mesh)
         w0d0.assign(wd)
@@ -220,10 +219,13 @@ elif implementation == "3":
     title = plt.title("Single space solving w")
 elif implementation == "4":
     title = plt.title("Eulerian MixedFunctionSpace")
-
+plt.figure(1)
+plt.title("Eulerian Mixed, schewed Crank-Nic")
 plt.plot(time,dis_x,);title; plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
-#plt.savefig("run_x.jpg")
-plt.show()
+plt.savefig("run_x.jpg")
+#plt.show()
+plt.figure(2)
+plt.title("Eulerian Mixed, schewed Crank-Nic")
 plt.plot(time,dis_y);title;plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
-#plt.savefig("run_y.jpg")
-plt.show()
+plt.savefig("run_y.jpg")
+#plt.show()
