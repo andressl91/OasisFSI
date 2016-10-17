@@ -4,14 +4,14 @@ mesh = Mesh("fluid_new.xml")
 #plot(mesh,interactive=True)
 
 V1 = VectorFunctionSpace(mesh, "CG", 2) # Fluid velocity
-V2 = VectorFunctionSpace(mesh, "CG", 1) # Mesh movement
+V2 = VectorFunctionSpace(mesh, "CG", 1) # Displacement
+V3 = VectorFunctionSpace(mesh, "CG", 1) # mesh velocity
 Q  = FunctionSpace(mesh, "CG", 1)       # Fluid Pressure
 
-VVQ = MixedFunctionSpace([V1, V2, Q])
+VVVQ = MixedFunctionSpace([V1, V2, V3, Q])
 
 # BOUNDARIES
 
-#NOS = AutoSubDomain(lambda x: "on_boundary" and( near(x[1],0) or near(x[1], 0.41)))
 Inlet = AutoSubDomain(lambda x: "on_boundary" and near(x[0],0))
 Outlet = AutoSubDomain(lambda x: "on_boundary" and (near(x[0],2.5)))
 Wall =  AutoSubDomain(lambda x: "on_boundary" and (near(x[1], 0.41) or near(x[1], 0)))
@@ -32,12 +32,9 @@ Circle.mark(boundaries, 6)
 Barwall.mark(boundaries, 7)
 #plot(boundaries,interactive=True)
 
-
 ds = Measure("ds", subdomain_data = boundaries)
 dS = Measure("dS", subdomain_data = boundaries)
 n = FacetNormal(mesh)
-
-#BOUNDARY CONDITIONS
 
 Um = 0.2
 H = 0.41
@@ -45,30 +42,25 @@ L = 2.5
 inlet = Expression(("1.5*Um*x[1]*(H - x[1]) / pow((H/2.0), 2) * (1 - cos(t*pi/2))/2"\
 ,"0"), t = 0.0, Um = Um, H = H)
 
-#Fluid velocity conditions
-u_inlet  = DirichletBC(VVQ.sub(0), inlet, boundaries, 3)
-u_wall   = DirichletBC(VVQ.sub(0), ((0.0, 0.0)), boundaries, 2)
-u_circ   = DirichletBC(VVQ.sub(0), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
+#Boundary conditions fluid
+u_inlet  = DirichletBC(VVVQ.sub(0), inlet, boundaries, 3)
+u_nos  = DirichletBC(VVVQ.sub(0), ((0.0,0.0)), boundaries, 2)
+u_circle = DirichletBC(VVVQ.sub(0), ((0.0,0.0)), boundaries, 6)
+# maybe set p = 0 on the outlet?
 
+# Boundary conditions solid
+d_bar  = DirichletBC(VVVQ.sub(1), ((0.0,0.0)), boundaries, 7)
 
-#Mesh velocity conditions
-w_wall    = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 2)
-w_inlet   = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 3)
-w_outlet  = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 4)
-w_circle  = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 6)
-w_barwall = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 7)
+#Boundary conditions mesh velocity
+w_wall    = DirichletBC(VVVQ.sub(2), ((0, 0)), boundaries, 2)
+w_inlet   = DirichletBC(VVVQ.sub(2), ((0, 0)), boundaries, 3)
+w_outlet  = DirichletBC(VVVQ.sub(2), ((0, 0)), boundaries, 4)
+w_circle  = DirichletBC(VVVQ.sub(2), ((0, 0)), boundaries, 6)
+w_barwall = DirichletBC(VVVQ.sub(2), ((0, 0)), boundaries, 7)
 
-#deformation condition
-#d_barwall = DirichletBC(VVQ.sub(2), ((0, 0)), boundaries, 7)
-
-#Pressure Conditions
-p_out = DirichletBC(VVQ.sub(2), 0, boundaries, 4)
-
-#Assemble boundary conditions
-bcs = [u_inlet, u_wall, u_circ,  \
-       w_wall, w_inlet, w_outlet,w_barwall,w_circle,\
-       p_out]
-# AREAS
+bcs = [u_inlet, u_nos, u_circle ,\
+        d_bar,\
+        w_wall, w_inlet, w_outlet, w_circle, w_barwall]
 
 Bar_area = AutoSubDomain(lambda x: (0.19 <= x[1] <= 0.21) and 0.24<= x[0] <= 0.6) # only the "flag" or "bar"
 
@@ -76,26 +68,21 @@ domains = CellFunction("size_t",mesh)
 domains.set_all(1)
 Bar_area.mark(domains,2) #Overwrites structure domain
 dx = Measure("dx",subdomain_data=domains)
-#plot(domains,interactive = True)
+plot(domains,interactive = True)
 dx_f = dx(1,subdomain_data=domains)
 dx_s = dx(2,subdomain_data=domains)
 
 # TEST TRIAL FUNCTIONS
-phi, psi, gamma = TestFunctions(VVQ)
+phi, psi, beta,gamma = TestFunctions(VVVQ)
 #u, w, p = TrialFunctions(VVQ)
-uwp = Function(VVQ)
-u, w, p  = split(uwp)
+udwp = Function(VVVQ)
+u,d, w, p  = split(udwp)
+u0d0w0p0 = Function(VVVQ)
+u0,d0, w0, p0  = split(udwp)
 
-#uwp0 = Function(VVQ)
-#u0, w0, p0  = split(uwp0)
-
-u0 = Function(V1);
-d0 =  Function(V2);
 
 dt = 0.01
 k = Constant(dt)
-#EkPa = '62500'
-#E = Constant(float(EkPa))
 
 #Fluid properties
 rho_f   = Constant(1.0)
@@ -107,10 +94,6 @@ mu_s = 0.5E6
 nu_s = 0.4
 E_1 = 1.4E6
 lamda_s = nu_s*2*mu_s/(1-2*nu_s)
-g = Constant((0,-2*rho_s))
-
-print "Re = %f" % (Um/(mu_f/rho_f))
-
 
 def s_s_n_l(U):
     I = Identity(2)
@@ -121,39 +104,33 @@ def s_s_n_l(U):
 def sigma_fluid(p, u): #NEWTONIAN FLUID
     return -p*Identity(2) + 2*mu_f * sym(grad(u))
 
-delta = 1.0
-d = d0 + k*u
+#Fluid variational form
 
-# Fluid variational form
-F_fluid =  (rho_f/k)*inner(u -u0,phi)*dx_f + rho_f*inner(dot(grad(u),(u - w)), phi)*dx_f \
+F_fluid =  (rho_f/k)*inner(u -u0,phi)*dx_f + rho_f*inner(grad(u)*(u - w), phi)*dx_f \
 + inner(sigma_fluid(p, u), grad(phi))*dx_f \
 - inner(div(u),gamma)*dx_f
 
-# Structure Variational form
-F_structure = (rho_s/k)*inner(u-u0,phi)*dx_s + rho_s*inner(dot(grad(0.5*(u+u0)),0.5*(u+u0)),phi)*dx_s  \
- + inner(0.5*(s_s_n_l(d)+s_s_n_l(d0)),grad(phi))*dx_s
+#Solid variational form with displacement
 
-#Laplace
-F_laplace = k*inner(grad(w),grad(psi))*dx(1)-inner(grad(d0),grad(psi))*dx_f \
-	       - k*inner(grad(w('-'))*n('-'),psi('-'))*dS(5)\
-	       + inner(grad(d0('-'))*n('-'),psi('-'))*dS(5)
+F_solid =rho_s*((1./k)*inner(w-w0,psi))*dx_s + rho_s*inner(dot(grad(0.5*(w+w0)),0.5*(w+w0)),psi)*dx + inner(0.5*(s_s_n_l(d)+s_s_n_l(d0)),grad(psi))*dx_s \
+     - dot(d-d0,beta)*dx_s + k*dot(0.5*(w+w0),beta)*dx_s
 
-#Displacement velocity is equal to mesh velocity on dx_s
-F_last = (1./delta)*inner(u,psi)*dx_s - (1./delta)*inner(w,psi)*dx_s
+F_Laplace = k*inner(grad(w),grad(psi))*dx_f  - inner(grad(d0),grad(psi))*dx_f
+F_interface = -k*inner(grad(w('-'))*n('-'),psi('-'))*dS(5)\
+            + inner(grad(d0('-'))*n('-'),psi('-'))*dS(5)
 
+#F_interface = inner(s_s_n_l(d)*n,beta)*dS(5)+inner(sigma_fluid(u,p)*n,beta)*dS(5)
 
+F = F_fluid + F_solid  + F_Laplace + F_interface
 
-F = F_fluid + F_structure  + F_laplace + F_last
-
-T = 0.1
+T = 1.0
 t = 0.0
 
 #u_file = File("mvelocity/velocity.pvd")
 #u_file << u0
 
 while t <= T:
-    if MPI.rank(mpi_comm_world()) == 0:
-        print "Time t = %.3f" % t
+    print "Time t = %.3f" % t
 
     if t < 2:
         inlet.t = t;
@@ -162,20 +139,19 @@ while t <= T:
 
     #J = derivative(F, uwdp)
 
-    solve(F == 0, uwp, bcs, solver_parameters={"newton_solver": \
+    solve(F == 0, udwp, bcs, solver_parameters={"newton_solver": \
     {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
 
 
     #dis_x.append(d(coord)[0])
     #dis_y.append(d(coord)[1])
+    u_,d_, w_, p_ = udwp.split(True)
 
-    u_, w_, p_ = uwp.split(True)
-    w_.vector()[:] *= float(k)
-    d0.vector()[:] += w_.vector()[:]
-    ALE.move(mesh,w_)
+    ALE.move(mesh,d_)
     mesh.bounding_box_tree().build(mesh)
-    plot(u_,mode="displacement")
-    u0.assign(u_)
+    plot(mesh,mode="displacement")
+    u0d0w0p0.assign(udwp)
+
     #dis_x.append(d0(coord)[0])
     #dis_y.append(d0(coord)[1])
 
