@@ -1,0 +1,41 @@
+Starting job 15639572 ("abel_script.sh") on c2-3 at Fri Sep 23 22:40:35 CEST 2016
+
+SCRATCH is /work/jobs/15639572.d
+fluid_validation.py
+results
+turek2.xml
+/work/jobs/15639572.d
+Traceback (most recent call last):
+  File "fluid_validation.py", line 4, in <module>
+Traceback (most recent call last):
+  File "fluid_validation.py", line 4, in <module>
+    import matplotlib.pyplot as plt
+    import matplotlib.pyplot as plt
+ImportError: No module named matplotlib.pyplot
+ImportError: No module named matplotlib.pyplot
+-------------------------------------------------------
+Primary job  terminated normally, but 1 process returned
+a non-zero exit code.. Per user-direction, the job has been aborted.
+-------------------------------------------------------
+--------------------------------------------------------------------------
+mpirun detected that one or more processes exited with non-zero status, thus causing
+the job to be terminated. The first process to do so was:
+
+  Process name: [[18854,1],1]
+  Exit code:    1
+--------------------------------------------------------------------------
+
+Currently Loaded Modulefiles:
+  1) cmake/3.1.0         2) gcc/5.1.0           3) openmpi.gnu/1.8.8
+
+Job script resource usage:
+       JobID  MaxVMSize     MaxRSS 
+------------ ---------- ---------- 
+15639572.ba+   1674748K    100660K 
+
+Job step resource usage:
+       JobID    JobName  AllocCPUS  MaxVMSize     MaxRSS    Elapsed ExitCode 
+------------ ---------- ---------- ---------- ---------- ---------- -------- 
+15639572     abel_scri+          2                         00:00:39      0:0 
+
+Job 15639572 ("abel_script.sh") completed on c2-3 at Fri Sep 23 22:41:09 CEST 2016

@@ -12,7 +12,7 @@
 #SBATCH --mem-per-cpu=6000M
 #
 #Number of tasks(cores):
-#SBATCH --ntasks=4
+#SBATCH --ntasks=2
 #SBATCH --cpus-per-task=1
 
 ##Set up job enviroment
@@ -31,12 +31,11 @@ export PYTHONPATH=$PYTHONPATH:$HOME/.local/lib/python2.7/site-packages/
 cleanup "mkdir -p $HOME/results"
 ##cleanup "cp -r $SCRATCH/* $HOME/results"
 ##cleanup "cp -r $SCRATCH/results/Drag.txt $HOME/OasisFSI/FluidVerification/Turek_Bar/results"
-cleanup "cp -r $SCRATCH/results/* $HOME/results"
+cleanup "cp -r $SCRATCH/results $HOME/results"
 
 echo "SCRATCH is $SCRATCH"
-cp fluid_validation.py turek2.xml #-r $HOME/OasisFSI/FluidVerification/Turek_Bar/results* $SCRATCH
+cp fluid_validation.py turek2.xml -r $HOME/OasisFSI/FluidVerification/Turek_Bar/results $SCRATCH
 cd $SCRATCH
-mkdir results
 ls
 echo $SCRATCH
 
