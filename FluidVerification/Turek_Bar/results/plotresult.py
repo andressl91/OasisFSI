@@ -8,9 +8,10 @@ time = np.loadtxt('./CFD3turek2/time.txt', delimiter=',')
 Lift = np.loadtxt('./CFD3turek2/Lift.txt', delimiter=',')
 Drag = np.loadtxt('./CFD3turek2/Drag.txt', delimiter=',')
 
-time_ = np.loadtxt('./CFD3turek1/time.txt', delimiter=',')
-Lift_ = np.loadtxt('./CFD3turek1/Lift.txt', delimiter=',')
-Drag_ = np.loadtxt('./CFD3turek1/Drag.txt', delimiter=',')
+time_ = np.loadtxt('./CFD3turek1_dt=0.001_vdeg=2/time.txt', delimiter=',')
+Lift_ = np.loadtxt('./CFD3turek1_dt=0.001_vdeg=2
+/Lift.txt', delimiter=',')
+Drag_ = np.loadtxt('./CFD3turek1_dt=0.001_vdeg=2/Drag.txt', delimiter=',')
 
 
 t_ = np.loadtxt('./CFD3turek2_dt=0.01_vdeg2/time.txt', delimiter=',')
@@ -23,7 +24,7 @@ D_v1_dt01 = np.loadtxt('./CFD3turek2_dt=0.01_vdeg1/Drag.txt', delimiter=',')
 
 
 
-"""
+
 plt.figure(1)
 
 plt.subplot(222)
@@ -48,7 +49,7 @@ plt.subplot(223)
 plt.axis([15, 16, 429, 438])
 plt.title("Dragforce ")
 plt.plot(time_, Drag_)
-"""
+
 
 plt.figure(2)
 
