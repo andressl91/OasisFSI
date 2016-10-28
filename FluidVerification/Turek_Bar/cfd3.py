@@ -14,13 +14,15 @@ parser = argparse.ArgumentParser(description="##################################
  formatter_class=RawTextHelpFormatter, \
  epilog="############################################################################\n"
  "Example --> python cfd3.py -T 0.02 -dt 0.01 -v_deg 2 -p_deg 1 -solver Newton\n"
+ "Example --> python cfd3.py -solver Newton2  -v_deg 2 -p_deg 1 -r  (Refines mesh one time, -rr for two etc.) \n"
  "############################################################################")
 group = parser.add_argument_group('Parameters')
 group.add_argument("-T",      type=float, help="Set degree of pressure                     --> Default=1", default=0.02)
 group.add_argument("-dt",      type=float, help="Set degree of pressure                     --> Default=1", default=0.01)
 group.add_argument("-p_deg",  type=int, help="Set degree of pressure                     --> Default=1", default=1)
 group.add_argument("-v_deg",  type=int, help="Set degree of velocity                     --> Default=2", default=2)
-group.add_argument("-theta",  type=int, help="Explicit, Implicit, Cranc-Nic (0, 1, 0.5)  --> Default=1", default=2)
+group.add_argument("-theta",  type=float, help="Explicit, Implicit, Cranc-Nic (0, 1, 0.5)  --> Default=1", default=2)
+group.add_argument("-r", "--refiner", action="count", help="Mesh-refiner using built-in FEniCS method refine(Mesh)")
 group2 = parser.add_argument_group('Solvers')
 group2.add_argument("-solver", help="Newton   -- Fenics built-in module \n"
 "Newton2  -- Manuell implementation\n"
@@ -46,7 +48,7 @@ nu = 0.001
 rho = 1000.
 mu = rho*nu
 
-def fluid(mesh, T, dt, solver, fig, v_deg, p_deg, m):
+def fluid(mesh, T, dt, solver, fig, v_deg, p_deg, theta, m):
 
     #plot(mesh,interactive=True)
     V = VectorFunctionSpace(mesh, "CG", v_deg) # Fluid velocity
@@ -155,7 +157,7 @@ def fluid(mesh, T, dt, solver, fig, v_deg, p_deg, m):
         up0 = Function(VQ)
     	u0, p0 = split(up)
 
-        theta = 1;
+        #theta = 1;
     	# Fluid variational form
 
         F = ( rho/k*inner(u - u0, phi) \
@@ -212,7 +214,7 @@ def fluid(mesh, T, dt, solver, fig, v_deg, p_deg, m):
         up0 = Function(VQ)
         u0, p0 = split(up0)
 
-        theta = 1.0
+        #theta = 1.0
 
         F = (rho*theta*inner(dot(grad(u), u), phi) + rho*(1 - theta)*inner(dot(grad(u0), u0), phi)   \
         + inner(theta*sigma_f(p, u) + (1 - theta)*sigma_f(p0, u0), grad(phi) ) )*dx   \
@@ -408,14 +410,25 @@ Amplitude Drag Force = %(drag_amp)g\n""" %vars())
         plt.savefig("./experiments/cfd3/"+str(count)+"/drag.png")
         #plt.show()
 
+m = "turek1.xml"
+mesh = Mesh(m)
+Drag = []; Lift = []; time = []
+if args.refiner == None:
+    fluid(mesh, T, dt, solver, fig, v_deg, p_deg, theta, m)
+
+else:
+    for i in range(args.refiner):
+        mesh = refine(mesh)
+    fluid(mesh, T, dt, solver, fig, v_deg, p_deg, theta, m)
 
 
-
+"""
 for m in ["turek1.xml"]:
     mesh = Mesh(m)
     #mesh = refine(mesh)
     Drag = []; Lift = []; time = []
-    fluid(mesh, T, dt, solver, fig, v_deg, p_deg, m)
+    fluid(mesh, T, dt, solver, fig, v_deg, p_deg, theta, m)
+"""
 #if MPI.rank(mpi_comm_world()) == 0:
 #    np.savetxt("Lift.txt", Lift, delimiter=',')
 #    np.savetxt("Drag.txt", Drag, delimiter=',')
