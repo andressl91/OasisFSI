@@ -9,16 +9,19 @@ from argparse import RawTextHelpFormatter
 parser = argparse.ArgumentParser(description="Implementation of Turek test case CFD1\n"
 "For details: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.550.1689&rep=rep1&type=pdf",\
  formatter_class=RawTextHelpFormatter, \
- epilog="Example --> python cfd1.py -v_deg 2 -p_deg 1 -solver Newton2")
+  epilog="############################################################################\n"
+  "Example --> python cfd1.py -solver Newton2\n"
+  "Example --> python cfd1.py -solver Newton -v_deg 2 -p_deg 1 -r  (Refines mesh one time, -rr for two etc.) \n"
+  "############################################################################")
 group = parser.add_argument_group('Parameters')
 group.add_argument("-p_deg",  type=int, help="Set degree of pressure                     --> Default=1", default=1)
 group.add_argument("-v_deg",  type=int, help="Set degree of velocity                     --> Default=2", default=2)
-group.add_argument("-theta",  type=int, help="Explicit, Implicit, Cranc-Nic (0, 1, 0.5)  --> Default=1", default=2)
+group.add_argument("-theta",  type=float, help="Explicit, Implicit, Cranc-Nic (0, 1, 0.5)  --> Default=1", default=2)
+group.add_argument("-r", "--refiner", action="count", help="Mesh-refiner using built-in FEniCS method refine(Mesh)")
 group2 = parser.add_argument_group('Solvers')
-group2.add_argument("-solver", help="Newton   -- Fenics built-in module \n"
+group2.add_argument("-solver", help="Newton   -- Fenics built-in module (DEFAULT SOLVER) \n"
 "Newton2  -- Manuell implementation\n"
-"Piccard  -- Manuell implementation\n"
-"Default  --> Newton", default="Newton")
+"Piccard  -- Manuell implementation\n", default="Newton")
 
 args = parser.parse_args()
 
@@ -283,11 +286,13 @@ def fluid(mesh, solver, fig, v_deg, p_deg, theta):
             % (V.dim(), mesh.num_cells(), v_deg, p_deg, drag, lift))
 
 #set_log_active(False)
-for m in ["turek1.xml"]: #or turek1.xml
-    mesh = Mesh(m)
-    print "SOLVING FOR MESH %s" % m
-    for i in range(2):
-        if i > 0:
-            mesh = refine(mesh)
-            Drag = []; Lift = []; time = []
-            fluid(mesh, solver, fig, v_deg, p_deg, theta)
+
+mesh = Mesh("turek1.xml")
+Drag = []; Lift = []; time = []
+if args.refiner == None:
+    fluid(mesh, solver, fig, v_deg, p_deg, theta)
+
+else:
+    for i in range(args.refiner):
+        mesh = refine(mesh)
+    fluid(mesh, solver, fig, v_deg, p_deg, theta)
