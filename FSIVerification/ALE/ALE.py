@@ -12,9 +12,10 @@ for coord in mesh.coordinates():
 
 V1 = VectorFunctionSpace(mesh, "CG", 2) # Fluid velocity
 V2 = VectorFunctionSpace(mesh, "CG", 1) # Mesh movement
+V3 = VectorFunctionSpace(mesh, "CG", 1)
 Q  = FunctionSpace(mesh, "CG", 1)       # Fluid Pressure
 
-VVQ = MixedFunctionSpace([V1, V2, Q])
+VVQ = MixedFunctionSpace([V1, V2, V3, Q])
 
 # BOUNDARIES
 
@@ -54,7 +55,7 @@ inlet = Expression(("(1.5*Um*x[1]*(H - x[1]) / pow((H/2.0), 2))*(1-cos(t*pi/2.0)
 ,"0"), t = 0.0, Um = Um, H = H)
 
 #Fluid velocity conditions
-u_inlet  = DirichletBC(VVQ.sub(0), inlet, boundaries, 3)
+u_inlet  = DirichletBC(VVQ.sub(0), ((2.0,0.0)), boundaries, 3)
 u_wall   = DirichletBC(VVQ.sub(0), ((0.0, 0.0)), boundaries, 2)
 u_circ   = DirichletBC(VVQ.sub(0), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
 u_bar    = DirichletBC(VVQ.sub(0), ((0.0, 0.0)), boundaries, 5) #No slip on geometry in fluid
@@ -127,12 +128,14 @@ print "Re = %f" % (Um/(mu_f/rho_f))
 
 def s_s_n_l(U):
     I = Identity(2)
-    F = I + grad(U)
-    E = 0.5*((F.T*F)-I)
-    return F*(lamda_s*tr(E)*I + 2*mu_s*E)
+    F_ = I + grad(U)
+    E = 0.5*((F_.T*F_)-I)
+    return lamda_s*tr(E)*I + 2*mu_s*E
 
 def sigma_fluid(p, u): #NEWTONIAN FLUID
-    return -p*Identity(2) + 2*mu_f * sym(grad(u))
+    I = Identity(2)
+    F_ = I + grad(u)
+    return -p*Identity(2) + mu_f * (inv(F_)*grad(u)+grad(u).T*inv(F_.T))
 def sigma_structure(d): #NEWTONIAN FLUID
     return 2*mu_s*sym(grad(d)) + lamda_s*tr(sym(grad(d)))*Identity(2)
 def eps(u):
@@ -141,30 +144,38 @@ def eps(u):
 delta = 1.0E-8
 #d = d0 + k*u
 I = Identity(2)
-F = I + grad(d0)
-J = det(F)
+F_ = I + grad(d0)
+J = det(F_)
 # Fluid variational form
-F_fluid = J*(rho_f/k)*inner(u - u0,phi)*dx_f +  J*rho_f*inner(dot(grad(u),inv(F)*(u - w)), phi)*dx_f \
-+ inner(J*sigma_fluid(p,u)*inv(F.T),grad(phi))*dx_f \
-- inner(div(J*u*inv(F.T)),gamma)*dx_f
+F_fluid = J*(rho_f/k)*inner(u - u0, phi)*dx_f +  J*rho_f*inner(dot((u - w), inv(F_)*grad(u)), phi)*dx_f \
++ inner(J*sigma_fluid(p, u)*inv(F_.T), grad(phi))*dx_f \
+- inner(div(J*inv(F_.T)*u), gamma)*dx_f
+# TODO: Ta med sigma_fluid ds(out)?
 
 #Displacement velocity is equal to mesh velocity on dx_s
-F_last = (1./delta)*inner(u,psi)*dx_s - (1./delta)*inner(w,psi)*dx_s
+F_last = (1./delta)*inner(u, psi)*dx_s - (1./delta)*inner(w,psi)*dx_s
+# TODO: Ikke ta med 1./delta
+# TODO: Erstatt denne dS(5)
 
 #Laplace
-F_laplace = k*inner(grad(w),grad(psi))*dx_f+inner(grad(d0),grad(psi))*dx_f \
+F_laplace = k*inner(grad(w), grad(psi))*dx_f + inner(grad(d0), grad(psi))*dx_f
 	       #- k*inner(grad(w('-'))*n('-'),psi('-'))*dS(5)\
 	       #+ inner(grad(d0('-'))*n('-'),psi('-'))*dS(5)
 
 # Structure Variational form
-F_structure = J*(rho_s/k)*inner(u-u0,phi)*dx_s  \
- + inner(J*sigma_structure(d0)*inv(F.T),grad(phi))*dx_s + k*inner(J*sigma_structure(u)*inv(F.T),grad(phi))*dx_s
+F_structure = (rho_s/k)*inner(u-u0,phi)*dx_s  \
+ + inner(F_*s_s_n_l(d0),grad(phi))*dx_s + k*inner(F_*s_s_n_l(u),grad(phi))*dx_s
+# TODO: erstatt med s_s_n_l(d0 + k*u)
+# TODO: Ha 4 ukjente: d, w, u, og p
+# TODO: Bare w og d som skal vaere i denne ligningen
+
+#neumann boundary on interface
+#F_neumann = inner(F_*sigma_structure(d0("+"))*n("+"),phi("+"))*dS(5) - inner(J*sigma_fluid(p("-"), u("-"))*inv(F_.T)*n("-"), phi("-"))*dS(5)
 
 
-
-F = F_fluid + F_structure  + F_laplace + F_last
-a = lhs(F)
-L = rhs(F)
+F = F_fluid + F_structure  + F_laplace + F_last#+ F_neumann
+#a = lhs(F)
+#L = rhs(F)
 
 
 T = 20.0
@@ -189,11 +200,16 @@ while t <= T:
         inlet.t = t;
     if t >= 2:
         inlet.t = 2;
+
+    #I = Identity(2)
+    #F_ = I + grad(d0)
+    #J = det(F_)
+
     if solver == "Newton2":
         dw = TrialFunction(VVQ)
-        dG_W = derivative(F, uwp, dw)                # Jacobi
+        dF_W = derivative(F, uwp, dw)                # Jacobi
 
-        atol, rtol = 1e-7, 1e-10                    # abs/rel tolerances
+        atol, rtol = 1e-12, 1e-12                    # abs/rel tolerances
         lmbda      = 1.0                            # relaxation parameter
         WD_inc     = Function(VVQ)                  # residual
         bcs_u      = []                             # residual is zero on boundary, (Implemented if DiriBC != 0)
@@ -205,25 +221,23 @@ while t <= T:
         rel_res    = residual                       # relative residual
         max_it    = 100                             # max iterations
         #ALTERNATIVE TO USE IDENT_ZEROS()
-        a = lhs(dG_W) + lhs(F);
-        L = rhs(dG_W) + rhs(F);
+        #a = lhs(dG_W) + lhs(F);
+        #L = rhs(dG_W) + rhs(F);
 
 
         while rel_res > rtol and Iter < max_it:
             #ALTERNATIVE TO USE IDENT_ZEROS()
-            A = assemble(a); b = assemble(L)
+            #A = assemble(a); b = assemble(L)
+            A,b = assemble_system(dF_W,-F,bcs_u)
             A.ident_zeros()
             [bc.apply(A,b) for bc in bcs_u]
             solve(A,WD_inc.vector(),b)
 
-            #WORKS!!
-            #A, b = assemble_system(dG_W, -G, bcs_u)
-            #solve(A, WD_inc.vector(), b)
             rel_res = norm(WD_inc, 'l2')
 
             #a = assemble(G)
             #for bc in bcs_u:
-                #bc.apply(a)
+            #    bc.apply(A)
 
             uwp.vector()[:] += lmbda*WD_inc.vector()
 
@@ -237,7 +251,7 @@ while t <= T:
     u,w,p = uwp.split(True)
     w.vector()[:] *= float(k)
     d0.vector()[:] += w.vector()[:]
-    plot(u,mode = "Displacement")
+    plot(d0)#,mode = "Displacement")
     u0.assign(u)
     if counter%10==0:
         u_file <<u

@@ -1,0 +1,37 @@
+\input{preamble}
+                                    
+\title{Benchmark}
+\author{Sebastian Gjertsen}
+\begin{document}
+\maketitle
+\section*{Problem Defintion}
+\subsection*{Domain}
+\includegraphics[scale=0.9]{geometry.png}
+The computational domain resembles the classic cfd benchmark with an added bar, with dimensions:
+The box: L = 2.5, H = 0.41
+The bar: l = 0.35, h = 0.02
+The circle is positioned at (0.2, 0.2) making it 0.05 of center from bottom to top, this is done to induce oscillations to a otherwise laminar flow.
+
+\section*{Fluid Structure Interaction Problem formulation}
+We define the fluid domain as $\Omega^f$ and structure domain as $\Omega^s$ and the part where the fluid and structure interact $\Gamma^0$. We denote $\Gamma^1$ as the "ceiling" and "floor" and the circle and $\Gamma^{2,3}$ as the inlet and outlet.
+We define the displacement $d^s$ and displacement velocity $w$ in the structure as:
+$$  d^s(\textbf{X},t) = \chi^s(\textbf{X},t) -\textbf{X}   $$
+$$  w(\textbf{X},t) = \frac{\partial \chi^s(\textbf{X},t)}{\partial t}   $$
+
+where $\textbf{X}$ denote a material point in the reference domain and $\chi^s$ denotes the mapping from the reference configuration.
+The velocity in the fluid is denoted $u(\textbf{X},t)$
+We define the deformation gradient $F = I + \nabla d$ and $J = det(F)$
+We express the solid balance laws in the Lagrangian formulation from the initial configuration
+$$J\rho_s \frac{\partial^2 d}{\partial t^2} = \nabla \sigma_s(d) in \Omega^s $$
+The fluid equations are denoted from the initial configuration:
+$$ \rho_s \big( \frac{\partial u}{\partial t} + (\nabla u)F^{-1}(u-w) = J^{-1} \nabla \cdot (J\sigma_f F^{-T} )\hspace{4mm} in \Omega^f $$
+$$ \nabla \cdot (J u F^{-T}) = 0 \hspace{4mm} in \hspace{2mm} \Omega^f$$
+$$ \nabla^2 d = 0\hspace{4mm}in \hspace{2mm} \Omega^f $$
+Boundary conditions:
+$$ u = u0 \hspace{4mm}on \hspace{2mm} \Gamma^2$$
+$$ u = 0  \hspace{4mm}on \hspace{2mm} \Gamma^1  $$
+$$  \sigma_f n_s = \sigma_s n_f \hspace{4mm} on  \hspace{2mm}\Gamma^0 (interface)   $$
+
+
+
+\end{document}
