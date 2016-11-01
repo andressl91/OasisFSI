@@ -21,7 +21,8 @@ group.add_argument("-T",      type=float, help="Set degree of pressure          
 group.add_argument("-dt",      type=float, help="Set degree of pressure                     --> Default=1", default=0.01)
 group.add_argument("-p_deg",  type=int, help="Set degree of pressure                     --> Default=1", default=1)
 group.add_argument("-v_deg",  type=int, help="Set degree of velocity                     --> Default=2", default=2)
-group.add_argument("-theta",  type=float, help="Explicit, Implicit, Cranc-Nic (0, 1, 0.5)  --> Default=1", default=2)
+group.add_argument("-theta",  type=float, help="Explicit, Implicit, Cranc-Nic (0, 1, 0.5)  --> Default=1", default=1)
+group.add_argument("-discr",  help="Write out or keep tensor in variational form --> Default=1", default="keep")
 group.add_argument("-r", "--refiner", action="count", help="Mesh-refiner using built-in FEniCS method refine(Mesh)")
 group2 = parser.add_argument_group('Solvers')
 group2.add_argument("-solver", help="Newton   -- Fenics built-in module \n"
@@ -37,6 +38,7 @@ v_deg = args.v_deg
 p_deg = args.p_deg
 solver = args.solver
 theta = args.theta
+discr = args.discr
 fig = False
 
 
@@ -48,7 +50,26 @@ nu = 0.001
 rho = 1000.
 mu = rho*nu
 
-def fluid(mesh, T, dt, solver, fig, v_deg, p_deg, theta, m):
+def fluid(mesh, T, dt, solver, fig, v_deg, p_deg, theta, m, discr):
+
+    n = FacetNormal(mesh)
+    def sigma_f(p, u):
+        return - p*Identity(2) + mu*(grad(u) + grad(u).T)
+
+    #MY WAY
+    def integrateFluidStress(p, u):
+
+      eps   = 0.5*(grad(u) + grad(u).T)
+      sig   = -p*Identity(2) + 2.0*mu*eps
+
+      traction  = dot(sig, -n)
+
+      forceX  = traction[0]*ds(1)
+      forceY  = traction[1]*ds(1)
+      fX      = assemble(forceX)
+      fY      = assemble(forceY)
+
+      return fX, fY
 
     #plot(mesh,interactive=True)
     V = VectorFunctionSpace(mesh, "CG", v_deg) # Fluid velocity
@@ -74,7 +95,6 @@ def fluid(mesh, T, dt, solver, fig, v_deg, p_deg, theta, m):
 
 
     ds = Measure("ds", subdomain_data = boundaries)
-    n = FacetNormal(mesh)
     #plot(boundaries,interactive=True)
 
     #BOUNDARY CONDITIONS
@@ -87,7 +107,6 @@ def fluid(mesh, T, dt, solver, fig, v_deg, p_deg, theta, m):
     inlet_steady = Expression(("1.5*Um*x[1]*(H - x[1]) / (pow((H/2.0), 2)) "\
     ,"0"), Um = Um, H = H)
 
-
     u_inlet = DirichletBC(VQ.sub(0), inlet, boundaries, 2)
     nos_geo = DirichletBC(VQ.sub(0), ((0, 0)), boundaries, 1)
     nos_wall = DirichletBC(VQ.sub(0), ((0, 0)), boundaries, 4)
@@ -98,7 +117,7 @@ def fluid(mesh, T, dt, solver, fig, v_deg, p_deg, theta, m):
 
     p_out = DirichletBC(VQ.sub(1), 0, boundaries, 3)
 
-    bcs = [u_inlet, nos_geo, nos_wall]
+    bcs = [u_inlet, nos_geo, nos_wall, p_out]
     bcs0 = [u_inlet0, nos_geo0, nos_wall0]
 
 
@@ -106,43 +125,8 @@ def fluid(mesh, T, dt, solver, fig, v_deg, p_deg, theta, m):
     phi, eta = TestFunctions(VQ)
     u ,p = TrialFunctions(VQ)
 
-    u0 = Function(V)
-    u1 = Function(V)
-
     k = Constant(dt)
     t = 0.0
-
-
-    #MEK4300 WAY
-    def FluidStress(p, u):
-      n = -FacetNormal(mesh)
-      n1 = as_vector((1.0,0)) ; n2 = as_vector((0,1.0))
-      nx = dot(n,n1) ; ny = dot(n,n2)
-      nt = as_vector((ny,-nx))
-
-      ut = dot(nt, u)
-      Fd = assemble((rho*nu*dot(grad(ut),n)*ny - p*nx)*ds(1))
-      Fl = assemble(-(rho*nu*dot(grad(ut),n)*nx + p*ny)*ds(1))
-
-      return Fd, Fl
-
-    def sigma_f(p, u):
-        return - p*Identity(2) + mu*(grad(u) + grad(u).T)
-
-    #MY WAY
-    def integrateFluidStress(p, u):
-
-      eps   = 0.5*(grad(u) + grad(u).T)
-      sig   = -p*Identity(2) + 2.0*mu*eps
-
-      traction  = dot(sig, -n)
-
-      forceX  = traction[0]*ds(1)
-      forceY  = traction[1]*ds(1)
-      fX      = assemble(forceX)
-      fY      = assemble(forceY)
-
-      return fX, fY
 
     Re = Um*D*rho/mu
     if MPI.rank(mpi_comm_world()) == 0:
@@ -150,21 +134,46 @@ def fluid(mesh, T, dt, solver, fig, v_deg, p_deg, theta, m):
         print "DOF = %f,  cells = %f" % (U_dof, mesh_cells)
 
 
-    if solver == "Newton":
-    	up = Function(VQ)
+    if solver == "Newton" or solver == "Newton2":
+        phi, eta = TestFunctions(VQ)
+        up = Function(VQ)
     	u, p = split(up)
+        #For non-theta
+        #u0 = Function(V)
 
         up0 = Function(VQ)
-    	u0, p0 = split(up)
+    	u0, p0 = split(up0)
 
-        #theta = 1;
-    	# Fluid variational form
-
-        F = ( rho/k*inner(u - u0, phi) \
-            + rho*(theta*inner(dot(grad(u), u), phi) + (1 - theta)*inner(dot(grad(u0), u0), phi) ) \
-            + inner(theta*sigma_f(p, u) + (1 - theta)*sigma_f(p0, u0) , grad(phi)) ) *dx \
+        if discr == "keep":
+            F = rho/k*inner(u - u0, phi) *dx \
+            + rho*(theta*inner(dot(grad(u), u), phi) + (1 - theta)*inner(dot(grad(u0), u0), phi) )*dx \
+            + inner(theta*sigma_f(p, u) + (1 - theta)*sigma_f(p0, u0), grad(phi))  *dx \
             - eta*div(u)*dx
 
+        if discr == "split":
+    	    F = rho/k*inner(u - u0, phi)*dx \
+            + rho*inner(theta*grad(u)*u + (1 -theta)*grad(u0)*u0, phi) *dx \
+            + mu*inner(theta*grad(u) + (1-theta)*grad(u0) , grad(phi))*dx  \
+    	    - (theta*div(phi)*p + (1 - theta)*div(phi)*p0)*dx\
+            - eta*div(u)*dx
+
+
+    if solver == "Newton":
+        tic()
+
+        J = derivative(F, up)
+
+        problem = NonlinearVariationalProblem(F, up, bcs, J)
+        sol  = NonlinearVariationalSolver(problem)
+
+        prm = sol.parameters
+        #info(prm,True)  #get full info on the parameters
+        prm['nonlinear_solver'] = 'newton'
+        prm['newton_solver']['absolute_tolerance'] = 1E-10
+        prm['newton_solver']['relative_tolerance'] = 1E-10
+        prm['newton_solver']['maximum_iterations'] = 100
+        prm['newton_solver']['relaxation_parameter'] = 1.0
+        prm['newton_solver']['linear_solver'] = 'mumps'
 
     	if MPI.rank(mpi_comm_world()) == 0:
     		print "Starting Newton iterations \nComputing for t = %g" % ( dt)
@@ -177,26 +186,11 @@ def fluid(mesh, T, dt, solver, fig, v_deg, p_deg, theta, m):
     		if t >= 2:
     			inlet = inlet_steady;
 
-    		J = derivative(F, up)
-
-    		problem = NonlinearVariationalProblem(F, up, bcs, J)
-    		sol  = NonlinearVariationalSolver(problem)
-
-
-
-    		prm = sol.parameters
-    		prm['newton_solver']['absolute_tolerance'] = 1E-7
-    		prm['newton_solver']['relative_tolerance'] = 1E-7
-    		prm['newton_solver']['maximum_iterations'] = 10
-    		prm['newton_solver']['relaxation_parameter'] = 1.0
-
-
     		sol.solve()
 
     		u_, p_ = up.split(True)
-                #vel_file << u_
+            #vel_file << u_
     		up0.assign(up)
-
 
     		drag, lift =integrateFluidStress(p_, u_)
     		if MPI.rank(mpi_comm_world()) == 0:
@@ -205,8 +199,9 @@ def fluid(mesh, T, dt, solver, fig, v_deg, p_deg, theta, m):
     		Lift.append(lift)
 
     		t += dt
-    tic()
+
     if solver == "Newton2":
+        tic()
 
         up = Function(VQ)
         u, p = split(up)
@@ -375,7 +370,8 @@ def fluid(mesh, T, dt, solver, fig, v_deg, p_deg, theta, m):
         name = "./experiments/cfd3/"+str(count)+"/report.txt"  # Name of text file coerced with +.txt
         f = open(name, 'w')
         f.write("""CFD3 Turek parameters\n
-Re = %(Re)g \nmesh = %(m)s\nDOF = %(U_dof)d\nT = %(T)g\ndt = %(dt)g\nv_deg = %(v_deg)g\np_deg = %(p_deg)g\nsolver = %(solver)s\ntheta_scheme=%(theta).1f\n""" % vars())
+Re = %(Re)g \nmesh = %(m)s\nDOF = %(U_dof)d\nT = %(T)g\ndt = %(dt)g\nv_deg = %(v_deg)g\np_deg = %(p_deg)g\n"""
+"""solver = %(solver)s\ntheta_scheme = %(theta).1f\nDiscretization = %(discr)s\n""" % vars())
         f.write("""Runtime = %f \n\n""" % run_time)
 
         f.write("""Max Lift Force = %(max_lift)g\n
@@ -391,6 +387,10 @@ Amplitude Drag Force = %(drag_amp)g\n""" %vars())
 
 
     if MPI.rank(mpi_comm_world()) == 0:
+        np.savetxt("./experiments/cfd3/"+str(count)+"/Lift.txt", Lift, delimiter=',')
+        np.savetxt("./experiments/cfd3/"+str(count)+"/Drag.txt", Drag, delimiter=',')
+        np.savetxt("./experiments/cfd3/"+str(count)+"/time.txt", time, delimiter=',')
+
         plt.figure(1)
         plt.title("LIFT CFD3 \n Re = %.1f, dofs = %d, cells = %d \n T = %g, dt = %g"
         % (Re, U_dof, mesh_cells, T, dt) )
@@ -414,22 +414,9 @@ m = "turek1.xml"
 mesh = Mesh(m)
 Drag = []; Lift = []; time = []
 if args.refiner == None:
-    fluid(mesh, T, dt, solver, fig, v_deg, p_deg, theta, m)
+    fluid(mesh, T, dt, solver, fig, v_deg, p_deg, theta, m, discr)
 
 else:
     for i in range(args.refiner):
         mesh = refine(mesh)
-    fluid(mesh, T, dt, solver, fig, v_deg, p_deg, theta, m)
-
-
-"""
-for m in ["turek1.xml"]:
-    mesh = Mesh(m)
-    #mesh = refine(mesh)
-    Drag = []; Lift = []; time = []
-    fluid(mesh, T, dt, solver, fig, v_deg, p_deg, theta, m)
-"""
-#if MPI.rank(mpi_comm_world()) == 0:
-#    np.savetxt("Lift.txt", Lift, delimiter=',')
-#    np.savetxt("Drag.txt", Drag, delimiter=',')
-#    np.savetxt("time.txt", time, delimiter=',')
+    fluid(mesh, T, dt, solver, fig, v_deg, p_deg, theta, m, discr)
