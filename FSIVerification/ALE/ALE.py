@@ -11,8 +11,8 @@ for coord in mesh.coordinates():
 
 
 V1 = VectorFunctionSpace(mesh, "CG", 2) # Fluid velocity
-V2 = VectorFunctionSpace(mesh, "CG", 1) # Mesh movement
-V3 = VectorFunctionSpace(mesh, "CG", 1)
+V2 = VectorFunctionSpace(mesh, "CG", 1) # displacement
+V3 = VectorFunctionSpace(mesh, "CG", 1) # Mesh movement
 Q  = FunctionSpace(mesh, "CG", 1)       # Fluid Pressure
 
 VVQ = MixedFunctionSpace([V1, V2, V3, Q])
@@ -61,13 +61,17 @@ u_circ   = DirichletBC(VVQ.sub(0), ((0.0, 0.0)), boundaries, 6) #No slip on geom
 u_bar    = DirichletBC(VVQ.sub(0), ((0.0, 0.0)), boundaries, 5) #No slip on geometry in fluid
 u_barwall= DirichletBC(VVQ.sub(0), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
 
-
+#displacement conditions:
+d_wall    = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 2)
+d_inlet   = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 3)
+d_outlet  = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 4)
+d_circle  = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 6)
 
 #Mesh velocity conditions
-w_wall    = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 2)
-w_inlet   = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 3)
-w_outlet  = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 4)
-w_circle  = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 6)
+w_wall    = DirichletBC(VVQ.sub(2), ((0.0, 0.0)), boundaries, 2)
+w_inlet   = DirichletBC(VVQ.sub(2), ((0.0, 0.0)), boundaries, 3)
+w_outlet  = DirichletBC(VVQ.sub(2), ((0.0, 0.0)), boundaries, 4)
+w_circle  = DirichletBC(VVQ.sub(2), ((0.0, 0.0)), boundaries, 6)
 #w_barwall = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 7)
 #w_bar     = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 5)
 
@@ -76,11 +80,13 @@ w_circle  = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 6)
 #d_barwall = DirichletBC(VVQ.sub(2), ((0, 0)), boundaries, 7)
 
 #Pressure Conditions
-#p_out = DirichletBC(VVQ.sub(2), 0, boundaries, 4)
+p_out = DirichletBC(VVQ.sub(3), 0, boundaries, 4)
 
 #Assemble boundary conditions
 bcs = [u_inlet, u_wall, u_circ,\
-       w_wall, w_inlet, w_outlet, w_circle]#,w_bar]
+       w_wall, w_inlet, w_outlet, w_circle,\
+       d_wall, d_inlet, d_outlet, d_circle,\
+       p_out]#,w_bar]
 # AREAS
 
 Bar_area = AutoSubDomain(lambda x: (0.19 <= x[1] <= 0.21) and 0.24<= x[0] <= 0.6) # only the "flag" or "bar"
@@ -93,17 +99,19 @@ dx = Measure("dx",subdomain_data=domains)
 dx_f = dx(1,subdomain_data=domains)
 dx_s = dx(2,subdomain_data=domains)
 
+
 # TEST TRIAL FUNCTIONS
-phi, psi, gamma = TestFunctions(VVQ)
+phi, psi,epsilon, gamma = TestFunctions(VVQ)
+#u,d,w,p
+u,d, w, p  = TrialFunctions(VVQ)
 
-#u, w, p  = TrialFunctions(VVQ)
-
-uwp = Function(VVQ)
-u, w, p  = split(uwp)
-
-u0 = Function(V1);
-#d = Function(V2)
-d0 =  Function(V2);
+udwp = Function(VVQ)
+#u, w, p  = split(uwp)
+#d = Function(V)
+d0 = Function(V2)
+d1 = Function(V2)
+u0 = Function(V1)
+w1 = Function(V3)
 
 dt = 0.01
 k = Constant(dt)
@@ -135,7 +143,7 @@ def s_s_n_l(U):
 def sigma_fluid(p, u): #NEWTONIAN FLUID
     I = Identity(2)
     F_ = I + grad(u)
-    return -p*Identity(2) + mu_f * (inv(F_)*grad(u)+grad(u).T*inv(F_.T))
+    return -p*Identity(2) + mu_f *(grad(u)+grad(u).T)
 def sigma_structure(d): #NEWTONIAN FLUID
     return 2*mu_s*sym(grad(d)) + lamda_s*tr(sym(grad(d)))*Identity(2)
 def eps(u):
@@ -147,13 +155,16 @@ I = Identity(2)
 F_ = I + grad(d0)
 J = det(F_)
 # Fluid variational form
-F_fluid = J*(rho_f/k)*inner(u - u0, phi)*dx_f +  J*rho_f*inner(dot((u - w), inv(F_)*grad(u)), phi)*dx_f \
+F_fluid = J*(rho_f/k)*inner(u - u0, phi)*dx_f +  J*rho_f*inner(dot((u - w), inv(F_)*grad(u0)), phi)*dx_f \
 + inner(J*sigma_fluid(p, u)*inv(F_.T), grad(phi))*dx_f \
+#- inner(J*sigma_fluid(p,u)*inv(F_.T)*n("+"),phi("+"))*dS(4)\
 - inner(div(J*inv(F_.T)*u), gamma)*dx_f
 # TODO: Ta med sigma_fluid ds(out)?
 
 #Displacement velocity is equal to mesh velocity on dx_s
-F_last = (1./delta)*inner(u, psi)*dx_s - (1./delta)*inner(w,psi)*dx_s
+#F_last = (1./delta)*inner(u, psi)*dx_s - (1./delta)*inner(w,psi)*dx_s
+#F_last = inner(()(u-u0)/k)-w,psi)*dS(5) ???
+
 # TODO: Ikke ta med 1./delta
 # TODO: Erstatt denne dS(5)
 
@@ -163,20 +174,22 @@ F_laplace = k*inner(grad(w), grad(psi))*dx_f + inner(grad(d0), grad(psi))*dx_f
 	       #+ inner(grad(d0('-'))*n('-'),psi('-'))*dS(5)
 
 # Structure Variational form
-F_structure = (rho_s/k)*inner(u-u0,phi)*dx_s  \
- + inner(F_*s_s_n_l(d0),grad(phi))*dx_s + k*inner(F_*s_s_n_l(u),grad(phi))*dx_s
+#F_structure = (rho_s/k)*inner(u-u0,phi)*dx_s  \
+ #+ inner(F_*s_s_n_l(d0),grad(phi))*dx_s + k*inner(F_*s_s_n_l(u),grad(phi))*dx_s
+F_structure =rho_s*((1./k**2)*inner(d - 2*d0 + d1,psi))*dx_s \
+ + inner(F_*0.5*sigma_structure(d+d1),grad(psi))*dx_s# - inner(g,psi)*dx
+
 # TODO: erstatt med s_s_n_l(d0 + k*u)
 # TODO: Ha 4 ukjente: d, w, u, og p
 # TODO: Bare w og d som skal vaere i denne ligningen
 
 #neumann boundary on interface
-#F_neumann = inner(F_*sigma_structure(d0("+"))*n("+"),phi("+"))*dS(5) - inner(J*sigma_fluid(p("-"), u("-"))*inv(F_.T)*n("-"), phi("-"))*dS(5)
+F_neumann = inner(F_*sigma_structure(d("+"))*n("+"),phi("+"))*dS(5) - inner(J*sigma_fluid(p("-"), u("-"))*inv(F_.T)*n("-"), phi("-"))*dS(5)
 
 
-F = F_fluid + F_structure  + F_laplace + F_last#+ F_neumann
-#a = lhs(F)
-#L = rhs(F)
-
+F = F_fluid + F_structure  + F_laplace + F_neumann #+ F_last #
+a = lhs(F)
+l = rhs(F)
 
 T = 20.0
 t = 0.0
@@ -193,6 +206,7 @@ dis_x = []
 dis_y = []
 counter = 0
 while t <= T:
+
     if MPI.rank(mpi_comm_world()) == 0:
         print "Time t = %.3f" % t
 
@@ -204,7 +218,7 @@ while t <= T:
     #I = Identity(2)
     #F_ = I + grad(d0)
     #J = det(F_)
-
+    """
     if solver == "Newton2":
         dw = TrialFunction(VVQ)
         dF_W = derivative(F, uwp, dw)                # Jacobi
@@ -247,12 +261,20 @@ while t <= T:
         for bc in bcs:
             bc.apply(uwp.vector())
 
-
-    u,w,p = uwp.split(True)
-    w.vector()[:] *= float(k)
-    d0.vector()[:] += w.vector()[:]
-    plot(d0)#,mode = "Displacement")
+    """
+    #A = assemble(a)
+    #A.ident_zeros()
+    #b = assemble(l)
+    #[bc.apply(A,b) for bc in bcs]
+    #solve(A,udwp,b)
+    solve(lhs(F)==rhs(F),udwp,bcs)
+    u,d,w,p = udwp.split(True)
+    #w.vector()[:] *= float(k)
+    #d0.vector()[:] += w.vector()[:]
     u0.assign(u)
+    d1.assign(d0)
+    d0.assign(d)
+    plot(d,mode="displacement")
     if counter%10==0:
         u_file <<u
     dis_x.append(d0(coord)[0])

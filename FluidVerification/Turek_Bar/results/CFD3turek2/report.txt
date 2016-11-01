@@ -1,9 +1,0 @@
-v_deg = 2
-p_deg = 1
-mesh = turek1.xml
-Turek Case CFD3
-Abacus
-dt = 0.001
-T = 200
-
-

@@ -173,8 +173,52 @@ from time import sleep
 while t < T:
     print "Time: ",t
     if implementation == "1":
-        solve(G == 0, d, bcs, solver_parameters={"newton_solver": \
-        {"relative_tolerance": 1E-9,"absolute_tolerance":1E-9,"maximum_iterations":100,"relaxation_parameter":1.0}})
+        #solve(G == 0, d, bcs, solver_parameters={"newton_solver": \
+        #{"relative_tolerance": 1E-9,"absolute_tolerance":1E-9,"maximum_iterations":100,"relaxation_parameter":1.0}})
+        solver="Newton2"
+        if solver == "Newton2":
+            dw = TrialFunction(V)
+            dF_W = derivative(G, d, dw)                # Jacobi
+
+            atol, rtol = 1e-12, 1e-12                    # abs/rel tolerances
+            lmbda      = 1.0                            # relaxation parameter
+            WD_inc     = Function(V)                  # residual
+            bcs_u      = []                             # residual is zero on boundary, (Implemented if DiriBC != 0)
+            for i in bcs:
+                i.homogenize()
+                bcs_u.append(i)
+            Iter      = 0                               # number of iterations
+            residual  = 1                              # residual (To initiate)
+            rel_res    = residual                       # relative residual
+            max_it    = 100                             # max iterations
+            #ALTERNATIVE TO USE IDENT_ZEROS()
+            #a = lhs(dG_W) + lhs(F);
+            #L = rhs(dG_W) + rhs(F);
+
+
+            while rel_res > rtol and Iter < max_it:
+                #ALTERNATIVE TO USE IDENT_ZEROS()
+                #A = assemble(a); b = assemble(L)
+                A,b = assemble_system(dF_W,-G,bcs_u)
+                A.ident_zeros()
+                [bc.apply(A,b) for bc in bcs_u]
+                solve(A,WD_inc.vector(),b)
+
+                rel_res = norm(WD_inc, 'l2')
+
+                #a = assemble(G)
+                #for bc in bcs_u:
+                #    bc.apply(A)
+
+                d.vector()[:] += lmbda*WD_inc.vector()
+
+                Iter += 1
+            print "Iterations: ",Iter," Relativ res: " , rel_res
+
+            for bc in bcs:
+                bc.apply(d.vector())
+
+
         d1.assign(d0)
         d0.assign(d)
         plot(d,mode="displacement")

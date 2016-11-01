@@ -1,5 +1,5 @@
 \input{preamble}
-                                    
+\usepackage{amsmath}                                    
 \title{Benchmark}
 \author{Sebastian Gjertsen}
 \begin{document}
@@ -24,14 +24,21 @@ We define the deformation gradient $F = I + \nabla d$ and $J = det(F)$
 We express the solid balance laws in the Lagrangian formulation from the initial configuration
 $$J\rho_s \frac{\partial^2 d}{\partial t^2} = \nabla \sigma_s(d) in \Omega^s $$
 The fluid equations are denoted from the initial configuration:
-$$ \rho_s \big( \frac{\partial u}{\partial t} + (\nabla u)F^{-1}(u-w) = J^{-1} \nabla \cdot (J\sigma_f F^{-T} )\hspace{4mm} in \Omega^f $$
+$$ \rho_s J \big( \frac{\partial u}{\partial t} + (\nabla u)F^{-1}(u-w)\big) = \nabla \cdot (J\sigma_f F^{-T} )\hspace{4mm} in \Omega^f $$
 $$ \nabla \cdot (J u F^{-T}) = 0 \hspace{4mm} in \hspace{2mm} \Omega^f$$
 $$ \nabla^2 d = 0\hspace{4mm}in \hspace{2mm} \Omega^f $$
 Boundary conditions:
 $$ u = u0 \hspace{4mm}on \hspace{2mm} \Gamma^2$$
 $$ u = 0  \hspace{4mm}on \hspace{2mm} \Gamma^1  $$
 $$  \sigma_f n_s = \sigma_s n_f \hspace{4mm} on  \hspace{2mm}\Gamma^0 (interface)   $$
-
+\subsection*{Variational formulation}
+We use 4 testfunctions, $\phi, \psi, \epsilon, \gamma$.
+\begin{align*}
+\rho_s J \big( \frac{\partial u}{\partial t} + (\nabla u)F^{-1}(u-w) , \phi\big)_{fluid} + (J\sigma_f F^{-T},\nabla \phi )_{fluid} &= 0  \\
+ \big( \nabla \cdot (J u F^{-T}),\gamma \big)_{fluid} &= 0 \\
+\big(J\rho_s \frac{\partial^2 d}{\partial t^2},\psi \big)_{solid} + \big(F \sigma_s(d), \nabla \psi \big)_{solid} &=0 \\
+ \big( \nabla d , \nabla \epsilon \big)_{fluid} &= 0
+\end{align*}
 
 
 \end{document}

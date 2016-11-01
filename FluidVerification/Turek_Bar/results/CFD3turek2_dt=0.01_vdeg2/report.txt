@@ -1,6 +1,0 @@
-v_deg = 2
-p_deg = 1
-dt = 0.01
-T = 20
-mesh = turek2.xml
-solver Newton
