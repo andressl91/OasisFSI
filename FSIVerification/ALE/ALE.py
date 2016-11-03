@@ -157,19 +157,19 @@ J = det(F_)
 # Fluid variational form
 F_fluid = J*(rho_f/k)*inner(u - u0, phi)*dx_f +  J*rho_f*inner(dot((u - w), inv(F_)*grad(u0)), phi)*dx_f \
 + inner(J*sigma_fluid(p, u)*inv(F_.T), grad(phi))*dx_f \
-#- inner(J*sigma_fluid(p,u)*inv(F_.T)*n("+"),phi("+"))*dS(4)\
+- inner(J("-")*sigma_fluid(p("-"),u("-"))*inv(F_("-").T)*n("-"),phi("-"))*dS(4)\
 - inner(div(J*inv(F_.T)*u), gamma)*dx_f
 # TODO: Ta med sigma_fluid ds(out)?
 
 #Displacement velocity is equal to mesh velocity on dx_s
 #F_last = (1./delta)*inner(u, psi)*dx_s - (1./delta)*inner(w,psi)*dx_s
-#F_last = inner(()(u-u0)/k)-w,psi)*dS(5) ???
+F_last = (1/k)*inner((d-d0)-w,epsilon)*dx_s
 
 # TODO: Ikke ta med 1./delta
 # TODO: Erstatt denne dS(5)
 
 #Laplace
-F_laplace = k*inner(grad(w), grad(psi))*dx_f + inner(grad(d0), grad(psi))*dx_f
+F_laplace = k*inner(grad(w), grad(psi))*dx_f + inner(grad(d0), grad(epsilon))*dx_f
 	       #- k*inner(grad(w('-'))*n('-'),psi('-'))*dS(5)\
 	       #+ inner(grad(d0('-'))*n('-'),psi('-'))*dS(5)
 
@@ -184,10 +184,10 @@ F_structure =rho_s*((1./k**2)*inner(d - 2*d0 + d1,psi))*dx_s \
 # TODO: Bare w og d som skal vaere i denne ligningen
 
 #neumann boundary on interface
-F_neumann = inner(F_*sigma_structure(d("+"))*n("+"),phi("+"))*dS(5) - inner(J*sigma_fluid(p("-"), u("-"))*inv(F_.T)*n("-"), phi("-"))*dS(5)
+F_neumann = inner(F_("-")*sigma_structure(d("-"))*n("-"),phi("-"))*dS(5) - inner(J("-")*sigma_fluid(p("-"), u("-"))*inv(F_("-").T)*n("-"), phi("-"))*dS(5)
 
 
-F = F_fluid + F_structure  + F_laplace + F_neumann #+ F_last #
+F = F_fluid + F_structure  + F_laplace + F_neumann + F_last
 a = lhs(F)
 l = rhs(F)
 
@@ -274,7 +274,7 @@ while t <= T:
     u0.assign(u)
     d1.assign(d0)
     d0.assign(d)
-    plot(d,mode="displacement")
+    plot(u)
     if counter%10==0:
         u_file <<u
     dis_x.append(d0(coord)[0])

@@ -12,21 +12,25 @@ The box: L = 2.5, H = 0.41
 The bar: l = 0.35, h = 0.02
 The circle is positioned at (0.2, 0.2) making it 0.05 of center from bottom to top, this is done to induce oscillations to a otherwise laminar flow.
 
-\section*{Fluid Structure Interaction Problem formulation}
-We define the fluid domain as $\Omega^f$ and structure domain as $\Omega^s$ and the part where the fluid and structure interact $\Gamma^0$. We denote $\Gamma^1$ as the "ceiling" and "floor" and the circle and $\Gamma^{2,3}$ as the inlet and outlet.
-We define the displacement $d^s$ and displacement velocity $w$ in the structure as:
+\section*{Fluid Structure Interaction Problem formulation in ALE coordinates}
+To get a monolithic ALE formulation, we need to define a mapping, in the solid and fluid domain:
+$$  \chi^s(t) : \hat{\mathcal{S}} \rightarrow \mathcal{S}(t)     $$ 
+$$  \chi^f(t) : \hat{\mathcal{F}} \rightarrow \mathcal{F}(t)     $$ 
+The solid mapping is set as $\chi^s(\textbf{X},t) = \textbf{X}  + d^s(\textbf{X} ,t)$
+hence giving:
 $$  d^s(\textbf{X},t) = \chi^s(\textbf{X},t) -\textbf{X}   $$
 $$  w(\textbf{X},t) = \frac{\partial \chi^s(\textbf{X},t)}{\partial t}   $$
 
 where $\textbf{X}$ denote a material point in the reference domain and $\chi^s$ denotes the mapping from the reference configuration.
+We denote $\Gamma^1$ as the "ceiling" and "floor" and the circle and $\Gamma^{2,3}$ as the inlet and outlet.
 The velocity in the fluid is denoted $u(\textbf{X},t)$
 We define the deformation gradient $F = I + \nabla d$ and $J = det(F)$
 We express the solid balance laws in the Lagrangian formulation from the initial configuration
-$$J\rho_s \frac{\partial^2 d}{\partial t^2} = \nabla \sigma_s(d) in \Omega^s $$
+$$J\rho_s \frac{\partial^2 d}{\partial t^2} = \nabla \sigma_s(d) in \mathcal{\hat{S}} $$
 The fluid equations are denoted from the initial configuration:
-$$ \rho_s J \big( \frac{\partial u}{\partial t} + (\nabla u)F^{-1}(u-w)\big) = \nabla \cdot (J\sigma_f F^{-T} )\hspace{4mm} in \Omega^f $$
-$$ \nabla \cdot (J u F^{-T}) = 0 \hspace{4mm} in \hspace{2mm} \Omega^f$$
-$$ \nabla^2 d = 0\hspace{4mm}in \hspace{2mm} \Omega^f $$
+$$ \rho_s J \big( \frac{\partial u}{\partial t} + (\nabla u)F^{-1}(u-w)\big) = \nabla \cdot (J\sigma_f F^{-T} )\hspace{4mm} in \mathcal{\hat{F}}$$
+$$ \nabla \cdot (J u F^{-T}) = 0 \hspace{4mm} in \hspace{2mm} \mathcal{\hat{F}}$$
+$$ \nabla^2 d = 0\hspace{4mm}in \hspace{2mm} \mathcal{\hat{F}}$$
 Boundary conditions:
 $$ u = u0 \hspace{4mm}on \hspace{2mm} \Gamma^2$$
 $$ u = 0  \hspace{4mm}on \hspace{2mm} \Gamma^1  $$
@@ -34,10 +38,13 @@ $$  \sigma_f n_s = \sigma_s n_f \hspace{4mm} on  \hspace{2mm}\Gamma^0 (interface
 \subsection*{Variational formulation}
 We use 4 testfunctions, $\phi, \psi, \epsilon, \gamma$.
 \begin{align*}
-\rho_s J \big( \frac{\partial u}{\partial t} + (\nabla u)F^{-1}(u-w) , \phi\big)_{fluid} + (J\sigma_f F^{-T},\nabla \phi )_{fluid} &= 0  \\
- \big( \nabla \cdot (J u F^{-T}),\gamma \big)_{fluid} &= 0 \\
-\big(J\rho_s \frac{\partial^2 d}{\partial t^2},\psi \big)_{solid} + \big(F \sigma_s(d), \nabla \psi \big)_{solid} &=0 \\
- \big( \nabla d , \nabla \epsilon \big)_{fluid} &= 0
+\rho_s J \big( \frac{\partial u}{\partial t} + (\nabla u)F^{-1}(u-w) , \phi\big)_{\mathcal{\hat{F}}} + (J\sigma_f F^{-T},\nabla \phi )_{\mathcal{\hat{F}}} &= 0  \\
+ \big( \nabla \cdot (J u F^{-T}),\gamma \big)_{\mathcal{\hat{F}}} &= 0 \\
+\big(J\rho_s \frac{\partial^2 d}{\partial t^2},\psi \big)_{\mathcal{\hat{S}}} + \big(F \sigma_s(d), \nabla \psi \big)_{\mathcal{\hat{S}}} &=0 \\
+ \big( \nabla d , \nabla \epsilon \big)_{\mathcal{\hat{F}}} &= 0 \\
+ \big( w- \frac{\partial d}{\partial t} ,\epsilon \big)_{\mathcal{\hat{S}}} &= 0 \\
+ \text{Or we can change the last two with:  ??????} & \\ 
+ \big( \nabla (dt\cdot w + d^0) , \nabla \epsilon \big)_{\mathcal{\hat{F}}} &= 0 
 \end{align*}
 
 
