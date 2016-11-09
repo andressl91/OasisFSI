@@ -13,8 +13,12 @@ The bar: l = 0.35, h = 0.02
 The circle is positioned at (0.2, 0.2) making it 0.05 of center from bottom to top, this is done to induce oscillations to a otherwise laminar flow.
 
 \section*{Fluid Structure Interaction Problem formulation in ALE coordinates}
-To get a monolithic ALE formulation, we need to define a mapping, in the solid and fluid domain:
+\includegraphics[scale=0.4]{continuum_mapping.png}
+
+To get a monolithic ALE formulation, we need to define a mapping, in the solid domain:
 $$  \chi^s(t) : \hat{\mathcal{S}} \rightarrow \mathcal{S}(t)     $$ 
+We define the $ \hat{\mathcal{S}}$ as the initial stress free configuration, the $\mathcal{S}$ as the reference and the $\mathcal{S}(t)$ as the current configuration.
+The same is for the fluid domain.
 $$  \chi^f(t) : \hat{\mathcal{F}} \rightarrow \mathcal{F}(t)     $$ 
 The solid mapping is set as $\chi^s(\textbf{X},t) = \textbf{X}  + d^s(\textbf{X} ,t)$
 hence giving:
@@ -25,8 +29,11 @@ where $\textbf{X}$ denote a material point in the reference domain and $\chi^s$ 
 We denote $\Gamma^1$ as the "ceiling" and "floor" and the circle and $\Gamma^{2,3}$ as the inlet and outlet.
 The velocity in the fluid is denoted $u(\textbf{X},t)$
 We define the deformation gradient $F = I + \nabla d$ and $J = det(F)$
+\subsection*{Balance laws}
+We will formulate the equations in the Eulerian, Lagrangian and the ALE description.
+The Eulerian description suits a fluid problem nicely as the points in the grid are fixed and the fluid particles move through the domain. Whilst the Lagrangian description fits a solid problem as the material particles are fixed with the gridpoints. The fluid velocity vector and the displacement vector are the quantities describing motion of the fluid and solid respectively. Since we here have fluid structure interaction problem we need to formulate the fluid in the ALE description. The fluid velocity will still be the quantity describing motion but it will also have the displacement of the fluid, describing the change in fluid domain. The solid will be described in Lagrangian.
 We express the solid balance laws in the Lagrangian formulation from the initial configuration
-$$J\rho_s \frac{\partial^2 d}{\partial t^2} = \nabla \sigma_s(d) in \mathcal{\hat{S}} $$
+$$J\rho_s \frac{\partial^2 d}{\partial t^2} = \nabla \sigma_s(d) \hspace{4mm}in\hspace{4mm} \mathcal{\hat{S}} $$
 The fluid equations are denoted from the initial configuration:
 $$ \rho_s J \big( \frac{\partial u}{\partial t} + (\nabla u)F^{-1}(u-w)\big) = \nabla \cdot (J\sigma_f F^{-T} )\hspace{4mm} in \mathcal{\hat{F}}$$
 $$ \nabla \cdot (J u F^{-T}) = 0 \hspace{4mm} in \hspace{2mm} \mathcal{\hat{F}}$$

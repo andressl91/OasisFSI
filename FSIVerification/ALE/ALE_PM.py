@@ -40,7 +40,9 @@ class U_bc(Expression):
     def eval(self,value,x):
         x_value, y_value = self.w.vector()[[x[0], x[1]]]
         value[0] = x_value
-        value[1] = 0
+        value[1] = y_value
+        #print "y-values: ",value[1]
+        #print "x_values: ",value[0]
     def value_shape(self):
         return (2,)
 
@@ -66,7 +68,7 @@ bcs_u = [u_inlet, u_wall, p_out]
 phi, gamma = TestFunctions(VVQ)
 #u,p = TrialFunctions(VVQ)
 psi = TestFunction(V2)
-#w = TrialFunction(V2)
+w = TrialFunction(V2)
 up_ = Function(VVQ)
 u, p = split(up_)
 u0 = Function(V1)
@@ -101,7 +103,7 @@ F1 = J_*rho_f*((1.0/k)*inner(u - u0, phi) + inner(dot(inv(F_)*(u - w_), grad(u))
     - inner(J_*sigma_fluid(p,u)*inv(F_.T)*n, phi)*ds
 
 # laplace d = 0
-F2 =  k*(inner(grad(w_), grad(psi))*dx - inner(grad(w_)*n, psi)*ds)
+F2 =  k*(inner(grad(w), grad(psi))*dx - inner(grad(w)*n, psi)*ds)
 
 T = 3.0
 t = 0.0
@@ -113,8 +115,9 @@ p_file = File("mvelocity/pressure.pvd")
 d_file = File("mvelocity/displacement.pvd")
 
 
-solve(F2==0, w_, bcs_w)
+solve(lhs(F2)==rhs(F2), w_, bcs_w)
 u_bc.init(w_)
+
 
 
 #w_.vector()[:] *= float(k) # gives displacement to be used in ALE.move(w_)
@@ -127,13 +130,14 @@ while t <= T:
     solve(F1==0, up_, bcs_u,solver_parameters={"newton_solver": \
     {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
     u,p = up_.split(True)
+    print "u-w : ", assemble(dot(u-w_,n)*ds(4))
     #plot(u, interactive=True)
     flux.append(assemble(dot(u,n)*ds(3)))
     u0.assign(u)
 
-    u_file << u
-    p_file << p
-    w_file << w_
+    #u_file << u
+    #p_file << p
+    #w_file << w_
 
     # To see the mesh move with a give initial w
     #ALE.move(mesh,w_)
