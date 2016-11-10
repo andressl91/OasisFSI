@@ -1,7 +1,7 @@
 from dolfin import *
 import matplotlib.pyplot as plt
 import numpy as np
-set_log_active(False)
+set_log_active(True)
 # Mesh
 mesh = RectangleMesh(Point(0,0), Point(2, 1), 50, 50, "right")
 
@@ -29,9 +29,9 @@ ds = Measure("ds", subdomain_data = boundaries)
 n = FacetNormal(mesh)
 
 # Boundary conditions
-Wm = 0.1
-inlet = Expression((("Wm","0")),Wm = Wm)
-#inlet = Expression((("sin(pi*t/2)","0")),Wm = Wm,t=0)
+Wm = -0.1
+#inlet = Expression((("Wm","0")),Wm = Wm)
+inlet = Expression((("sin(pi*t)/3.0","0")),Wm = Wm,t=0)
 
 # Fluid velocity conditions
 class U_bc(Expression):
@@ -73,7 +73,7 @@ u, p = split(up_)
 u0 = Function(V1)
 w_ = Function(V2)
 
-dt = 0.04
+dt = 0.1
 k = Constant(dt)
 
 # Fluid properties
@@ -95,7 +95,7 @@ F1 = rho_f*((1.0/k)*inner(u - u0, phi) + inner(dot((u - w_), grad(u)), phi))*dx 
 # laplace d = 0
 F2 =  k*(inner(grad(w), grad(psi))*dx - inner(grad(w)*n, psi)*ds)
 
-T = 3.0
+T = 10.0
 t = 0.0
 time = np.linspace(0,T,(T/dt))
 
@@ -109,14 +109,14 @@ flux = []
 
 while t <= T:
     print "Time: ",t
-    #inlet.t = t
+    inlet.t = t
     solve(lhs(F2)==rhs(F2), w_, bcs_w)
     u_bc.init(w_)
 
     solve(F1==0, up_, bcs_u,solver_parameters={"newton_solver": \
     {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
     u,p = up_.split(True)
-    #plot(u)#, interactive=True,mode="displacement")
+    plot(u)#, interactive=True,mode="displacement")
 
     flux.append(assemble(dot(u,n)*ds(3)))
     u0.assign(u)

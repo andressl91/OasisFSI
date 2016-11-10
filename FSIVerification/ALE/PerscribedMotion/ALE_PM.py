@@ -1,7 +1,7 @@
 from dolfin import *
 import matplotlib.pyplot as plt
 import numpy as np
-set_log_active(False)
+set_log_active(True)
 # Mesh
 mesh = RectangleMesh(Point(0,0), Point(2, 1), 50, 50, "right")
 
@@ -31,7 +31,7 @@ n = FacetNormal(mesh)
 # Boundary conditions
 Wm = 0.1
 #inlet = Expression((("Wm","0")),Wm = Wm,t=0)
-inlet = Expression((("sin(pi*t)","0")),Wm = Wm,t=0)
+inlet = Expression((("sin(pi*t)/3.0","0")),Wm = Wm,t=0)
 
 
 # Fluid velocity conditions
@@ -75,7 +75,7 @@ u0 = Function(V1)
 d = Function(V2)
 w_ = Function(V2)
 
-dt = 0.04
+dt = 0.035
 k = Constant(dt)
 
 # Fluid properties
@@ -105,7 +105,7 @@ F1 = J_*rho_f*((1.0/k)*inner(u - u0, phi) + inner(dot(inv(F_)*(u - w_), grad(u))
 # laplace d = 0
 F2 =  k*(inner(grad(w), grad(psi))*dx - inner(grad(w)*n, psi)*ds)
 
-T = 3.0
+T = 10.0
 t = 0.0
 time = np.linspace(0,T,(T/dt))
 
@@ -130,16 +130,17 @@ while t <= T:
     u,p = up_.split(True)
     #print "u-w : ", assemble(dot(u-w_,n)*ds(4))
     #plot(u)
-    #flux.append(assemble(J_*dot(u,n)*ds(3)))
+    flux.append(assemble(J_*dot(u,n)*ds(3)))
     u0.assign(u)
     u_file << u
     #p_file << p
-    w_file << w_
+    #w_file << w_
 
     # To see the mesh move with a give initial w
     #ALE.move(mesh,w_)
     #plot(mesh)#,interactive = True)
 
     t += dt
-#plt.plot(time,flux);plt.title("Flux, with N = 50, y=0"); plt.ylabel("Flux out");plt.xlabel("Time");plt.grid();
-#plt.show()
+#print len(flux),len(time)
+plt.plot(time_array,flux);plt.title("Flux, with N = 50, y=0"); plt.ylabel("Flux out");plt.xlabel("Time");plt.grid();
+plt.show()
