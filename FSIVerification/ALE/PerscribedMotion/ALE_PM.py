@@ -1,7 +1,7 @@
 from dolfin import *
 import matplotlib.pyplot as plt
 import numpy as np
-set_log_active(True)
+set_log_active(False)
 # Mesh
 mesh = RectangleMesh(Point(0,0), Point(2, 1), 50, 50, "right")
 
@@ -30,7 +30,8 @@ n = FacetNormal(mesh)
 
 # Boundary conditions
 Wm = 0.1
-inlet = Expression((("Wm","0")),Wm = Wm)
+#inlet = Expression((("Wm","0")),Wm = Wm,t=0)
+inlet = Expression((("sin(pi*t)","0")),Wm = Wm,t=0)
 
 
 # Fluid velocity conditions
@@ -38,11 +39,10 @@ class U_bc(Expression):
     def init(self,w):
         self.w = w
     def eval(self,value,x):
-        x_value, y_value = self.w.vector()[[x[0], x[1]]]
+        #x_value, y_value = self.w.vector()[[x[0], x[1]]]
+        x_value, y_value = self.w(x)
         value[0] = x_value
         value[1] = y_value
-        #print "y-values: ",value[1]
-        #print "x_values: ",value[0]
     def value_shape(self):
         return (2,)
 
@@ -114,12 +114,6 @@ w_file = File("mvelocity/w.pvd")
 p_file = File("mvelocity/pressure.pvd")
 d_file = File("mvelocity/displacement.pvd")
 
-
-solve(lhs(F2)==rhs(F2), w_, bcs_w)
-u_bc.init(w_)
-
-
-
 #w_.vector()[:] *= float(k) # gives displacement to be used in ALE.move(w_)
 
 #plot(w_,interactive=True)
@@ -127,48 +121,25 @@ time_array = np.linspace(0,T,(T/dt)+1)
 flux = []
 while t <= T:
     print "Time: ",t
+    inlet.t = t
+    solve(lhs(F2)==rhs(F2), w_, bcs_w)
+    u_bc.init(w_)
+
     solve(F1==0, up_, bcs_u,solver_parameters={"newton_solver": \
     {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
     u,p = up_.split(True)
-    print "u-w : ", assemble(dot(u-w_,n)*ds(4))
-    #plot(u, interactive=True)
-    flux.append(assemble(dot(u,n)*ds(3)))
+    #print "u-w : ", assemble(dot(u-w_,n)*ds(4))
+    #plot(u)
+    #flux.append(assemble(J_*dot(u,n)*ds(3)))
     u0.assign(u)
-
-    #u_file << u
+    u_file << u
     #p_file << p
-    #w_file << w_
+    w_file << w_
 
     # To see the mesh move with a give initial w
     #ALE.move(mesh,w_)
     #plot(mesh)#,interactive = True)
 
     t += dt
-plt.plot(time,flux);plt.title("Flux, with N = 50, y=0"); plt.ylabel("Flux out");plt.xlabel("Time");plt.grid();
-plt.show()
-# Post processing
-
-
-"""
-#mesh = RectangleMesh(Point(0,0), Point(2, 1), 100, 100, "right")
-
-mesh1 = mesh
-mesh2 = RectangleMesh(Point(0,0), Point(2, 1), 100, 100, "right")
-
-coor1 = mesh1.coordinates()
-
-V1 = VectorFunctionSpace(mesh, "CG", 1)
-V2 = VectorFunctionSpace(mesh, "CG", 1)
-
-u1 = Function(V1)
-u2 = Function(V2)
-w = Function(V1)
-
-for i in range(len(coor1)):
-    # Load u1
-    # Load w to get displacement
-    coor2 = coor2 + displacement
-    u2.vector().set_local(u1.vector().array())
-    u2.vector().apply("insert")
-plot
-"""
+#plt.plot(time,flux);plt.title("Flux, with N = 50, y=0"); plt.ylabel("Flux out");plt.xlabel("Time");plt.grid();
+#plt.show()

@@ -31,6 +31,7 @@ n = FacetNormal(mesh)
 # Boundary conditions
 Wm = 0.1
 inlet = Expression((("Wm","0")),Wm = Wm)
+#inlet = Expression((("sin(pi*t/2)","0")),Wm = Wm,t=0)
 
 # Fluid velocity conditions
 class U_bc(Expression):
@@ -70,9 +71,7 @@ w = TrialFunction(V2)
 up_ = Function(VVQ)
 u, p = split(up_)
 u0 = Function(V1)
-d = Function(V2)
 w_ = Function(V2)
-w1 = Function(V2)
 
 dt = 0.04
 k = Constant(dt)
@@ -100,30 +99,24 @@ T = 3.0
 t = 0.0
 time = np.linspace(0,T,(T/dt))
 
-u_file = File("mvelocity/velocity.pvd")
-w_file = File("mvelocity/w.pvd")
-p_file = File("mvelocity/pressure.pvd")
-d_file = File("mvelocity/displacement.pvd")
-
-
-# making another function used to move the mesh
-
-
-#plot(w_,interactive=True)
+u_file = File("results_eulerian/velocity.pvd")
+w_file = File("results_eulerian/w.pvd")
+p_file = File("results_eulerian/pressure.pvd")
+d_file = File("results_eulerian/displacement.pvd")
 
 time_array = np.linspace(0,T,(T/dt)+1)
 flux = []
+
 while t <= T:
     print "Time: ",t
+    #inlet.t = t
     solve(lhs(F2)==rhs(F2), w_, bcs_w)
     u_bc.init(w_)
-    #w1.assign(w_)
-    #w1.vector()[:] *= float(k)
 
     solve(F1==0, up_, bcs_u,solver_parameters={"newton_solver": \
     {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
     u,p = up_.split(True)
-    #plot(u, interactive=True,mode="displacement")
+    #plot(u)#, interactive=True,mode="displacement")
 
     flux.append(assemble(dot(u,n)*ds(3)))
     u0.assign(u)
