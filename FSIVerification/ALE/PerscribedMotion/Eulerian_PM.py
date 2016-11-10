@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 set_log_active(False)
 # Mesh
-mesh = RectangleMesh(Point(0,0), Point(2, 1), 10, 10, "right")
+mesh = RectangleMesh(Point(0,0), Point(2, 1), 50, 50, "right")
 
 # FunctionSpaces
 V1 = VectorFunctionSpace(mesh, "CG", 2) # Fluid velocity
@@ -36,11 +36,11 @@ inlet = Expression((("Wm","0")),Wm = Wm)
 class U_bc(Expression):
     def init(self,w):
         self.w = w
-    def eval(self,values,x):
+    def eval(self,value,x):
         #x_value, y_value = self.w.vector()[[x[0], x[1]]]
-        x_value, y_value = self.w(Point(x))
-        values[0] = x_value
-        values[1] = y_value
+        x_value, y_value = self.w(x)
+        value[0] = x_value
+        value[1] = y_value
     def value_shape(self):
         return (2,)
 
@@ -96,7 +96,7 @@ F1 = rho_f*((1.0/k)*inner(u - u0, phi) + inner(dot((u - w_), grad(u)), phi))*dx 
 # laplace d = 0
 F2 =  k*(inner(grad(w), grad(psi))*dx - inner(grad(w)*n, psi)*ds)
 
-T = 2.0
+T = 3.0
 t = 0.0
 time = np.linspace(0,T,(T/dt))
 
@@ -105,14 +105,9 @@ w_file = File("mvelocity/w.pvd")
 p_file = File("mvelocity/pressure.pvd")
 d_file = File("mvelocity/displacement.pvd")
 
-solve(lhs(F2)==rhs(F2), w_, bcs_w)
-u_bc.init(w_)
-
-w_.vector()[:] *= float(k) # gives displacement to be used in ALE.move(w_)
 
 # making another function used to move the mesh
-#w1.assign(w_)
-#w1.vector()[:] *= float(k)
+
 
 #plot(w_,interactive=True)
 
@@ -120,11 +115,15 @@ time_array = np.linspace(0,T,(T/dt)+1)
 flux = []
 while t <= T:
     print "Time: ",t
+    solve(lhs(F2)==rhs(F2), w_, bcs_w)
+    u_bc.init(w_)
+    #w1.assign(w_)
+    #w1.vector()[:] *= float(k)
 
     solve(F1==0, up_, bcs_u,solver_parameters={"newton_solver": \
     {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
     u,p = up_.split(True)
-    #plot(u, interactive=True)
+    #plot(u, interactive=True,mode="displacement")
 
     flux.append(assemble(dot(u,n)*ds(3)))
     u0.assign(u)
@@ -134,7 +133,9 @@ while t <= T:
     #w_file << w_
 
     # To see the mesh move with a give initial w
+    w_.vector()[:] *= float(k) # gives displacement to be used in ALE.move(w_)
     ALE.move(mesh,w_)
+    mesh.bounding_box_tree().build(mesh)
     #plot(mesh)#,interactive = True)
 
     t += dt
