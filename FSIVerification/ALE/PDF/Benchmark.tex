@@ -31,16 +31,23 @@ The velocity in the fluid is denoted $u(\textbf{X},t)$
 We define the deformation gradient $F = I + \nabla d$ and $J = det(F)$
 \subsection*{Balance laws}
 We will formulate the equations in the Eulerian, Lagrangian and the ALE description.
-The Eulerian description suits a fluid problem nicely as the points in the grid are fixed and the fluid particles move through the domain. Whilst the Lagrangian description fits a solid problem as the material particles are fixed with the gridpoints. The fluid velocity vector and the displacement vector are the quantities describing motion of the fluid and solid respectively. Since we here have fluid structure interaction problem we need to formulate the fluid in the ALE description. The fluid velocity will still be the quantity describing motion but it will also have the displacement of the fluid, describing the change in fluid domain. The solid will be described in Lagrangian.
+The Eulerian description suits a fluid problem nicely as the points in the grid are fixed and the fluid particles move through the domain. Whilst the Lagrangian description fits a solid problem as the material particles are fixed with the gridpoints. The fluid velocity vector and the displacement vector are the quantities describing motion of the fluid and solid respectively. Since we here have fluid structure interaction problem we need to formulate the fluid in the ALE description. The fluid velocity will still be the quantity describing motion but it will also have the displacement of the fluid, describing the change in fluid domain. The solid will be described in Lagrangian. We will only look at incompressible fluids where the volume of the fluid domain never change.\\
 We express the solid balance laws in the Lagrangian formulation from the initial configuration
 $$J\rho_s \frac{\partial^2 d}{\partial t^2} = \nabla \sigma_s(d) \hspace{4mm}in\hspace{4mm} \mathcal{\hat{S}} $$
 The fluid equations are denoted from the initial configuration:
 $$ \rho_s J \big( \frac{\partial u}{\partial t} + (\nabla u)F^{-1}(u-w)\big) = \nabla \cdot (J\sigma_f F^{-T} )\hspace{4mm} in \mathcal{\hat{F}}$$
 $$ \nabla \cdot (J u F^{-T}) = 0 \hspace{4mm} in \hspace{2mm} \mathcal{\hat{F}}$$
-$$ \nabla^2 d = 0\hspace{4mm}in \hspace{2mm} \mathcal{\hat{F}}$$
+
+To bind together the computation of fluid and structure domain, we need a harmonic extension to the boundary values. For this purpose define the following equation with the fluid domain deformation:
+$$ \nabla^2 d^f = 0\hspace{4mm}in \hspace{2mm} \mathcal{\hat{F}}$$
+This equation is chosen for its good regularity and smoothing properties.
+
 Boundary conditions:
+The fluid velocity has a given value on the inlet:
 $$ u = u0 \hspace{4mm}on \hspace{2mm} \Gamma^2$$
+We set no slip on the "floor" and "ceiling" so to speak:
 $$ u = 0  \hspace{4mm}on \hspace{2mm} \Gamma^1  $$
+In the place where the fluid and structure domains meet, i.e the interface. We set a dynamic condition saying that the normal stresses of the solid and fluid are equal:
 $$  \sigma_f n_s = \sigma_s n_f \hspace{4mm} on  \hspace{2mm}\Gamma^0 (interface)   $$
 \subsection*{Variational formulation}
 We use 4 testfunctions, $\phi, \psi, \epsilon, \gamma$.
