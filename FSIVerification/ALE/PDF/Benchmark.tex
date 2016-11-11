@@ -48,7 +48,9 @@ $$ u = u0 \hspace{4mm}on \hspace{2mm} \Gamma^2$$
 We set no slip on the "floor" and "ceiling" so to speak:
 $$ u = 0  \hspace{4mm}on \hspace{2mm} \Gamma^1  $$
 In the place where the fluid and structure domains meet, i.e the interface. We set a dynamic condition saying that the normal stresses of the solid and fluid are equal:
-$$  \sigma_f n_s = \sigma_s n_f \hspace{4mm} on  \hspace{2mm}\Gamma^0 (interface)   $$
+$$  \sigma_f n_f = \sigma_s n_s \hspace{4mm} on  \hspace{2mm}\Gamma^0 (interface)   $$
+These will be written in the Lagrangian formulation:
+$$  J\sigma_f F^{-T} n_f = \sigma_s  n_s \hspace{4mm} on  \hspace{2mm}\Gamma^0 (interface)   $$
 \subsection*{Variational formulation}
 We use 4 testfunctions, $\phi, \psi, \epsilon, \gamma$.
 \begin{align*}
