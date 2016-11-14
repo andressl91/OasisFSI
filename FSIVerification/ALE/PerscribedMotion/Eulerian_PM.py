@@ -29,9 +29,9 @@ ds = Measure("ds", subdomain_data = boundaries)
 n = FacetNormal(mesh)
 
 # Boundary conditions
-Wm = -0.1
-#inlet = Expression((("Wm","0")),Wm = Wm)
-inlet = Expression((("sin(pi*t)/3.0","0")),Wm = Wm,t=0)
+Wm = 0.1
+inlet = Expression((("Wm","0")),Wm = Wm)
+#inlet = Expression((("sin(pi*t)/3.0","0")),Wm = Wm,t=0)
 
 # Fluid velocity conditions
 class U_bc(Expression):
@@ -73,7 +73,7 @@ u, p = split(up_)
 u0 = Function(V1)
 w_ = Function(V2)
 
-dt = 0.1
+dt = 0.05
 k = Constant(dt)
 
 # Fluid properties
@@ -95,7 +95,7 @@ F1 = rho_f*((1.0/k)*inner(u - u0, phi) + inner(dot((u - w_), grad(u)), phi))*dx 
 # laplace d = 0
 F2 =  k*(inner(grad(w), grad(psi))*dx - inner(grad(w)*n, psi)*ds)
 
-T = 10.0
+T = 2.0
 t = 0.0
 time = np.linspace(0,T,(T/dt))
 
@@ -104,12 +104,12 @@ w_file = File("results_eulerian/w.pvd")
 p_file = File("results_eulerian/pressure.pvd")
 d_file = File("results_eulerian/displacement.pvd")
 
-time_array = np.linspace(0,T,(T/dt)+1)
+time_array = np.linspace(0,T,(T/dt))
 flux = []
 
 while t <= T:
     print "Time: ",t
-    inlet.t = t
+    #inlet.t = t
     solve(lhs(F2)==rhs(F2), w_, bcs_w)
     u_bc.init(w_)
 

@@ -30,8 +30,8 @@ n = FacetNormal(mesh)
 
 # Boundary conditions
 Wm = 0.1
-#inlet = Expression((("Wm","0")),Wm = Wm,t=0)
-inlet = Expression((("sin(pi*t)/3.0","0")),Wm = Wm,t=0)
+inlet = Expression((("Wm","0")),Wm = Wm,t=0)
+#inlet = Expression((("sin(pi*t)/3.0","0")),Wm = Wm,t=0)
 
 
 # Fluid velocity conditions
@@ -75,7 +75,7 @@ u0 = Function(V1)
 d = Function(V2)
 w_ = Function(V2)
 
-dt = 0.035
+dt = 0.05
 k = Constant(dt)
 
 # Fluid properties
@@ -105,9 +105,9 @@ F1 = J_*rho_f*((1.0/k)*inner(u - u0, phi) + inner(dot(inv(F_)*(u - w_), grad(u))
 # laplace d = 0
 F2 =  k*(inner(grad(w), grad(psi))*dx - inner(grad(w)*n, psi)*ds)
 
-T = 10.0
+T = 2.0
 t = 0.0
-time = np.linspace(0,T,(T/dt))
+time = np.linspace(0,T,(T/dt)-1)
 
 u_file = File("mvelocity/velocity.pvd")
 w_file = File("mvelocity/w.pvd")
@@ -117,11 +117,11 @@ d_file = File("mvelocity/displacement.pvd")
 #w_.vector()[:] *= float(k) # gives displacement to be used in ALE.move(w_)
 
 #plot(w_,interactive=True)
-time_array = np.linspace(0,T,(T/dt)+1)
+time_array = np.linspace(0,T,(T/dt))
 flux = []
 while t <= T:
     print "Time: ",t
-    inlet.t = t
+    #inlet.t = t
     solve(lhs(F2)==rhs(F2), w_, bcs_w)
     u_bc.init(w_)
 
@@ -141,6 +141,6 @@ while t <= T:
     #plot(mesh)#,interactive = True)
 
     t += dt
-#print len(flux),len(time)
+print len(flux),len(time)
 plt.plot(time_array,flux);plt.title("Flux, with N = 50, y=0"); plt.ylabel("Flux out");plt.xlabel("Time");plt.grid();
 plt.show()
