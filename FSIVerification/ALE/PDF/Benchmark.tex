@@ -1,21 +1,19 @@
 \input{preamble}
-\usepackage{amsmath}                                    
+\usepackage{listings}
+\usepackage{amsmath}
 \title{Benchmark}
 \author{Sebastian Gjertsen}
 \begin{document}
 \maketitle
-\section*{Problem Defintion}
-\subsection*{Domain}
-\includegraphics[scale=0.9]{geometry.png}
-The computational domain resembles the classic cfd benchmark with an added bar, with dimensions:
-The box: L = 2.5, H = 0.41
-The bar: l = 0.35, h = 0.02
-The circle is positioned at (0.2, 0.2) making it 0.05 of center from bottom to top, this is done to induce oscillations to a otherwise laminar flow.
 
 \section*{Fluid Structure Interaction Problem formulation in ALE coordinates}
+\subsection*{Introduction}
+Here we will look at the ALE formulation of solving the FSI problem. The ALE approach stands for Arbitrary Lagrangian Eulerian, meaning that we define the fluid problem in an Eulerian framework and the solid problem in an Lagrangian framework. The ALE method can be solved by moving the mesh for each time step, following the structure body movements [Houston paperet]. This approach gives advantages as we can explicitly represent the fluid-structure interface. But problems arise when there are large deformations in solid structure, giving major mesh deformations in the fluid mesh. Another way of approaching the ALE-FSI problem is to used reference or fixed meshes. Instead of refining the mesh for each time step, we instead use a series of mappings to map the solution from a reference mesh and onto our current mesh. First we look at the mapping and identities needed to solve the reference approach to ALE.
+\subsection*{Reference domain}
+\subsection*{Mapping and identites}
 \includegraphics[scale=0.4]{continuum_mapping.png}
 
-To get a monolithic ALE formulation, we need to define a mapping, in the solid domain:
+To get an ALE formulation from a reference frame, we need to define a mapping in the solid domain:
 $$  \chi^s(t) : \hat{\mathcal{S}} \rightarrow \mathcal{S}(t)     $$ 
 We define the $ \hat{\mathcal{S}}$ as the initial stress free configuration, the $\mathcal{S}$ as the reference and the $\mathcal{S}(t)$ as the current configuration.
 The same is for the fluid domain.
@@ -31,11 +29,11 @@ The velocity in the fluid is denoted $u(\textbf{X},t)$
 We define the deformation gradient $F = I + \nabla d$ and $J = det(F)$
 \subsection*{Balance laws}
 We will formulate the equations in the Eulerian, Lagrangian and the ALE description.
-The Eulerian description suits a fluid problem nicely as the points in the grid are fixed and the fluid particles move through the domain. Whilst the Lagrangian description fits a solid problem as the material particles are fixed with the gridpoints. The fluid velocity vector and the displacement vector are the quantities describing motion of the fluid and solid respectively. Since we here have fluid structure interaction problem we need to formulate the fluid in the ALE description. The fluid velocity will still be the quantity describing motion but it will also have the displacement of the fluid, describing the change in fluid domain. The solid will be described in Lagrangian. We will only look at incompressible fluids where the volume of the fluid domain never change.\\
+The Eulerian description suits a fluid problem nicely as the points in the grid are fixed and the fluid particles move through the domain. Whilst the Lagrangian description fits a solid problem as the material particles are fixed with the gridpoints. The fluid velocity vector and the displacement vector are the quantities describing motion of the fluid and solid respectively. Since we here have fluid structure interaction problem we need to formulate the fluid in the fixed mesh description. The fluid velocity will still be the quantity describing motion but it will also have the displacement of the fluid, describing the change in fluid domain. The solid will be described in Lagrangian. We will only look at incompressible fluids where the volume of the fluid domain stays constant.\\
 We express the solid balance laws in the Lagrangian formulation from the initial configuration
-$$J\rho_s \frac{\partial^2 d}{\partial t^2} = \nabla \sigma_s(d) \hspace{4mm}in\hspace{4mm} \mathcal{\hat{S}} $$
+$$J\rho_s \frac{\partial^2 d}{\partial t^2} = \nabla \cdot \sigma_s \hspace{4mm}in\hspace{4mm} \mathcal{\hat{S}} $$
 The fluid equations are denoted from the initial configuration:
-$$ \rho_s J \big( \frac{\partial u}{\partial t} + (\nabla u)F^{-1}(u-w)\big) = \nabla \cdot (J\sigma_f F^{-T} )\hspace{4mm} in \mathcal{\hat{F}}$$
+$$ \rho_f J \big( \frac{\partial u}{\partial t} + (\nabla u)F^{-1}(u-w)\big) = \nabla \cdot (J\sigma_f F^{-T} )\hspace{4mm} in \mathcal{\hat{F}}$$
 $$ \nabla \cdot (J u F^{-T}) = 0 \hspace{4mm} in \hspace{2mm} \mathcal{\hat{F}}$$
 
 To bind together the computation of fluid and structure domain, we need a harmonic extension to the boundary values. For this purpose define the following equation with the fluid domain deformation:
@@ -51,10 +49,32 @@ In the place where the fluid and structure domains meet, i.e the interface. We s
 $$  \sigma_f n_f = \sigma_s n_s \hspace{4mm} on  \hspace{2mm}\Gamma^0 (interface)   $$
 These will be written in the Lagrangian formulation:
 $$  J\sigma_f F^{-T} n_f = \sigma_s  n_s \hspace{4mm} on  \hspace{2mm}\Gamma^0 (interface)   $$
+
+\subsection*{Domain move}
+Here we will look at the approach involving moving the mesh each time step. \\
+The fluid equation is simply Navier-Stokes with a domain mapping in the transport term giving:
+$$ \rho_f \big( \frac{\partial u}{\partial t} + (\nabla u)(u-w)\big) = \nabla \cdot \sigma_f \hspace{4mm} in \mathcal{F}$$
+$$ \nabla \cdot u = 0  \hspace{4mm} in \hspace{4mm} \mathcal{F} $$
+After each timestep we update the mesh and compute this equation over the current mesh. The real velocity of the fluid particles is there for the fluid velocity itself minus the velocity of the mesh. 
+
+The solid equations will be formulated similar to before but we can write them with the displacement velocity: $ \frac{\partial d}{\partial t} = u_f $:
+$$ \rho_s \frac{\partial u_f}{\partial t} = \nabla \cdot \sigma_s \hspace{4mm}in\hspace{4mm} \mathcal{\hat{S}} $$
+Laplace operator:
+$$ \nabla^2 d_f = 0\hspace{4mm}in \hspace{2mm} \mathcal{\hat{F}}$$
+
+Boundary conditions stay the same but without mappings:
+$$ u = u0 \hspace{4mm}on \hspace{2mm} \Gamma^2$$
+We set no slip on the "floor" and "ceiling" so to speak:
+$$ u = 0  \hspace{4mm}on \hspace{2mm} \Gamma^1  $$
+$$  \sigma_f n_f = \sigma_s n_s \hspace{4mm} on  \hspace{2mm}\Gamma^0 (interface)   $$
+
+The two approaches to the ALE method is equivalent [Godboka]. 
+From a technical point of view, both formulations are equivalent. Wether we use a fixed and reference formulation or a moving mesh and Eulerian formulation. 
 \subsection*{Variational formulation}
+We start by looking at the variational formulation for the reference domain.
 We use 4 testfunctions, $\phi, \psi, \epsilon, \gamma$.
 \begin{align*}
-\rho_s J \big( \frac{\partial u}{\partial t} + (\nabla u)F^{-1}(u-w) , \phi\big)_{\mathcal{\hat{F}}} + (J\sigma_f F^{-T},\nabla \phi )_{\mathcal{\hat{F}}} &= 0  \\
+\rho_f J \big( \frac{\partial u}{\partial t} + (\nabla u)F^{-1}(u-w) , \phi\big)_{\mathcal{\hat{F}}} + (J\sigma_f F^{-T},\nabla \phi )_{\mathcal{\hat{F}}} &= 0  \\
  \big( \nabla \cdot (J u F^{-T}),\gamma \big)_{\mathcal{\hat{F}}} &= 0 \\
 \big(J\rho_s \frac{\partial^2 d}{\partial t^2},\psi \big)_{\mathcal{\hat{S}}} + \big(F \sigma_s(d), \nabla \psi \big)_{\mathcal{\hat{S}}} &=0 \\
  \big( \nabla d , \nabla \epsilon \big)_{\mathcal{\hat{F}}} &= 0 \\
@@ -63,5 +83,107 @@ We use 4 testfunctions, $\phi, \psi, \epsilon, \gamma$.
  \big( \nabla (dt\cdot w + d^0) , \nabla \epsilon \big)_{\mathcal{\hat{F}}} &= 0 
 \end{align*}
 
+We then look at the variational formulation for moving the mesh, here we employ a global function for u in the fluid and solid. Which is the fluid velocity in the fluid domain and displacement velocity solid domain. And in the last equation we force $w$ to be the solid displacement in the solid domain.
+\begin{align*}
+\rho_f \big( \frac{\partial u}{\partial t} + (\nabla u)(u-w) , \phi\big)_{\mathcal{F}} + (\sigma_f ,\nabla \phi )_{\mathcal{F}} &= 0  \\
+ \big( \nabla \cdot (u ),\gamma \big)_{\mathcal{F}} &= 0 \\
+\big(\rho_s \frac{\partial u}{\partial t},\phi \big)_{\mathcal{S}} + \big( \sigma_s(d), \nabla \phi \big)_{\mathcal{S}} &=0 \\
+ \big( \nabla d , \nabla \epsilon \big)_{\mathcal{F}} &= 0 \\
+ \big( w- u,\epsilon \big)_{\mathcal{S}} &= 0 \\
+\end{align*}
+
+
+\section*{Prescribed motion}
+First we intend to test if the fluid equation with and without mapping will respond to a given structural motion. To do this we look at a rectangular mesh (height = 1, width = 2) with a given structural velocity (w0,0) on the left inlet.
+\subsection*{Mesh move}
+First we have the boundary conditions for w: \\
+$ w = (w0,0)$ on the inlet and $w = (0,0)$ on the outlet 
+We first solve the laplace equation with w.
+$$\Delta t\cdot (\nabla w, \nabla \psi)_{\mathcal{F}} $$
+This gives us a w that we use to solve the fluid problem:
+$$\rho_f \big( \frac{\partial u}{\partial t} + (\nabla u)(u-w) , \phi\big)_{\mathcal{F}} + (\sigma_f ,\nabla \phi )_{\mathcal{F}} = 0  $$
+$$\big( \nabla \cdot u ,\gamma \big)_{\mathcal{F}} = 0 $$
+With boundary conditions $u = (w_0,0)$ on the inlet. "Do nothing" on the oulet. And we set $u = (w_x, w_y)$ from the computed w on the top and bottom.
+After the fluid is computed we take the calculated w and times it by $\Delta t$ to get the displacement. This is then used to move the mesh. Then we do the calculations with the new mesh, and this process continues.
+\subsubsection{Fenics code}
+\begin{lstlisting}[frame=single]
+# laplace d = 0
+F2 =  k*(inner(grad(w), grad(psi))*dx \\
+    - inner(grad(w)*n, psi)*ds)
+
+# Fluid variational form
+F1 = rho_f*((1.0/k)*inner(u - u0, phi) \
+    + inner(dot((u - w_), grad(u)), phi))*dx \
+    + inner(sigma_fluid(p, u), grad(phi))*dx \
+    - inner(div(u), gamma)*dx\
+    - inner(sigma_fluid(p,u)*n, phi)*ds
+\end{lstlisting}
+The fluid velocity boundary is set in this fashion:
+\begin{lstlisting}[frame=single]
+
+# Fluid velocity conditions
+class U_bc(Expression):
+    def init(self,w):
+        self.w = w
+    def eval(self,value,x):
+        #x_value, y_value = self.w.vector()[[x[0], x[1]]]
+        x_value, y_value = self.w(x)
+        value[0] = x_value
+        value[1] = y_value
+    def value_shape(self):
+        return (2,)
+      
+# instance of the class U_bc      
+u_bc = U_bc(degree=2)
+
+while t <= T:
+    print "Time: ",t
+    inlet.t = t
+    solve(lhs(F2)==rhs(F2), w_, bcs_w)
+    u_bc.init(w_)
+
+    solve(F1==0, up_, bcs_u,solver_parameters={"newton_solver": \
+    {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
+    u,p = up_.split(True)
+    plot(u)#, interactive=True,mode="displacement")
+
+    flux.append(assemble(dot(u,n)*ds(3)))
+    u0.assign(u)
+
+    u_file << u
+    #p_file << p
+    #w_file << w_
+
+    # To see the mesh move with a give initial w
+    w_.vector()[:] *= float(k) # gives displacement to be used in ALE.move(w_)
+    ALE.move(mesh,w_)
+    mesh.bounding_box_tree().build(mesh)
+    #plot(mesh)#,interactive = True)
+
+    t += dt
+
+\end{lstlisting}
+
+
+\newpage
+
+\section*{Problem Defintion}
+\subsection*{Domain}
+\includegraphics[scale=0.9]{geometry.png}
+The computational domain resembles the classic cfd benchmark with an added bar, with dimensions:
+The box: L = 2.5, H = 0.41
+The bar: l = 0.35, h = 0.02
+The circle is positioned at (0.2, 0.2) making it 0.05 of center from bottom to top, this is done to induce oscillations to a otherwise laminar flow.
+
+
+
+
+\bibliographystyle{plain}
+@article{quaini2014extended,
+  title={An extended ALE method for fluid-structure interaction problems with large structural displacements},
+  author={Quaini S ?Canic, S Basting A and Glowinski, R},
+  year={2014}
+}
+\bibliography{./Cite/cites}
 
 \end{document}
