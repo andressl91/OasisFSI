@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 set_log_active(True)
 # Mesh
-mesh = RectangleMesh(Point(0,0), Point(2, 1), 50, 50, "right")
+mesh = RectangleMesh(Point(0,0), Point(2, 1), 20, 20, "crossed")
 
 # FunctionSpaces
 V1 = VectorFunctionSpace(mesh, "CG", 2) # Fluid velocity
@@ -23,7 +23,7 @@ Allboundaries.mark(boundaries, 1)
 Inlet.mark(boundaries, 2)
 Outlet.mark(boundaries, 3)
 Wall.mark(boundaries, 4)
-#plot(boundaries,interactive=True)
+plot(boundaries,interactive=True)
 
 ds = Measure("ds", subdomain_data = boundaries)
 n = FacetNormal(mesh)
@@ -39,9 +39,9 @@ class U_bc(Expression):
         self.w = w
     def eval(self,value,x):
         #x_value, y_value = self.w.vector()[[x[0], x[1]]]
-        x_value, y_value = self.w(x)
-        value[0] = x_value
-        value[1] = y_value
+        value[0], value[1] = self.w(x)
+        #value[0] = x_value
+        #value[1] = y_value
     def value_shape(self):
         return (2,)
 
@@ -73,7 +73,7 @@ u, p = split(up_)
 u0 = Function(V1)
 w_ = Function(V2)
 
-dt = 0.05
+dt = 0.02
 k = Constant(dt)
 
 # Fluid properties
@@ -105,6 +105,7 @@ p_file = File("results_eulerian/pressure.pvd")
 d_file = File("results_eulerian/displacement.pvd")
 
 time_array = np.linspace(0,T,(T/dt))
+print(len(time_array))
 flux = []
 
 while t <= T:
@@ -132,6 +133,7 @@ while t <= T:
     #plot(mesh)#,interactive = True)
 
     t += dt
-plt.plot(time,flux);plt.title("Flux, with N = 50, y=0"); plt.ylabel("Flux out");plt.xlabel("Time");plt.grid();
+print len(time_array),len(flux)
+plt.plot(time_array,flux);plt.title("Flux, with N = 50, y=0"); plt.ylabel("Flux out");plt.xlabel("Time");plt.grid();
 plt.show()
 # Post processing

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 set_log_active(True)
 # Mesh
-mesh = RectangleMesh(Point(0,0), Point(2, 1), 50, 50, "right")
+mesh = RectangleMesh(Point(0,0), Point(2, 1), 20, 20, "crossed")
 
 # FunctionSpaces
 V1 = VectorFunctionSpace(mesh, "CG", 2) # Fluid velocity
@@ -23,7 +23,7 @@ Allboundaries.mark(boundaries, 1)
 Inlet.mark(boundaries, 2)
 Outlet.mark(boundaries, 3)
 Wall.mark(boundaries, 4)
-#plot(boundaries,interactive=True)
+plot(boundaries,interactive=True)
 
 ds = Measure("ds", subdomain_data = boundaries)
 n = FacetNormal(mesh)
@@ -75,7 +75,7 @@ u0 = Function(V1)
 d = Function(V2)
 w_ = Function(V2)
 
-dt = 0.05
+dt = 0.2
 k = Constant(dt)
 
 # Fluid properties
@@ -105,9 +105,8 @@ F1 = J_*rho_f*((1.0/k)*inner(u - u0, phi) + inner(dot(inv(F_)*(u - w_), grad(u))
 # laplace d = 0
 F2 =  k*(inner(grad(w), grad(psi))*dx - inner(grad(w)*n, psi)*ds)
 
-T = 2.0
+T = 10.0
 t = 0.0
-time = np.linspace(0,T,(T/dt)-1)
 
 u_file = File("mvelocity/velocity.pvd")
 w_file = File("mvelocity/w.pvd")
@@ -117,7 +116,7 @@ d_file = File("mvelocity/displacement.pvd")
 #w_.vector()[:] *= float(k) # gives displacement to be used in ALE.move(w_)
 
 #plot(w_,interactive=True)
-time_array = np.linspace(0,T,(T/dt))
+time_array = np.linspace(0,T,(T/dt)+1)
 flux = []
 while t <= T:
     print "Time: ",t
@@ -129,7 +128,7 @@ while t <= T:
     {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
     u,p = up_.split(True)
     #print "u-w : ", assemble(dot(u-w_,n)*ds(4))
-    #plot(u)
+    plot(u)
     flux.append(assemble(J_*dot(u,n)*ds(3)))
     u0.assign(u)
     u_file << u
@@ -141,6 +140,6 @@ while t <= T:
     #plot(mesh)#,interactive = True)
 
     t += dt
-print len(flux),len(time)
+print len(flux),len(time_array)
 plt.plot(time_array,flux);plt.title("Flux, with N = 50, y=0"); plt.ylabel("Flux out");plt.xlabel("Time");plt.grid();
 plt.show()
