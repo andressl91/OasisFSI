@@ -30,8 +30,8 @@ n = FacetNormal(mesh)
 
 # Boundary conditions
 Wm = 0.1
-inlet = Expression((("Wm","0")),Wm = Wm)
-#inlet = Expression((("sin(pi*t)/3.0","0")),Wm = Wm,t=0)
+#inlet = Expression((("Wm","0")),Wm = Wm)
+inlet = Expression((("sin(pi*t)/3.0","0")),Wm = Wm,t=0)
 
 # Fluid velocity conditions
 class U_bc(Expression):
@@ -110,7 +110,7 @@ flux = []
 
 while t <= T:
     print "Time: ",t
-    #inlet.t = t
+    inlet.t = t
     solve(lhs(F2)==rhs(F2), w_, bcs_w)
     u_bc.init(w_)
 
@@ -134,6 +134,6 @@ while t <= T:
 
     t += dt
 print len(time_array),len(flux)
-plt.plot(time_array,flux);plt.title("Flux, with N = 50, y=0"); plt.ylabel("Flux out");plt.xlabel("Time");plt.grid();
+plt.plot(time_array,flux);plt.title("Flux, with N = 50"); plt.ylabel("Flux out");plt.xlabel("Time");plt.grid();
 plt.show()
 # Post processing
