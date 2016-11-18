@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2016.2.23)  14 NOV 2016 14:04
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2016.2.23)  14 NOV 2016 15:21
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -413,23 +413,65 @@ Overfull \hbox (122.88931pt too wide) in paragraph at lines 158--159
 [][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][] 
  []
 
-[5] <geometry.png, id=36, 399.4925pt x 127.47626pt>
+[5]
+Overfull \hbox (8.91628pt too wide) in paragraph at lines 172--173
+[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][] 
+ []
+
+<ALE_vector_plot.png, id=36, 919.435pt x 540.0175pt>
+File: ALE_vector_plot.png Graphic file (type png)
+ <use ALE_vector_plot.png>
+Package pdftex.def Info: ALE_vector_plot.png used on input line 180.
+(pdftex.def)             Requested size: 367.76749pt x 216.00316pt.
+
+<E_vector_plot.png, id=37, 919.435pt x 540.0175pt>
+File: E_vector_plot.png Graphic file (type png)
+ <use E_vector_plot.png>
+Package pdftex.def Info: E_vector_plot.png used on input line 182.
+(pdftex.def)             Requested size: 367.76749pt x 216.00316pt.
+
+<FluxPlot_ALE_N_50_dt_005.png, id=38, 578.16pt x 433.62pt>
+File: FluxPlot_ALE_N_50_dt_005.png Graphic file (type png)
+
+<use FluxPlot_ALE_N_50_dt_005.png>
+Package pdftex.def Info: FluxPlot_ALE_N_50_dt_005.png used on input line 184.
+(pdftex.def)             Requested size: 231.2599pt x 173.44492pt.
+
+<FluxPlot_E_N_50_dt_005.png, id=40, 578.16pt x 433.62pt>
+File: FluxPlot_E_N_50_dt_005.png Graphic file (type png)
+
+<use FluxPlot_E_N_50_dt_005.png>
+Package pdftex.def Info: FluxPlot_E_N_50_dt_005.png used on input line 186.
+(pdftex.def)             Requested size: 231.2599pt x 173.44492pt.
+
+Overfull \hbox (22.76749pt too wide) in paragraph at lines 179--187
+[]
+ []
+
+
+Overfull \hbox (22.76749pt too wide) in paragraph at lines 179--187
+[]
+ []
+
+[6 <./ALE_vector_plot.png (PNG copy)>] [7 <./E_vector_plot.png (PNG copy)> <./F
+luxPlot_ALE_N_50_dt_005.png> <./FluxPlot_E_N_50_dt_005.png>]
+<geometry.png, id=50, 399.4925pt x 127.47626pt>
 File: geometry.png Graphic file (type png)
  <use geometry.png>
-Package pdftex.def Info: geometry.png used on input line 172.
+Package pdftex.def Info: geometry.png used on input line 200.
 (pdftex.def)             Requested size: 359.53992pt x 114.72755pt.
 
-Overfull \hbox (14.53992pt too wide) in paragraph at lines 172--177
+Overfull \hbox (14.53992pt too wide) in paragraph at lines 200--205
 []
  []
 
 No file Benchmark.bbl.
-[6 <./geometry.png>] (./Benchmark.aux) ) 
+[8 <./geometry.png>] (./Benchmark.aux) ) 
 Here is how much of TeX's memory you used:
- 6173 strings out of 493089
- 87699 string characters out of 6134842
+ 6193 strings out of 493089
+ 88225 string characters out of 6134842
  181479 words of memory out of 5000000
- 9572 multiletter control sequences out of 15000+600000
+ 9588 multiletter control sequences out of 15000+600000
  16323 words of font info for 40 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  46i,12n,42p,931b,1577s stack positions out of 5000i,500n,10000p,200000b,80000s
@@ -449,10 +491,10 @@ super/sfbx1440.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/cm-su
 per/sfrm1000.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/cm-supe
 r/sfrm1200.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/cm-super/
 sfrm1728.pfb>
-Output written on Benchmark.pdf (7 pages, 184134 bytes).
+Output written on Benchmark.pdf (9 pages, 430334 bytes).
 PDF statistics:
- 87 PDF objects out of 1000 (max. 8388607)
- 61 compressed objects within 1 object stream
+ 100 PDF objects out of 1000 (max. 8388607)
+ 66 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
- 11 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 31 words of extra memory for PDF output out of 10000 (max. 10000000)
 

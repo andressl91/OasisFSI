@@ -8,7 +8,7 @@
 
 \section*{Fluid Structure Interaction Problem formulation in ALE coordinates}
 \subsection*{Introduction}
-Here we will look at the ALE formulation of solving the FSI problem. The ALE approach stands for Arbitrary Lagrangian Eulerian, meaning that we define the fluid problem in an Eulerian framework and the solid problem in an Lagrangian framework. The ALE method can be solved by moving the mesh for each time step, following the structure body movements [Houston paperet]. This approach gives advantages as we can explicitly represent the fluid-structure interface. But problems arise when there are large deformations in solid structure, giving major mesh deformations in the fluid mesh. Another way of approaching the ALE-FSI problem is to used reference or fixed meshes. Instead of refining the mesh for each time step, we instead use a series of mappings to map the solution from a reference mesh and onto our current mesh. First we look at the mapping and identities needed to solve the reference approach to ALE.
+Here we will look at the ALE formulation of solving the FSI problem. The ALE approach stands for Arbitrary Lagrangian Eulerian, meaning that we define the fluid problem in an Eulerian framework and the solid problem in an Lagrangian framework. The ALE method can be solved by moving the mesh for each time step, following the structure body movements [Houston paperet]. This approach gives advantages as we can explicitly represent the fluid-structure interface. But problems arise when there are large deformations in solid structure, giving major mesh deformations in the fluid mesh. Another way of approaching the ALE-FSI problem is to used reference or fixed meshes. Instead of updating the mesh for each time step, we instead use a series of mappings to map the solution from a reference mesh and onto our current mesh. First we look at the mapping and identities needed to solve the reference approach to ALE.
 \subsection*{Reference domain}
 \subsection*{Mapping and identites}
 \includegraphics[scale=0.4]{continuum_mapping.png}
@@ -161,8 +161,36 @@ while t <= T:
     #plot(mesh)#,interactive = True)
 
     t += dt
-
 \end{lstlisting}
+
+\subsection*{Reference mapping}
+With the reference frame of mind. We solve the problem in a similar fashion as before but with a the mappings in the fluid equation:
+
+\begin{lstlisting}[frame=single]
+F1 = J_*rho_f*((1.0/k)*inner(u - u0, phi) \
+    + inner(dot(inv(F_)*(u - w_), grad(u)), phi))*dx \
+    + inner(J_*sigma_fluid(p, u)*inv(F_.T), grad(phi))*dx \
+    - inner(div(J_*inv(F_.T)*u), gamma)*dx\
+    - inner(J_*sigma_fluid(p,u)*inv(F_.T)*n, phi)*ds
+\end{lstlisting}
+
+\subsection*{Results}
+
+Reference:\\
+\includegraphics[scale=0.4]{ALE_vector_plot.png}
+Moving mesh:\\
+\includegraphics[scale=0.4]{E_vector_plot.png}
+Reference:\\
+\includegraphics[scale=0.4]{FluxPlot_ALE_N_50_dt_005.png}
+Moving mesh:\\
+\includegraphics[scale=0.4]{FluxPlot_E_N_50_dt_005.png}
+
+
+
+
+
+
+
 
 
 \newpage

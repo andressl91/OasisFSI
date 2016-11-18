@@ -75,11 +75,11 @@ w_circle  = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 6)
 #d_barwall = DirichletBC(VVQ.sub(2), ((0, 0)), boundaries, 7)
 
 #Pressure Conditions
-#p_out = DirichletBC(VVQ.sub(2), 0, boundaries, 4)
+p_out = DirichletBC(VVQ.sub(2), 0, boundaries, 4)
 
 #Assemble boundary conditions
 bcs = [u_inlet, u_wall, u_circ,\
-       w_wall, w_inlet, w_outlet, w_circle]#,w_bar]
+       w_wall, w_inlet, w_outlet, w_circle,p_out]#,w_bar]
 # AREAS
 
 Bar_area = AutoSubDomain(lambda x: (0.19 <= x[1] <= 0.21) and 0.24<= x[0] <= 0.6) # only the "flag" or "bar"
@@ -136,32 +136,41 @@ def sigma_fluid(p, u): #NEWTONIAN FLUID
     return -p*Identity(2) + 2*mu_f * sym(grad(u))
 def sigma_structure(d): #NEWTONIAN FLUID
     return 2*mu_s*sym(grad(d)) + lamda_s*tr(sym(grad(d)))*Identity(2)
+
 def eps(u):
     return sym(grad(u))
 
 delta = 1.0E-8
 d = d0 + k*u
-F = I + grad(u)
+I = Identity(2)
+F = I + grad(d)
 J = det(F)
 # Fluid variational form
-F_fluid = (rho_f/k)*inner(u - u0,phi)*dx_f +  rho_f*inner(dot(grad(u0),(u - w)), phi)*dx_f \
-+ inner(sigma_fluid(p,u),grad(phi))*dx_f - inner(div(u),gamma)*dx_f
+#F_fluid = (rho_f/k)*inner(u - u0,phi)*dx_f +  rho_f*inner(dot(grad(u0),(u - w)), phi)*dx_f \
+#+ inner(sigma_fluid(p,u),grad(phi))*dx_f - inner(div(u),gamma)*dx_f
+F_fluid = (rho_f/k)*inner(u - u0, phi)*dx_f + rho_f*inner((u - w) * grad(u0), phi)*dx_f \
+            #+ inner(sigma_fluid(p, u), grad(phi))*dx_f \
+            #- inner(div(u), gamma)*dx_f\
+            #- inner(sigma_fluid(p,u)*n, phi)*ds
+
 
 #Displacement velocity is equal to mesh velocity on dx_s
 F_last = (1./delta)*inner(u,psi)*dx_s - (1./delta)*inner(w,psi)*dx_s
 
 #Laplace
-F_laplace = k*inner(grad(w),grad(psi))*dx_f+inner(grad(d0),grad(psi))*dx_f \
+F_laplace =  k*(inner(grad(w), grad(psi))*dx_f - inner(grad(w)*n, psi)*ds)
+
+#F_laplace = k*inner(grad(w),grad(psi))*dx_f+inner(grad(d0),grad(psi))*dx_f \
 	       #- k*inner(grad(w('-'))*n('-'),psi('-'))*dS(5)\
 	       #+ inner(grad(d0('-'))*n('-'),psi('-'))*dS(5)
 
 # Structure Variational form
 F_structure = (rho_s/k)*inner(u-u0,phi)*dx_s + rho_s*inner(dot(grad(u0),u),phi)*dx_s  \
- + inner(sigma_structure(d),grad(phi))*dx_s# + k*inner(sigma_structure(u),grad(phi))*dx_s
+                + inner(sigma_structure(d0),grad(phi))*dx_s \
+                #- inner(sigma_structure(d),grad(phi))*ds  # + k*inner(sigma_structure(u),grad(phi))*dx_s
 
 
-
-F = F_fluid + F_structure  + F_laplace + F_last
+F = F_fluid #+ F_structure  + F_laplace + F_last
 a = lhs(F)
 L = rhs(F)
 
@@ -176,32 +185,7 @@ p_file = File("mvelocity/pressure.pvd")
 
 uwp1 = Function(VVQ)
 #b = assemble(L)
-"""eps = 10
-k_iter = 0
-max_iter = 2
-while eps > 1E-5 and k_iter <max_iter:
-    A = assemble(a)
-    A.ident_zeros()
-    [bc.apply(A,b) for bc in bcs]
-    solve(A,uwp1.vector(),b)
-    u_, w_, p_ = uwp1.split(True)
-    eps = errornorm(u_,u1,degree_rise=3)
-    k_iter += 1
-    print "iterations",k_iter, "error",eps
-    u1.assign(u_)
-#solve(F==0,uwp,bcs)
-#u_, w_, p_ = uwp.split(True)
-w_.vector()[:] *= float(k)
-d0.vector()[:] += w_.vector()[:]
-ALE.move(mesh,w_)
-mesh.bounding_box_tree().build(mesh)
-print d0(coord)[0]
-print d0(coord)[1]
-plot(u_,interactive=True)
-#solve(lhs(F)==rhs(F), uwp1, bcs)#, solver_parameters={"newton_solver": \
-#{"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":0.5}})
 
-"""
 dis_x = []
 dis_y = []
 counter = 0
@@ -213,35 +197,14 @@ while t <= T:
         inlet.t = t;
     if t >= 2:
         inlet.t = 2;
-    """
-    b = assemble(L)
-    eps = 10
-    k_iter = 0
-    max_iter = 10
-    while eps > 1E-5 and k_iter <max_iter:
-        A = assemble(a)
-        A.ident_zeros()
-        [bc.apply(A,b) for bc in bcs]
-        solve(A,uwp1.vector(),b,"lu")
-        u_, w_, p_ = uwp1.split(True)
 
-        eps = errornorm(u_,u1,degree_rise=3)
-        k_iter += 1
-        print "iterations",k_iter, "error",eps
-        u1.assign(u_)"""
-    #solve(lhs(F)==rhs(F), uwp1, bcs)#, solver_parameters={"newton_solver": \
-    #{"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":0.5}})
-
-
-    #dis_x.append(d(coord)[0])
-    #dis_y.append(d(coord)[1])
     solve(a==L,uwp1,bcs)
     u_,w_,p_ = uwp1.split(True)
     w_.vector()[:] *= float(k)
     d0.vector()[:] += w_.vector()[:]
     ALE.move(mesh,w_)
     mesh.bounding_box_tree().build(mesh)
-    #plot(u_)#,interactive=True)
+    plot(u_)#,interactive=True)
     u0.assign(u_)
     if counter%10==0:
         u_file <<u_
