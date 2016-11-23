@@ -11,7 +11,7 @@ for coord in mesh.coordinates():
         break
 
 
-V1 = VectorFunctionSpace(mesh, "CG", 1) # Fluid velocity
+V1 = VectorFunctionSpace(mesh, "CG", 2) # Fluid velocity
 V2 = VectorFunctionSpace(mesh, "CG", 1) # displacement
 Q  = FunctionSpace(mesh, "CG", 1)       # Fluid Pressure
 
@@ -29,6 +29,9 @@ Barwall =  AutoSubDomain(lambda x: "on_boundary" and (( (x[0] - 0.2)*(x[0] - 0.2
 
 Allboundaries = DomainBoundary()
 
+Bar_area = AutoSubDomain(lambda x: (0.19 <= x[1] <= 0.21) and 0.24<= x[0] <= 0.6) # only the "flag" or "bar"
+
+
 boundaries = FacetFunction("size_t",mesh)
 boundaries.set_all(0)
 Allboundaries.mark(boundaries, 1)
@@ -38,6 +41,7 @@ Outlet.mark(boundaries, 4)
 Bar.mark(boundaries, 5)
 Circle.mark(boundaries, 6)
 Barwall.mark(boundaries, 7)
+#Bar_area.mark(boundaries, 8)
 #plot(boundaries,interactive=True)
 
 
@@ -45,9 +49,18 @@ ds = Measure("ds", subdomain_data = boundaries)
 dS = Measure("dS", subdomain_data = boundaries)
 n = FacetNormal(mesh)
 
+
+domains = CellFunction("size_t",mesh)
+domains.set_all(1)
+Bar_area.mark(domains,2) #Overwrites structure domain
+dx = Measure("dx",subdomain_data=domains)
+#plot(domains,interactive = True)
+dx_f = dx(1,subdomain_data=domains)
+dx_s = dx(2,subdomain_data=domains)
+
 #BOUNDARY CONDITIONS
 
-Um = 2.0
+Um = 0.2
 H = 0.41
 L = 2.5
 # "
@@ -74,22 +87,15 @@ d_barwall = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 7) #No slip on geo
 
 #Pressure Conditions
 p_out = DirichletBC(VVQ.sub(2), 0, boundaries, 4)
+#p_bar = DirichletBC(VVQ.sub(2), Constant(0), boundaries, 8)
 
 #Assemble boundary conditions
 bcs = [u_inlet, u_wall, u_circ, u_barwall,\
        d_wall, d_inlet, d_outlet, d_circle,d_barwall,\
-       p_out]#,w_bar]
+       p_out]#,p_bar]
 # AREAS
 
-Bar_area = AutoSubDomain(lambda x: (0.19 <= x[1] <= 0.21) and 0.24<= x[0] <= 0.6) # only the "flag" or "bar"
 
-domains = CellFunction("size_t",mesh)
-domains.set_all(1)
-Bar_area.mark(domains,2) #Overwrites structure domain
-dx = Measure("dx",subdomain_data=domains)
-#plot(domains,interactive = True)
-dx_f = dx(1,subdomain_data=domains)
-dx_s = dx(2,subdomain_data=domains)
 
 
 # TEST TRIAL FUNCTIONS
@@ -121,7 +127,7 @@ mu_f    = Constant(1.0)
 
 #Structure properties
 rho_s = 1.0E3
-mu_s = 2.0E6
+mu_s = 0.5E6
 nu_s = 0.4
 E_1 = 1.4E6
 lamda_s = nu_s*2*mu_s/(1-2*nu_s)
@@ -157,9 +163,11 @@ def Newton_manual(F, udp, bcs, atol, rtol, max_it, lmbda,udp_res):
         [bc.apply(A, b, udp.vector()) for bc in bcs]
 
         #solve(A, udp_res.vector(), b, "superlu_dist")
-        solve(A, udp_res.vector(), b, "lu")
 
-        udp.vector().axpy(1., udp_res.vector())
+        solve(A, udp_res.vector(), b)#, "lu")
+
+        udp.vector()[:] = udp.vector()[:] + lmbda*udp_res.vector()[:]
+        #udp.vector().axpy(1., udp_res.vector())
         [bc.apply(udp.vector()) for bc in bcs]
         rel_res = norm(udp_res, 'l2')
         residual = b.norm('l2')
@@ -218,10 +226,11 @@ h =  mesh.hmin()
 #F_ = I + grad(d0)
 #J = det(F_)
 # Fluid variational form
-F_fluid = J(d)*rho_f*(1.0/k)*inner(u - u0, phi)*dx_f + J(d)*inner(dot(inv(F(d))*(u - ((d-d0)/k)), grad(u0)), phi)*dx_f \
+F_fluid = J(d)*rho_f*(1.0/k)*inner(u - u0, phi)*dx_f \
+        + J(d)*inner(dot(inv(F(d))*(u - ((d-d0)/k)), grad(u)), phi)*dx_f \
      + inner(sigma_f_hat(u,p,d), grad(phi))*dx_f \
      - inner(div(J(d)*inv(F(d))*u), gamma)*dx_f\
-     - 0.5*h*h*inner(J(d)*inv(F(d))*grad(p),grad(gamma))*dx_f
+     #- 0.5*h*h*inner(J(d)*inv(F(d))*grad(p),grad(gamma))*dx_f
      #- inner(J*sigma_fluid(p,u)*inv(F_.T)*n, phi)*ds
 
 # Structure var form
@@ -235,7 +244,7 @@ F_laplace =  inner(grad(d), grad(psi))*dx_f #- inner(grad(d)*n, psi)*ds
 
 F = F_fluid + F_structure + F_w + F_laplace
 
-T = 10.0
+T = 3.0
 t = 0.0
 time = []
 
@@ -243,16 +252,17 @@ u_file = File("mvelocity/ref/velocity.pvd")
 d_file = File("mvelocity/ref/d.pvd")
 p_file = File("mvelocity/ref/pressure.pvd")
 
-[bc.apply(udp0.vector()) for bc in bcs]
+#[bc.apply(udp0.vector()) for bc in bcs]
+#[bc.apply(udp.vector()) for bc in bcs]
 
 
 dis_x = []
 dis_y = []
 counter = 0
+t = dt
 while t <= T:
     time.append(t)
-    if MPI.rank(mpi_comm_world()) == 0:
-        print "Time t = %.3f" % t
+    print "Time t = %.5f" % t
 
     if t < 2:
         inlet.t = t;
@@ -261,26 +271,27 @@ while t <= T:
 
     #J1 = J(d0)
     #Reset counters
-    atol = 1e-7;rtol = 1e-7; max_it = 100; lmbda = 1;
+    atol = 1e-7;rtol = 1e-7; max_it = 100; lmbda = 1.0;
     udp = Newton_manual(F, udp, bcs, atol, rtol, max_it, lmbda,udp_res)
 
     #solve(lhs(F)==rhs(F),udp,bcs)
     u,d,p = udp.split(True)
     udp0.assign(udp)
 
-    print norm(u), norm(d),norm(p)
     #plot(u)
     #if counter%10==0:
-    u_file <<u
-    d_file <<d
-    print integrateFluidStress(p, u)
+    if MPI.rank(mpi_comm_world()) == 0:
+        u_file <<u
+        d_file <<d
+        print "u-norm:",norm(u),"d-norm:", norm(d),"p-norm:",norm(p)
+        print "Drag: %.4f , Lift: %.4f  "%(integrateFluidStress(p, u))
 
-    dis_x.append(d(coord)[0])
-    dis_y.append(d(coord)[1])
+        dis_x.append(d(coord)[0])
+        dis_y.append(d(coord)[1])
 
     t += dt
     counter +=1
 plt.plot(time,dis_x,); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
-plt.show()
+plt.savefig("results/dis_x.png")
 plt.plot(time,dis_y,);plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
-plt.show()
+plt.savefig("results/dis_y.png")
