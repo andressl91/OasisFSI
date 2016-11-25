@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2016.2.23)  14 NOV 2016 15:21
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2016.2.23)  25 NOV 2016 16:01
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -399,89 +399,39 @@ File: continuum_mapping.png Graphic file (type png)
 Package pdftex.def Info: continuum_mapping.png used on input line 14.
 (pdftex.def)             Requested size: 273.01517pt x 136.50757pt.
  [1 <./continuum_mapping.png>] [2] [3] [4]
-Overfull \hbox (44.90776pt too wide) in paragraph at lines 145--146
-[][][][][][][][][][][][][][][][][][][] 
- []
-
-
-Overfull \hbox (326.84106pt too wide) in paragraph at lines 146--147
-[][][][][][][][][][][][][][][][][][] 
- []
-
-
-Overfull \hbox (122.88931pt too wide) in paragraph at lines 158--159
-[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][] 
- []
-
-[5]
-Overfull \hbox (8.91628pt too wide) in paragraph at lines 172--173
-[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][] 
- []
-
-<ALE_vector_plot.png, id=36, 919.435pt x 540.0175pt>
-File: ALE_vector_plot.png Graphic file (type png)
- <use ALE_vector_plot.png>
-Package pdftex.def Info: ALE_vector_plot.png used on input line 180.
-(pdftex.def)             Requested size: 367.76749pt x 216.00316pt.
-
-<E_vector_plot.png, id=37, 919.435pt x 540.0175pt>
-File: E_vector_plot.png Graphic file (type png)
- <use E_vector_plot.png>
-Package pdftex.def Info: E_vector_plot.png used on input line 182.
-(pdftex.def)             Requested size: 367.76749pt x 216.00316pt.
-
-<FluxPlot_ALE_N_50_dt_005.png, id=38, 578.16pt x 433.62pt>
-File: FluxPlot_ALE_N_50_dt_005.png Graphic file (type png)
-
-<use FluxPlot_ALE_N_50_dt_005.png>
-Package pdftex.def Info: FluxPlot_ALE_N_50_dt_005.png used on input line 184.
-(pdftex.def)             Requested size: 231.2599pt x 173.44492pt.
-
-<FluxPlot_E_N_50_dt_005.png, id=40, 578.16pt x 433.62pt>
-File: FluxPlot_E_N_50_dt_005.png Graphic file (type png)
-
-<use FluxPlot_E_N_50_dt_005.png>
-Package pdftex.def Info: FluxPlot_E_N_50_dt_005.png used on input line 186.
-(pdftex.def)             Requested size: 231.2599pt x 173.44492pt.
-
-Overfull \hbox (22.76749pt too wide) in paragraph at lines 179--187
-[]
- []
-
-
-Overfull \hbox (22.76749pt too wide) in paragraph at lines 179--187
-[]
- []
-
-[6 <./ALE_vector_plot.png (PNG copy)>] [7 <./E_vector_plot.png (PNG copy)> <./F
-luxPlot_ALE_N_50_dt_005.png> <./FluxPlot_E_N_50_dt_005.png>]
-<geometry.png, id=50, 399.4925pt x 127.47626pt>
+<geometry.png, id=33, 399.4925pt x 127.47626pt>
 File: geometry.png Graphic file (type png)
  <use geometry.png>
-Package pdftex.def Info: geometry.png used on input line 200.
+Package pdftex.def Info: geometry.png used on input line 104.
 (pdftex.def)             Requested size: 359.53992pt x 114.72755pt.
 
-Overfull \hbox (14.53992pt too wide) in paragraph at lines 200--205
+Overfull \hbox (14.53992pt too wide) in paragraph at lines 104--111
 []
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 104--111
+
  []
 
 No file Benchmark.bbl.
-[8 <./geometry.png>] (./Benchmark.aux) ) 
+[5 <./geometry.png>] [6] (./Benchmark.aux) ) 
 Here is how much of TeX's memory you used:
- 6193 strings out of 493089
- 88225 string characters out of 6134842
- 181479 words of memory out of 5000000
- 9588 multiletter control sequences out of 15000+600000
- 16323 words of font info for 40 fonts, out of 8000000 for 9000
+ 5914 strings out of 493089
+ 85751 string characters out of 6134842
+ 157487 words of memory out of 5000000
+ 9314 multiletter control sequences out of 15000+600000
+ 15988 words of font info for 39 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 46i,12n,42p,931b,1577s stack positions out of 5000i,500n,10000p,200000b,80000s
-{/usr/local/texlive/2015/texmf-dist/fon
-ts/enc/dvips/cm-super/cm-super-ts1.enc}{/usr/local/texlive/2015/texmf-dist/font
-s/enc/dvips/cm-super/cm-super-t1.enc}</usr/local/texlive/2015/texmf-dist/fonts/
-type1/public/amsfonts/cm/cmex10.pfb></usr/local/texlive/2015/texmf-dist/fonts/t
-ype1/public/amsfonts/cm/cmmi10.pfb></usr/local/texlive/2015/texmf-dist/fonts/ty
-pe1/public/amsfonts/cm/cmmi7.pfb></usr/local/texlive/2015/texmf-dist/fonts/type
-1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/
+ 46i,12n,42p,931b,274s stack positions out of 5000i,500n,10000p,200000b,80000s
+{/usr/local/texlive/2015/texmf-dist
+/fonts/enc/dvips/cm-super/cm-super-t1.enc}</usr/local/texlive/2015/texmf-dist/f
+onts/type1/public/amsfonts/cm/cmex10.pfb></usr/local/texlive/2015/texmf-dist/fo
+nts/type1/public/amsfonts/cm/cmmi10.pfb></usr/local/texlive/2015/texmf-dist/fon
+ts/type1/public/amsfonts/cm/cmmi5.pfb></usr/local/texlive/2015/texmf-dist/fonts
+/type1/public/amsfonts/cm/cmmi7.pfb></usr/local/texlive/2015/texmf-dist/fonts/t
+ype1/public/amsfonts/cm/cmr10.pfb></usr/local/texlive/2015/texmf-dist/fonts/typ
+e1/public/amsfonts/cm/cmr5.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/
 public/amsfonts/cm/cmr7.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/pub
 lic/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/publ
 ic/amsfonts/cm/cmsy7.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public
@@ -491,10 +441,10 @@ super/sfbx1440.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/cm-su
 per/sfrm1000.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/cm-supe
 r/sfrm1200.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/cm-super/
 sfrm1728.pfb>
-Output written on Benchmark.pdf (9 pages, 430334 bytes).
+Output written on Benchmark.pdf (7 pages, 188500 bytes).
 PDF statistics:
- 100 PDF objects out of 1000 (max. 8388607)
- 66 compressed objects within 1 object stream
+ 92 PDF objects out of 1000 (max. 8388607)
+ 64 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
- 31 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 11 words of extra memory for PDF output out of 10000 (max. 10000000)
 

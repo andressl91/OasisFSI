@@ -44,7 +44,7 @@ File('bnd.pvd') << boundaries
 
 
 dt = 0.001   # use 0.0003 for oscillations
-T = 10
+T = 1
 # TEST AND TRIALFUNCTIONS
 V = VectorFunctionSpace(mesh,'CG',1)
 P = FunctionSpace(mesh,'CG',1)
@@ -63,7 +63,7 @@ phi,eta,psi = split(phietapsi)
 h = mesh.hmin()
 
 # FLUID
-FSI = 3
+FSI = 1
 nu = 10**-3
 rho_f = 1.0*1e3
 mu_f = rho_f*nu
@@ -103,7 +103,7 @@ def sigma_s(u):
 
 def sigma_f_hat(v,p,u):
 	return J(u)*sigma_f(v,p)*inv(F(u)).T
-	
+
 
 
 
@@ -291,4 +291,3 @@ while t < T + DOLFIN_EPS:# and (abs(FdC) > 1e-3 or abs(FlC) > 1e-3):
 	t += dt
 
 	count += 1
-

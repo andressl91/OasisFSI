@@ -11,7 +11,7 @@ for coord in mesh.coordinates():
         break
 
 
-V1 = VectorFunctionSpace(mesh, "CG", 2) # Fluid velocity
+V1 = VectorFunctionSpace(mesh, "CG", 1) # Fluid velocity
 V2 = VectorFunctionSpace(mesh, "CG", 1) # displacement
 Q  = FunctionSpace(mesh, "CG", 1)       # Fluid Pressure
 
@@ -59,14 +59,33 @@ dx_f = dx(1,subdomain_data=domains)
 dx_s = dx(2,subdomain_data=domains)
 
 #BOUNDARY CONDITIONS
+# FLUID
+FSI = 3
+nu = 10**-3
+rho_f = 1.0*1e3
+mu_f = rho_f*nu
+U_in = [0.2, 1.0, 2.0][FSI-1]   # Reynolds vel
 
-Um = 0.2
+# SOLID
+Pr = 0.4
+mu_s = [0.5, 0.5, 2.0][FSI-1]*1e6
+rho_s = [1.0, 10, 1.0][FSI-1]*1e3
+lamda_s = 2*mu_s*Pr/(1-2.*Pr)
+Um = U_in
 H = 0.41
 L = 2.5
 # "
-inlet = Expression(("(1.5*Um*x[1]*(H - x[1]) / pow((H/2.0), 2))*(1-cos(t*pi/2.0))/2.0" \
-,"0"), t = 0.0, Um = Um, H = H)
-
+#inlet = Expression(("(1.5*Um*x[1]*(H - x[1]) / pow((H/2.0), 2))*(1-cos(t*pi/2.0))/2.0" \
+#,"0"), t = 0.0, Um = Um, H = H)
+class inlet(Expression):
+	def __init__(self):
+		self.t = 0
+	def eval(self,value,x):
+		value[0] = 0.5*(1-np.cos(self.t*np.pi/2))*1.5*Um*x[1]*(H-x[1])/((H/2.0)**2)
+		value[1] = 0
+	def value_shape(self):
+		return (2,)
+inlet = inlet()
 #Fluid velocity conditions
 u_inlet  = DirichletBC(VVQ.sub(0), inlet, boundaries, 3)
 u_wall   = DirichletBC(VVQ.sub(0), ((0.0, 0.0)), boundaries, 2)
@@ -109,17 +128,20 @@ udp0 = Function(VVQ)
 udp_res = Function(VVQ)
 
 u, d, p  = split(udp)
-u0, d0, p0  = split(udp0)
+#u0, d0, p0  = split(udp0)
 
 #d = Function(V)
-#d0 = Function(V2)
-#u0 = Function(V1)
+d0 = Function(V2)
+u0 = Function(V1)
 
-dt = 0.001
+dt = 0.0001
 k = Constant(dt)
 #EkPa = '62500'
 #E = Constant(float(EkPa))
 
+
+
+"""
 #Fluid properties
 rho_f   = Constant(1.0E3)
 nu_f = Constant(1.0E-3)
@@ -131,7 +153,7 @@ mu_s = 0.5E6
 nu_s = 0.4
 E_1 = 1.4E6
 lamda_s = nu_s*2*mu_s/(1-2*nu_s)
-g = Constant((0,-2*rho_s))
+g = Constant((0,-2*rho_s))"""
 
 print "Re = %f" % (Um/(mu_f/rho_f))
 
@@ -184,20 +206,20 @@ I = Identity(2)
 def Eij(U):
 	return sym(grad(U))# - 0.5*dot(grad(U),grad(U))
 
-def F(U):
+def F_(U):
 	return (I + grad(U))
 
-def J(U):
-	return det(F(U))
+def J_(U):
+	return det(F_(U))
 
 def E(U):
-	return 0.5*(F(U).T*F(U)-I)
+	return 0.5*(F_(U).T*F_(U)-I)
 
 def S(U):
 	return (2*mu_s*E(U) + lamda_s*tr(E(U))*I)
 
 def P1(U):
-	return F(U)*S(U)
+	return F_(U)*S(U)
 
 def sigma_f(v,p):
 	return 2*mu_f*sym(grad(v)) - p*Identity(2)
@@ -206,7 +228,7 @@ def sigma_s(u):
 	return 2*mu_s*sym(grad(u)) + lamda_s*tr(sym(grad(u)))*I
 
 def sigma_f_hat(v,p,u):
-	return J(u)*sigma_f(v,p)*inv(F(u)).T
+	return J_(u)*sigma_f(v,p)*inv(F_(u)).T
 
 """def s_s_n_l(U):
     #I = Identity(2)
@@ -219,28 +241,30 @@ def sigma_fluid(p, u): #NEWTONIAN FLUID
     return -p*Identity(2) + mu_f *(inv(F_)*grad(u)+grad(u).T*inv(F_.T))"""
 
 
-delta = 1.0E5
+delta = 1.0E10
 h =  mesh.hmin()
 #d = d0 + k*u
 #I = Identity(2)
 #F_ = I + grad(d0)
 #J = det(F_)
 # Fluid variational form
-F_fluid = J(d)*rho_f*(1.0/k)*inner(u - u0, phi)*dx_f \
-        + J(d)*inner(dot(inv(F(d))*(u - ((d-d0)/k)), grad(u)), phi)*dx_f \
-     + inner(sigma_f_hat(u,p,d), grad(phi))*dx_f \
-     - inner(div(J(d)*inv(F(d))*u), gamma)*dx_f\
-     #- 0.5*h*h*inner(J(d)*inv(F(d))*grad(p),grad(gamma))*dx_f
-     #- inner(J*sigma_fluid(p,u)*inv(F_.T)*n, phi)*ds
+F_fluid = (rho_f/k)*inner(J_(d)*(u - u0), phi)*dx_f \
+        + rho_f*inner(J_(d)*inv(F_(d))*grad(u)*(u - ((d-d0)/k)), phi)*dx_f \
+        + inner(sigma_f_hat(u,p,d), grad(phi))*dx_f \
+        - inner(div(J_(d)*inv(F_(d).T)*u), gamma)*dx_f\
+        - 0.5*h*h*inner(J_(d)*inv(F_(d))*grad(p),grad(gamma))*dx_f
+
+        #- 0.05*h**2*inner(grad(p),grad(gamma))*dx_f
+       #- inner(J*sigma_fluid(p,u)*inv(F_.T)*n, phi)*ds
 
 # Structure var form
-F_structure = (rho_s/k)*inner(J(d)*(u-u0),phi)*dx_s + inner(P1(d),grad(phi))*dx_s
+F_structure = (rho_s/k)*inner(J_(d)*(u-u0),phi)*dx_s + inner(P1(d),grad(phi))*dx_s
 
 # Setting w = u on the structure using (d-d0)/k = w
 F_w = delta*((1.0/k)*inner(d-d0,psi)*dx_s - inner(u,psi)*dx_s)
 
 # laplace
-F_laplace =  inner(grad(d), grad(psi))*dx_f #- inner(grad(d)*n, psi)*ds
+F_laplace =  (1./k)*inner(d-d0,psi)*dx_f +inner(grad(d), grad(psi))*dx_f #- inner(grad(d)*n, psi)*ds
 
 F = F_fluid + F_structure + F_w + F_laplace
 
@@ -248,9 +272,9 @@ T = 3.0
 t = 0.0
 time = []
 
-u_file = File("mvelocity/ref/velocity.pvd")
-d_file = File("mvelocity/ref/d.pvd")
-p_file = File("mvelocity/ref/pressure.pvd")
+u_file = File("mvelocity/ref/P1-P1_3/velocity.pvd")
+d_file = File("mvelocity/ref/P1-P1_3/d.pvd")
+p_file = File("mvelocity/ref/P1-P1_3/pressure.pvd")
 
 #[bc.apply(udp0.vector()) for bc in bcs]
 #[bc.apply(udp.vector()) for bc in bcs]
@@ -276,22 +300,33 @@ while t <= T:
 
     #solve(lhs(F)==rhs(F),udp,bcs)
     u,d,p = udp.split(True)
-    udp0.assign(udp)
+
+    #udp0.assign(udp)
 
     #plot(u)
-    #if counter%10==0:
-    if MPI.rank(mpi_comm_world()) == 0:
-        u_file <<u
-        d_file <<d
-        print "u-norm:",norm(u),"d-norm:", norm(d),"p-norm:",norm(p)
-        print "Drag: %.4f , Lift: %.4f  "%(integrateFluidStress(p, u))
+    if counter%10==0:
+        if MPI.rank(mpi_comm_world()) == 0:
+            u_file <<u
+            d_file <<d
+            print "u-norm:",norm(u),"d-norm:", norm(d),"p-norm:",norm(p)
+            Dr = -assemble((sigma_f_hat(u,p,d)*n)[0]*ds(6))
+            Li = -assemble((sigma_f_hat(u,p,d)*n)[1]*ds(6))
+            print 't=%.4f Drag/Lift on circle: %g %g' %(t,Dr,Li)
 
-        dis_x.append(d(coord)[0])
-        dis_y.append(d(coord)[1])
+            Dr += -assemble((sigma_f_hat(u('-'),p('-'),d('-'))*n('-'))[0]*dS(5))
+            Li += -assemble((sigma_f_hat(u('-'),p('-'),d('-'))*n('-'))[1]*dS(5))
+            print 't=%.4f Drag/Lift : %g %g' %(t,Dr,Li)
 
+            #print "Drag: %.4f , Lift: %.4f  "%(integrateFluidStress(p, u))
+
+            dis_x.append(d(coord)[0])
+            dis_y.append(d(coord)[1])
+    u0.assign(u)
+    d0.assign(d)
     t += dt
     counter +=1
-plt.plot(time,dis_x,); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
+plt.plot(time,dis_x,); plt.ylabel("Displacement x-P1-P1_3");plt.xlabel("Time");plt.grid();
 plt.savefig("results/dis_x.png")
-plt.plot(time,dis_y,);plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
+plt.plot(time,dis_y,);plt.ylabel("Displacement y-P1-P1_3");plt.xlabel("Time");plt.grid();
 plt.savefig("results/dis_y.png")
+plt.show()
