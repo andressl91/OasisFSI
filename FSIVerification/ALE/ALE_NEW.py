@@ -11,8 +11,8 @@ for coord in mesh.coordinates():
         break
 
 
-V1 = VectorFunctionSpace(mesh, "CG", 1) # Fluid velocity
-V2 = VectorFunctionSpace(mesh, "CG", 1) # displacement
+V1 = VectorFunctionSpace(mesh, "CG", 2) # Fluid velocity
+V2 = VectorFunctionSpace(mesh, "CG", 2) # displacement
 Q  = FunctionSpace(mesh, "CG", 1)       # Fluid Pressure
 
 VVQ = MixedFunctionSpace([V1, V2, Q])
@@ -134,7 +134,7 @@ u, d, p  = split(udp)
 d0 = Function(V2)
 u0 = Function(V1)
 
-dt = 0.0001
+dt = 0.0003
 k = Constant(dt)
 #EkPa = '62500'
 #E = Constant(float(EkPa))
@@ -252,7 +252,7 @@ F_fluid = (rho_f/k)*inner(J_(d)*(u - u0), phi)*dx_f \
         + rho_f*inner(J_(d)*inv(F_(d))*grad(u)*(u - ((d-d0)/k)), phi)*dx_f \
         + inner(sigma_f_hat(u,p,d), grad(phi))*dx_f \
         - inner(div(J_(d)*inv(F_(d).T)*u), gamma)*dx_f\
-        - 0.5*h*h*inner(J_(d)*inv(F_(d))*grad(p),grad(gamma))*dx_f
+        #- 0.5*h*h*inner(J_(d)*inv(F_(d))*grad(p),grad(gamma))*dx_f
 
         #- 0.05*h**2*inner(grad(p),grad(gamma))*dx_f
        #- inner(J*sigma_fluid(p,u)*inv(F_.T)*n, phi)*ds
@@ -272,9 +272,9 @@ T = 3.0
 t = 0.0
 time = []
 
-u_file = File("mvelocity/ref/P1-P1_3/velocity.pvd")
-d_file = File("mvelocity/ref/P1-P1_3/d.pvd")
-p_file = File("mvelocity/ref/P1-P1_3/pressure.pvd")
+u_file = File("mvelocity/abacus/P2-P2_3/velocity.pvd")
+d_file = File("mvelocity/abacus/P2-P2_3/d.pvd")
+p_file = File("mvelocity/abacus/P2-P2_3/pressure.pvd")
 
 #[bc.apply(udp0.vector()) for bc in bcs]
 #[bc.apply(udp.vector()) for bc in bcs]
@@ -325,8 +325,8 @@ while t <= T:
     d0.assign(d)
     t += dt
     counter +=1
-plt.plot(time,dis_x,); plt.ylabel("Displacement x-P1-P1_3");plt.xlabel("Time");plt.grid();
-plt.savefig("results/dis_x.png")
-plt.plot(time,dis_y,);plt.ylabel("Displacement y-P1-P1_3");plt.xlabel("Time");plt.grid();
-plt.savefig("results/dis_y.png")
+plt.plot(time,dis_x,); plt.ylabel("Displacement x-P2-P2_3");plt.xlabel("Time");plt.grid();
+plt.savefig("results/abacus/dis_x.png")
+plt.plot(time,dis_y,);plt.ylabel("Displacement y-P2-P2_3");plt.xlabel("Time");plt.grid();
+plt.savefig("results//abacus/dis_y.png")
 plt.show()
