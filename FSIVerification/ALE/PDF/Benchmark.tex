@@ -15,7 +15,7 @@
 \includegraphics[scale=0.9]{geometry.png}
 The computational domain resembles the classic cfd benchmark with an added bar, with dimensions: \\
 The box: L = 2.5, H = 0.41 \\
-The bar: l = 0.35, h = 0.02 \\s
+The bar: l = 0.35, h = 0.02 \\
 The circle is positioned at (0.2, 0.2) making it 0.05 of center from bottom to top, this is done to induce oscillations to an otherwise laminar flow.\\
 Boundary conditions:\\
 The fluid velocity has a parabolic profile on the inlet that changes over time:\\
@@ -84,7 +84,7 @@ $g $ & 2 & 2 & 2 \\ \hline
 \subsection*{FSI test}
 \begin{table}[h]
 \centering
-\caption{My caption}
+\caption{Parameters}
 \label{my-label}
 \begin{tabular}{|l|l|l|l|}
 \hline
@@ -101,12 +101,12 @@ $\mu_s[10^6 \frac{m^2}{s}]$ & 0.5 & 0.5 & 2 \\ \hline
 Results: 
 \begin{table}[ht]
 \centering
-\caption{My caption}
+\caption{FSI 1}
 \label{my-label}
 \begin{tabular}{|l|l|l|l|l|l|l|}
 \hline
 Cells & Dofs & ux of A $[×10^{-3}]$ & uy of A $[×10^{-3}]$ & Drag & Lift & Spaces \\ \hline
-2698 & 7095 & 0.0213214 & 1.01342 & 14.1679 & 0.942656 & P1-P1-P1 \\ \hline
+2698 & 7095 & 0.0234594 & 0.797218  & 14.4963 & 0.915801 & P1-P1-P1 stab= 0.01 \\ \hline
 2698 & 23563 & 0.02271 & 0.80288 & 14.1736 & 0.787891 & P2-P2-P1 \\ \hline
 10792 & 92992 & 0.0227341 & 0.808792 & 14.1855 & 0.801044 & P2-P2-P1 \\ \hline
 43168 & 369448 & 0.227352 & 0.812595 & 14.227 & 0.797242 & P2-P2-P1 \\ \hline

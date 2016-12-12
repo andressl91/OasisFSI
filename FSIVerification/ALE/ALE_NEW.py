@@ -15,8 +15,8 @@ for coord in mesh.coordinates():
         break
 
 
-V1 = VectorFunctionSpace(mesh, "CG", 2) # Fluid velocity
-V2 = VectorFunctionSpace(mesh, "CG", 2) # displacement
+V1 = VectorFunctionSpace(mesh, "CG", 1) # Fluid velocity
+V2 = VectorFunctionSpace(mesh, "CG", 1) # displacement
 Q  = FunctionSpace(mesh, "CG", 1)       # Fluid Pressure
 
 VVQ = MixedFunctionSpace([V1, V2, Q])
@@ -258,13 +258,13 @@ F_fluid = (rho_f/k)*inner(J_(d)*(u - u0), phi)*dx_f \
         + rho_f*inner(J_(d)*inv(F_(d))*grad(u)*(u - ((d-d0)/k)), phi)*dx_f \
         + inner(sigma_f_hat(u,p,d), grad(phi))*dx_f \
         - inner(div(J_(d)*inv(F_(d).T)*u), gamma)*dx_f\
-        #- 0.5*h*h*inner(J_(d)*inv(F_(d).T)*grad(p),grad(gamma))*dx_f
+        - 0.01*h*h*inner(J_(d)*inv(F_(d).T)*grad(p),grad(gamma))*dx_f
 
         #- 0.05*h**2*inner(grad(p),grad(gamma))*dx_f
        #- inner(J*sigma_fluid(p,u)*inv(F_.T)*n, phi)*ds
 
 # Structure var form
-F_structure = (rho_s/k)*inner(J_(d)*(u-u0),phi)*dx_s + inner(0.5*(P1(d),grad(phi))*dx_s
+F_structure = (rho_s/k)*inner(u-u0,phi)*dx_s + inner(0.5*(P1(d)+P1(d0)),grad(phi))*dx_s
 #F_structure = (rho_s/(k*k))*inner(J_(0.5*(d+d1))*(d-2*d0+d1),phi)*dx_s + inner(0.5*(P1(d)+P1(d1)),grad(phi))*dx_s
 #G =rho_s*((1./k)*inner(w-w0,psi))*dx  + rho_s*inner(dot(grad(0.5*(w+w0)),0.5*(w+w0)),psi)*dx \
 
@@ -276,15 +276,15 @@ F_laplace =  (1./k)*inner(d-d0,psi)*dx_f +inner(grad(d), grad(psi))*dx_f #- inne
 
 F = F_fluid + F_structure + F_w + F_laplace
 
-T = 20.0
+T = 5.0
 t = 0.0
 time_list = []
 
 
 
-u_file = File("Results/P1-P1_dt_0.1/velocity.pvd")
-d_file = File("Results/P1-P1_dt_0.1/d.pvd")
-p_file = File("Results/P1-P1_dt_0.1/pressure.pvd")
+u_file = File("Results/FSI3_P1-P1_dt_0.0001/velocity.pvd")
+d_file = File("Results/FSI3_P1-P1_dt_0.0001/d.pvd")
+p_file = File("Results/FSI3_P1-P1_dt_0.0001/pressure.pvd")
 
 #[bc.apply(udp0.vector()) for bc in bcs]
 #[bc.apply(udp.vector()) for bc in bcs]
