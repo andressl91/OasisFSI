@@ -1,10 +1,14 @@
 from dolfin import *
 import matplotlib.pyplot as plt
 import numpy as np
+import time
+import sys
+time0 = time.time()
+#parameters["num_threads"] = 2
 parameters["allow_extrapolation"] = True
 mesh = Mesh("fluid_new.xml")
-
-
+#mesh=refine(mesh)
+#mesh = refine(mesh)
 for coord in mesh.coordinates():
     if coord[0]==0.6 and (0.199<=coord[1]<=0.2001): # to get the point [0.2,0.6] end of bar
         print coord
@@ -16,7 +20,7 @@ V2 = VectorFunctionSpace(mesh, "CG", 2) # displacement
 Q  = FunctionSpace(mesh, "CG", 1)       # Fluid Pressure
 
 VVQ = MixedFunctionSpace([V1, V2, Q])
-
+print "Dofs: ",VVQ.dim(), "Cells:", mesh.num_cells()
 # BOUNDARIES
 
 #NOS = AutoSubDomain(lambda x: "on_boundary" and( near(x[1],0) or near(x[1], 0.41)))
@@ -60,7 +64,7 @@ dx_s = dx(2,subdomain_data=domains)
 
 #BOUNDARY CONDITIONS
 # FLUID
-FSI = 3
+FSI = int(sys.argv[1])
 nu = 10**-3
 rho_f = 1.0*1e3
 mu_f = rho_f*nu
@@ -132,9 +136,11 @@ u, d, p  = split(udp)
 
 #d = Function(V)
 d0 = Function(V2)
+d1 = Function(V2)
 u0 = Function(V1)
 
-dt = 0.0003
+
+dt = float(sys.argv[2])
 k = Constant(dt)
 #EkPa = '62500'
 #E = Constant(float(EkPa))
@@ -160,8 +166,8 @@ print "Re = %f" % (Um/(mu_f/rho_f))
 def integrateFluidStress(p, u):
   eps   = 0.5*(grad(u) + grad(u).T)
   sig   = -p*Identity(2) + 2.0*mu_f*eps
-
-  traction  = dot(sig, -n)
+  sig1 = J_(u)*sig*inv(F_(u)).T
+  traction  = dot(sig1, -n)
 
   forceX = traction[0]*ds(5) + traction[0]*ds(6)
   forceY = traction[1]*ds(5) + traction[1]*ds(6)
@@ -186,7 +192,7 @@ def Newton_manual(F, udp, bcs, atol, rtol, max_it, lmbda,udp_res):
 
         #solve(A, udp_res.vector(), b, "superlu_dist")
 
-        solve(A, udp_res.vector(), b)#, "lu")
+        solve(A, udp_res.vector(), b)#, "mumps")
 
         udp.vector()[:] = udp.vector()[:] + lmbda*udp_res.vector()[:]
         #udp.vector().axpy(1., udp_res.vector())
@@ -252,13 +258,15 @@ F_fluid = (rho_f/k)*inner(J_(d)*(u - u0), phi)*dx_f \
         + rho_f*inner(J_(d)*inv(F_(d))*grad(u)*(u - ((d-d0)/k)), phi)*dx_f \
         + inner(sigma_f_hat(u,p,d), grad(phi))*dx_f \
         - inner(div(J_(d)*inv(F_(d).T)*u), gamma)*dx_f\
-        #- 0.5*h*h*inner(J_(d)*inv(F_(d))*grad(p),grad(gamma))*dx_f
+        #- 0.5*h*h*inner(J_(d)*inv(F_(d).T)*grad(p),grad(gamma))*dx_f
 
         #- 0.05*h**2*inner(grad(p),grad(gamma))*dx_f
        #- inner(J*sigma_fluid(p,u)*inv(F_.T)*n, phi)*ds
 
 # Structure var form
-F_structure = (rho_s/k)*inner(J_(d)*(u-u0),phi)*dx_s + inner(P1(d),grad(phi))*dx_s
+F_structure = (rho_s/k)*inner(J_(d)*(u-u0),phi)*dx_s + inner(0.5*(P1(d),grad(phi))*dx_s
+#F_structure = (rho_s/(k*k))*inner(J_(0.5*(d+d1))*(d-2*d0+d1),phi)*dx_s + inner(0.5*(P1(d)+P1(d1)),grad(phi))*dx_s
+#G =rho_s*((1./k)*inner(w-w0,psi))*dx  + rho_s*inner(dot(grad(0.5*(w+w0)),0.5*(w+w0)),psi)*dx \
 
 # Setting w = u on the structure using (d-d0)/k = w
 F_w = delta*((1.0/k)*inner(d-d0,psi)*dx_s - inner(u,psi)*dx_s)
@@ -268,13 +276,15 @@ F_laplace =  (1./k)*inner(d-d0,psi)*dx_f +inner(grad(d), grad(psi))*dx_f #- inne
 
 F = F_fluid + F_structure + F_w + F_laplace
 
-T = 3.0
+T = 20.0
 t = 0.0
-time = []
+time_list = []
 
-u_file = File("mvelocity/abacus/P2-P2_3/velocity.pvd")
-d_file = File("mvelocity/abacus/P2-P2_3/d.pvd")
-p_file = File("mvelocity/abacus/P2-P2_3/pressure.pvd")
+
+
+u_file = File("Results/P1-P1_dt_0.1/velocity.pvd")
+d_file = File("Results/P1-P1_dt_0.1/d.pvd")
+p_file = File("Results/P1-P1_dt_0.1/pressure.pvd")
 
 #[bc.apply(udp0.vector()) for bc in bcs]
 #[bc.apply(udp.vector()) for bc in bcs]
@@ -282,12 +292,24 @@ p_file = File("mvelocity/abacus/P2-P2_3/pressure.pvd")
 
 dis_x = []
 dis_y = []
+Drag = []
+Lift = []
 counter = 0
 t = dt
-while t <= T:
-    time.append(t)
-    print "Time t = %.5f" % t
 
+# bcs for new d trial function
+d_wall_l    = DirichletBC(V2, ((0.0, 0.0)), boundaries, 2)
+d_inlet_l   = DirichletBC(V2, ((0.0, 0.0)), boundaries, 3)
+d_outlet_l  = DirichletBC(V2, ((0.0, 0.0)), boundaries, 4)
+d_circle_l  = DirichletBC(V2, ((0.0, 0.0)), boundaries, 6)
+d_barwall_l = DirichletBC(V2, ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
+bcd = [d_barwall_l, d_inlet_l, d_outlet_l, d_circle_l, d_barwall_l]
+
+
+
+while t <= T:
+    print "Time t = %.5f" % t
+    time_list.append(t)
     if t < 2:
         inlet.t = t;
     if t >= 2:
@@ -295,7 +317,8 @@ while t <= T:
 
     #J1 = J(d0)
     #Reset counters
-    atol = 1e-7;rtol = 1e-7; max_it = 100; lmbda = 1.0;
+    atol = 1e-10;rtol = 1e-10; max_it = 100; lmbda = 1.0;
+
     udp = Newton_manual(F, udp, bcs, atol, rtol, max_it, lmbda,udp_res)
 
     #solve(lhs(F)==rhs(F),udp,bcs)
@@ -304,29 +327,51 @@ while t <= T:
     #udp0.assign(udp)
 
     #plot(u)
-    if counter%10==0:
+    if counter%1==0:
+        #if MPI.rank(mpi_comm_world()) == 0:
+        u_file << u
+        d_file << d
+        p_file << p
+        #print "u-norm:",norm(u),"d-norm:", norm(d),"p-norm:",norm(p)
+        Dr = -assemble((sigma_f_hat(u,p,d)*n)[0]*ds(6))
+        Li = -assemble((sigma_f_hat(u,p,d)*n)[1]*ds(6))
+
+        #print 't=%.4f Drag/Lift on circle: %g %g' %(t,Dr,Li)
+        #print 'INNER: t=%.4f Drag/Lift on circle: %g %g' %(t,Dr,Li)
+
+        Dr += -assemble((sigma_f_hat(u('-'),p('-'),d('-'))*n('-'))[0]*dS(5))
+        Li += -assemble((sigma_f_hat(u('-'),p('-'),d('-'))*n('-'))[1]*dS(5))
+        #print 't=%.4f Drag/Lift : %g %g' %(t,Dr,Li)
+        Drag.append(Dr)
+        Lift.append(Li)
+
+        #print "Drag: %.4f , Lift: %.4f  "%(integrateFluidStress(p, u))
+        #print "x_bar: ", d(coord)[0], "y_bar: ",d(coord)[1]
+        dsx = d(coord)[0]
+        dsy = d(coord)[1]
+        dis_x.append(dsx)
+        dis_y.append(dsy)
+
         if MPI.rank(mpi_comm_world()) == 0:
-            u_file <<u
-            d_file <<d
-            print "u-norm:",norm(u),"d-norm:", norm(d),"p-norm:",norm(p)
-            Dr = -assemble((sigma_f_hat(u,p,d)*n)[0]*ds(6))
-            Li = -assemble((sigma_f_hat(u,p,d)*n)[1]*ds(6))
-            print 't=%.4f Drag/Lift on circle: %g %g' %(t,Dr,Li)
+            print "t = %.4f " %(t)
+            print 'Drag/Lift : %g %g' %(Dr,Li)
+            print "dis_x/dis_y : %g %g "%(dsx,dsy)
 
-            Dr += -assemble((sigma_f_hat(u('-'),p('-'),d('-'))*n('-'))[0]*dS(5))
-            Li += -assemble((sigma_f_hat(u('-'),p('-'),d('-'))*n('-'))[1]*dS(5))
-            print 't=%.4f Drag/Lift : %g %g' %(t,Dr,Li)
-
-            #print "Drag: %.4f , Lift: %.4f  "%(integrateFluidStress(p, u))
-
-            dis_x.append(d(coord)[0])
-            dis_y.append(d(coord)[1])
     u0.assign(u)
+    #d1.assign(d0)
     d0.assign(d)
     t += dt
     counter +=1
-plt.plot(time,dis_x,); plt.ylabel("Displacement x-P2-P2_3");plt.xlabel("Time");plt.grid();
-plt.savefig("results/abacus/dis_x.png")
-plt.plot(time,dis_y,);plt.ylabel("Displacement y-P2-P2_3");plt.xlabel("Time");plt.grid();
-plt.savefig("results//abacus/dis_y.png")
+print "script time: ", time.time()-time0
+plt.plot(time_list,dis_x); plt.ylabel("Displacement x-P1-P1_dt_0.1");plt.xlabel("Time");plt.grid();
+#plt.savefig("Results/P1-P1_dt_0.1/dis_x.png")
+plt.show()
+plt.plot(time_list,dis_y);plt.ylabel("Displacement y-P1-P1_dt_0.1");plt.xlabel("Time");plt.grid();
+#plt.savefig("Results/P1-P1_dt_0.1/dis_y.png")
+plt.show()
+plt.plot(time_list,Drag);plt.ylabel("Drag");plt.xlabel("Time");plt.grid();
+#plt.savefig("Results/P1-P1_dt_0.1/drag.png")
+plt.show()
+plt.plot(time_list,Lift);plt.ylabel("Lift");plt.xlabel("Time");plt.grid();
+#plt.savefig("Results/P1-P1_dt_0.1/lift.png")
 plt.show()
