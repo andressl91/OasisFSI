@@ -15,13 +15,14 @@ u - Velocity in fluid and structure. \\
 w - Velocity in the domain. It is the velocity of the mesh in the calculations. This will also be the velocity in structure when defined in the lagrangian formulation. \\
 d - Displacement of the solid. The time derivative of the displacement will be the domain velocity. \\
 p - Pressure in the fluid. 
+
 \subsection*{Reference domain}
 \subsection*{Mapping and identites}
 \includegraphics[scale=0.4]{continuum_mapping.png}
 
-To get an ALE formulation from a reference frame, we need to define a mapping in the solid domain:
+We define $ \hat{\mathcal{S}}$ as the initial stress free configuration of a given body, $\mathcal{S}$ as the reference and $\mathcal{S}(t)$ as the current configuration.
+To get an ALE formulation from a reference frame, we need to define a smooth mapping that maps from the reference configuration to the current configuration:
 $$  \chi^s(t) : \hat{\mathcal{S}} \rightarrow \mathcal{S}(t)     $$ 
-We define the $ \hat{\mathcal{S}}$ as the initial stress free configuration, the $\mathcal{S}$ as the reference and the $\mathcal{S}(t)$ as the current configuration.
 The same is for the fluid domain.
 $$  \chi^f(t) : \hat{\mathcal{F}} \rightarrow \mathcal{F}(t)     $$ 
 The solid mapping is set as $\chi^s(\textbf{X},t) = \textbf{X}  + d^s(\textbf{X} ,t)$
@@ -29,31 +30,44 @@ hence giving:
 $$  d^s(\textbf{X},t) = \chi^s(\textbf{X},t) -\textbf{X}   $$
 $$  w(\textbf{X},t) = \frac{\partial \chi^s(\textbf{X},t)}{\partial t}   $$
 
-where $\textbf{X}$ denote a material point in the reference domain and $\chi^s$ denotes the mapping from the reference configuration.
-We denote $\Gamma^1$ as the "ceiling" and "floor" and the circle and $\Gamma^{2,3}$ as the inlet and outlet.
-The velocity in the fluid is denoted $u(\textbf{X},t)$
-We define the deformation gradient $F = I + \nabla d$ and $J = det(F)$
+where $\textbf{X}$ denote a material point in the reference domain and $\chi^s$ denotes the mapping from the reference configuration. 
+$d^s(\textbf{X},t)$ denotes the displacement field and w(\textbf{X},t) is the domain velocity.
+
+\subsection*{Deformation gradient}
+In continuum mechanics relative change of location of particles is called strain and this is the fundamental quality that causes stress in a material. [godboka]. We say that stress is the internal forces between neighboring particles. 
+If $d(\textbf{X},t)$ is differentiable deformation field in a given body. We define the deformation gradient as:  
+$$F = \frac{\partial \chi}{\partial \textbf{X}} = I + \nabla d(\textbf{X},t)$$ 
+which denotes relative change of position under deformation in a Lagrangian frame of reference. The similar Eulerian viewpoint is defined as the inverse deformation gradient 
+$$ \hat{F} = I - \nabla  d(\textbf{X},t)$$
+
+
+
 \section*{Balance laws}
 We will formulate the equations in the Eulerian, Lagrangian and the ALE description.
 The Eulerian description suits a fluid problem nicely as the points in the grid are fixed and the fluid particles move through the domain. Whilst the Lagrangian description fits a solid problem as the material particles are fixed with the gridpoints. The fluid velocity vector and the displacement vector are the quantities describing motion of the fluid and solid respectively. Since we here have fluid structure interaction problem we need to formulate the fluid in the fixed mesh description. The fluid velocity will still be the quantity describing motion but it will also have the displacement of the fluid, describing the change in fluid domain. The solid will be described in Lagrangian. We will only look at incompressible fluids where the volume of the fluid domain stays constant.\\
 \subsection*{Solid}
 We express the solid balance laws in the Lagrangian formulation from the initial configuration
 $$\rho_s \frac{\partial^2 d}{\partial t^2} = \nabla \cdot (J \sigma_s F^{-T}) \hspace{4mm}in\hspace{4mm} \mathcal{\hat{S}} $$
-Piola-Kirchhoff tensor following from the St. Venant-Kirchhoff material ($  E = \frac{1}{2}(F^TF- I)  $) :
+Second Piola-Kirchhoff tensor following from the St. Venant-Kirchhoff material with the  Green-Lagrange strain tensor: $  E = \frac{1}{2}(F^TF- I)  $.
 \begin{align*}
  \sigma_s = & \frac{1}{J} F (\lambda_s (tr E)I + 2\mu_s E) F^{-T}  \\
  S_s = & \lambda_s (tr E)I + 2\mu_s E  \\
 \lambda_s = & \frac{2\mu_s nu_s}{1-2 \nu_s} 
 \end{align*}
-\subsection*{Fluid}
+\section*{Fluid}
 The fluid equations are denoted from the initial configuration:
 $$ \rho_f J \big( \frac{\partial u}{\partial t} + ((\nabla u)F^{-1}(u-w)\big) = \nabla \cdot (J\sigma_f F^{-T} )\hspace{4mm} in \mathcal{\hat{F}}$$
 $$ \nabla \cdot (J u F^{-T}) = 0 \hspace{4mm} in \hspace{2mm} \mathcal{\hat{F}}$$
 As we see the only difference from the usual way of seeing the N-S equations, is that in the convection term we have $u-w $ which is needed since the not only are the fluid particles moving but the domain, here denoted with $w$ as the domain velocity, is also moving. So $u-w$ will be the actual fluid velocity. 
 
-To bind together the computation of fluid and structure domain, we need a harmonic extension to the boundary values. For this purpose define the following equation with the fluid domain deformation:
+\subsection*{Harmonic extension}
+To bind together the computation of fluid and structure domain, we need a harmonic extension to the boundary values. The solid deformation $d$ is extended from the interface into the fluid domain and is done to help deal with big deformations in fluid domain. These big deformations can then cause several challenges to the ALE mapping. 
+For this purpose define the following harmonic extension equation in the fluid domain:
 $$ \nabla^2 d^f = 0\hspace{4mm}in \hspace{2mm} \mathcal{\hat{F}}$$
+This 
 This equation is chosen for its good regularity and smoothing properties.
+
+It is also possible to chose an harmonic extension with stiffening, which can give better control of the deformed meshes. This in practice behaves like a transport problem, transporting the deformation into the fluid domain. Another possibility is extension by pseudo-elasticity which defines the extension operator by means of the Navier-Lame equation. And lastly we can chose a biharmonic extension, that is of fourth order character, and thus will have a high computational cost. For now I will stick with the harmonic extension and maybe look at these in the future. [Godboka.]
 
 \subsection*{Boundary conditions}
 $$  u(x,y,t=0) = u_0   $$
@@ -82,7 +96,8 @@ Boundary conditions stay the same but without mappings:
 
 The two approaches to the ALE method is equivalent [Godboka]. 
 From a technical point of view, both formulations are equivalent. Wether we use a fixed and reference formulation or a moving mesh and Eulerian formulation. 
-\section*{Variational formulation}
+\section*{Finite Element FSI in ALE}
+\subsection*{Variational formulation}
 \subsection*{Reference domain}
 We use 3 testfunctions, $\phi, \psi, \gamma$. As mentioned before we use a global velocity function $u$ for both the solid and fluid.
 \begin{align}
@@ -93,6 +108,16 @@ We use 3 testfunctions, $\phi, \psi, \gamma$. As mentioned before we use a globa
  \big( u- \frac{\partial d}{\partial t} ,\psi \big)_{\mathcal{\hat{S}}} &= 0 
 \end{align}
 Equation (5) has not been addressed and is added since we use a global function for velocity we need to force that the structure velocity is the time derivative of the deformation in the structure domain. 
+
+\subsection*{Spaces and Elements}
+The velocity and pressure copling in the fluid domain must satisfy the inf-sup condition. If not stabilization has to added. We here need to define some spaces that will have these desired properties.
+We denote $u_h \in V_h$ and $ d_h \in W_h $, here the finite element pair og pressure and velocity mush satisfy the inf-sup condition given in ALE coordinates:
+$$   \inf_{\substack{p_h \in L_{h,f}}}  \sup_{\substack{v_h \in V_{h,f}}} \frac{ (p_h, div(J_f F_f^{-1} u_h))_{\mathcal{F}} }{ \|\|J^{\frac{1}{2}} p_h  \|\|_{\mathcal{F}} \|\|  J^{\frac{1}{2}}_{f} \nabla u_h F_f^{-T} \|\|_{\mathcal{F}}  } \geq \gamma     $$
+A good choice of spaces will be P2-P2-P1 for velocity, displacement and fluid pressure respectively. 
+
+\subsection*{Locking}
+The problem og shear locking can happen FEM computations with certain elements. 
+[mek4250 Kent] - Locking occurs if  $ \lambda >> \nu $ that is, the material is nearly incompressible. The reason is that all the elements discussed in this course are poor at approximating the divergence. Locking refers to the case where the displacement is to small because the divergence term essentially lock the displacement. It is a numerical artifact not a physical feature. [Verbatum]
 
 
 \subsection*{Domain move}
