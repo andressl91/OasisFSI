@@ -15,8 +15,8 @@ def Newton_manual(F, udp, bcs, J, atol, rtol, max_it, lmbda\
         [bc.apply(A, b, udp.vector()) for bc in bcs]
 
         #solve(A, udp_res.vector(), b, "superlu_dist")
-        #solve(A, udp_res.vector(), b, "mumps")
-        solve(A, udp_res.vector(), b)
+        solve(A, udp_res.vector(), b, "mumps")
+        #solve(A, udp_res.vector(), b)
 
         udp.vector().axpy(1., udp_res.vector())
         [bc.apply(udp.vector()) for bc in bcs]

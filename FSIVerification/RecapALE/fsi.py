@@ -148,35 +148,36 @@ def J_(U):
 	return det(F_(U))
 
 def E(U):
-	return 0.5*(F_(U).T*F_(U)-I)
+	return 0.5*(F_(U).T*F_(U) - I)
 
-def S(U):
+def S(U): #St. Venant Kirchhoff material
 	return (2*mu_s*E(U) + lamda*tr(E(U))*I)
 
 def P1(U):
 	return F_(U)*S(U)
 
-def sigma_f(v,p):
+def sigma_f(v, u, p):
 	return 2*mu_f*sym(grad(v)) - p*Identity(2)
+
+def sigma_f_map(v, u, p):
+	return mu_f*(grad(v)*inv(F_(u)) + inv(F_(u)).T * grad(v).T) - p*Identity(2)
 
 def sigma_s(u):
 	return 2*mu_s*sym(grad(u)) + lamda*tr(sym(grad(u)))*I
 
-def sigma_f_hat(v,p,u):
-	return J_(u)*sigma_f(v,p)*inv(F_(u)).T
+def sigma_f_hat(v, u, p):
+	return J_(u)*sigma_f_map(v, u, p)*inv(F_(u)).T
 
 delta = 1.0E10
 h =  mesh.hmin()
-#d = d0 + k*u
-#I = Identity(2)
-#F_ = I + grad(d0)
-#J = det(F_)
 
 # Fluid variational form
 F_fluid = (rho_f/k)*inner(J_(d)*(u - u0), psi)*dx_f \
-        + rho_f*inner(J_(d)*inv(F_(d))*grad(u)*(u - ((d-d0)/k)), psi)*dx_f \
-        + inner(sigma_f_hat(u, p, d), grad(psi))*dx_f \
-        - inner(div(J_(d)*inv(F_(d).T)*u), eta)*dx_f
+        + rho_f*inner(J_(d)*inv(F_(d))*grad(u)*(u - ((d - d0)/k)), psi)*dx_f \
+        + inner(sigma_f_hat(u, d, p), grad(psi))*dx_f \
+        - inner(inner(J_(d)*inv(F_(d)), grad(u).T), eta)*dx_f
+        #- inner(div(J_(d)*inv(F_(d))*u), eta)*dx_f
+
 
 # Structure var form
 F_structure = (rho_s/k)*inner(u-u0,psi)*dx_s + inner(P1(d),grad(psi))*dx_s
@@ -184,10 +185,10 @@ F_structure = (rho_s/k)*inner(u-u0,psi)*dx_s + inner(P1(d),grad(psi))*dx_s
 #G =rho_s*((1./k)*inner(w-w0,psi))*dx  + rho_s*inner(dot(grad(0.5*(w+w0)),0.5*(w+w0)),psi)*dx \
 
 # Setting w = u on the structure using (d-d0)/k = w
-F_w = delta*((1.0/k)*inner(d-d0, gamma)*dx_s - inner(u, gamma)*dx_s)
+F_w = delta*((1.0/k)*inner(d - d0, gamma)*dx_s - inner(u, gamma)*dx_s)
 
 # laplace
-F_laplace =  (1./k)*inner(d-d0, gamma)*dx_f +inner(grad(d), grad(gamma))*dx_f #- inner(grad(d)*n, psi)*ds
+F_laplace = inner(grad(d), grad(gamma))*dx_f #+ (1./k)*inner(d - d0, gamma)*dx_f
 
 F = F_fluid + F_structure + F_w + F_laplace
 
@@ -211,8 +212,8 @@ def_file = File("./deformation/def.pvd")
 u0, d0, p0  = udp0.split(True)
 u0.rename("u", "velocity")
 d0.rename("d", "deformation")
-#vel_file << u0
-#def_file << d0
+vel_file << u0
+def_file << d0
 
 Re = Um*D/nu_f
 print "SOLVING FOR Re = %f" % Re #0.1 Cylinder diameter
@@ -232,21 +233,24 @@ while t <= T:
     u_, d_, p_  = udp.split(True)
     #if count % 10 == 0:
         #print "here"
-        #u_.rename("u", "velocity")
-        #vel_file << u_
-        #d_.rename("d", "deformation")
-        #def_file << d_
+    #u_.rename("u", "velocity")
+    #vel_file << u_
+    #d_.rename("d", "deformation")
+    #def_file << d_
 
     u0, d0, p0  = udp0.split(True)
 
-    drag = -assemble((sigma_f(u_, p_)*n)[0]*ds(6)) - assemble((sigma_f(u_('-'), p_('-'))* n('-'))[0]*dS(5))
-    lift = -assemble((sigma_f(u_, p_)*n)[1]*ds(6)) - assemble((sigma_f(u_('-'), p_('-'))* n('-'))[1]*dS(5))
+    #drag = -assemble((sigma_f_hat(u_, d_, p_)*n)[0]*ds(6)) - assemble((sigma_f_hat(u_('-'), d_('-'), p_('-'))* n('-'))[0]*dS(5))
+    #lift = -assemble((sigma_f_hat(u_, d_, p_)*n)[1]*ds(6)) - assemble((sigma_f_hat(u_('-'), d_('-'), p_('-'))* n('-'))[1]*dS(5))
+
+    drag = -assemble((sigma_f(u_, d_, p_)*n)[0]*ds(6)) - assemble((sigma_f(u_('-'), d_('-'), p_('-'))* n('-'))[0]*dS(5))
+    lift = -assemble((sigma_f(u_, d_, p_)*n)[1]*ds(6)) - assemble((sigma_f(u_('-'), d_('-'), p_('-'))* n('-'))[1]*dS(5))
 
     #drag, lift =integrateFluidStress(p_, u_, geometry)
     #Drag.append(drag)
     #Lift.append(lift)
-    if MPI.rank(mpi_comm_world()) == 0:
-        print "Time: ",t ," drag: ",drag, "lift: ",lift, "dis_x: ", d_(coord)[0], "dis_y: ", d_(coord)[1]
+    #if MPI.rank(mpi_comm_world()) == 0:
+    print "Time: ",t ," drag: ",drag, "lift: ",lift, "dis_x: ", d_(coord)[0], "dis_y: ", d_(coord)[1]
 
     udp0.assign(udp)
 
