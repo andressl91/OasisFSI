@@ -112,7 +112,7 @@ def Newton_manual_s(F, d, bc_d, atol, rtol, max_it, lmbda,d_res):
     #a.vector().zero()
     while rel_res > rtol and residual > atol and Iter < max_it:
         A = assemble(Jac_1, tensor = a)
-        #A.ident_zeros()
+        A.ident_zeros()
         b = assemble(-F)
 
         [bc.apply(A, b, d.vector()) for bc in bc_d]
@@ -260,15 +260,17 @@ while t <= T:
     solve(F_Ext==0 , d, bc_d)
 
     # Solve fluid step, find u and p
-    solve(F_fluid == 0, up,bc_u)
+    #solve(F_fluid == 0, up,bc_u)
+
+    up = Newton_manual(F_fluid, up, bc_u, atol, rtol, max_it, lmbda,up_res)
     up0.assign(up)
     u,p = up.split(True)
-    #up = Newton_manual(F_fluid, up, bc_u, atol, rtol, max_it, lmbda,up_res)
 
     # Solve structure step find d
-    solve(F_structure == 0 , d, bc_d)
-    #udp = Newton_manual_s(F_structure, d, bc_d, atol, rtol, max_it, lmbda,d_res)
+    #solve(F_structure == 0 , d, bc_d)
+    d = Newton_manual_s(F_structure, d, bc_d, atol, rtol, max_it, lmbda,d_res)
     #plot(u)#,interactive=True)
+
     u_file << u
     d_file << d
     p_file << p
