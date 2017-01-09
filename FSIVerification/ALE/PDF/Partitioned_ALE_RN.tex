@@ -1,0 +1,60 @@
+\input{preamble}
+\usepackage{listings}
+\usepackage{amsmath}
+\title{Partitioned ALE Robin-Neumann}
+\author{Sebastian Gjertsen}
+\begin{document}
+\maketitle
+
+
+\section*{Introduction}
+Here we will look at the partitioned approach to solving the FSI problem. This means splitting our scheme into parts where we solve the fluid, structure and extension problem in different steps. This is to greatly reduce the size of the computational cost, and hopefully increase speed. So far the methods for coupling of the fluid and structure, has led to unconditional numerical instabilites and a large added-mass effect. [Explicit coupling thin walled Fernandez]. Here we look at a new approach to explicit coupling, first proposed by Fernadez, which uses a Robin-Neumann explicit treatment of the interface first for thin walled structure but later with an extension to thick walled structures. This combined with a lumped mass approximation of the solid problem ensures added-mass free stability. [Generalized R-N explicit coupling schemes]
+
+\section*{Robin-Neumann Interface}
+The Robin-Neumann treatment of the interface proposed by Fernandez uses a boundary operator $ B_h : \Lambda_{\Sigma, h} \rightarrow \Lambda_{\Sigma, h}  $ which is used together with the known coupling of stresses:
+
+$$  J^n \sigma^f(u^n, p^n)(F^n)^{-T}n^f + \frac{\rho^s}{\tau} B_h u^n = \frac{\rho^s}{\tau} B_h (\dot{d}^{n-1} + \tau \partial_t \dot{d}^*  ) - \Pi^{*} n^s $$
+- The explicit treatment of the solid ensures uncoupling of the fluid and solid computations. Giving a genuine partitioned system. \\
+- Treating the left hand side solid tensor implicitly ensures added-mass free stability
+The fluid domain is computed using a generalized Robin condition on the interface, and the solid is computed with the familiar Neumann condition on the interface, equalling the stresses from the fluid and structure.\\
+The general r-order extrapolation $x^*$ is defined: 
+\begin{equation}
+    x^*=
+    \begin{cases}
+      0, & \text{if}\ r=0 \\
+      x^{n-1}, & \text{if}\ r =1 \\
+      2x^{n-1} - x^{n-2}, & \text{if}\ r =2 \\
+    \end{cases}
+\end{equation}
+
+\newpage
+Explicit Robin-Neumann scheme: \\
+Step 1:
+Fluid domain update
+\begin{align*}
+d^{f,n} &= Ext(d^{n-1}) \\
+w^n &= \frac{\partial d^{f,n}}{\partial t} \\
+with F &= I + \nabla d, J= det(F)
+\end{align*}
+
+Step 2:
+Fluid step: find $u^n, p^n$:
+\begin{align*}
+\rho^f \big( \frac{\partial u^{n}}{\partial t} + ( u^{n-1} - w^n ) \cdot \nabla u^n \big) - \nabla \cdot \sigma(u^n,p^n) &= 0  \in  \mathcal{F} \\
+\nabla \cdot u &= 0  \in \mathcal{F} \\
+\sigma(u^n, p^n) n^f &= f \\
+J^n \sigma(u^n, p^n)(F^n)^{-T}n^f + \frac{\rho^s}{\tau} B_h u^n &= \frac{\rho^s}{\tau} B_h (\dot{d}^{n-1} + \tau \partial_t \dot{d}  ) - \Pi^{*} n^s \\
+\end{align*}
+
+Step 3:
+Solid Step: find $d^n$
+\begin{align*}
+\rho^s \partial_t \dot{d}^n + \alpha \rho^s \dot{d}^n - \nabla \cdot \Pi^n &= 0 \in \mathcal{S} \\
+\dot{d} &= \partial_t d^n \\
+d^n = 0, \beta \dot{d}^n &= 0 \in \Gamma^d  \\
+\Pi^n n^s &= 0 \in \Gamma^n \\
+\Pi^n n^s &= -J^n \sigma(u^n, p^n) (F^n)^{-T}n^f \in \Sigma 
+\end{align*}
+The solid stress tensor is given as $ \Pi^n = \pi(d^n) + \beta \pi^{?}(d^{n-1}) \dot{d}^n $
+
+\end{document}

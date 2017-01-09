@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2016.2.23)  14 DEC 2016 10:40
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2016.2.23)  7 JAN 2017 14:37
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -393,26 +393,26 @@ Package caption Info: End \AtBeginDocument code.
 [1
 
 {/usr/local/texlive/2015/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
-[1] [2] (./Contents.aux) ) 
+[1] (./Contents.aux) ) 
 Here is how much of TeX's memory you used:
- 5880 strings out of 493089
- 85267 string characters out of 6134842
- 152478 words of memory out of 5000000
- 9290 multiletter control sequences out of 15000+600000
+ 5879 strings out of 493089
+ 85252 string characters out of 6134842
+ 151478 words of memory out of 5000000
+ 9289 multiletter control sequences out of 15000+600000
  11223 words of font info for 32 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  46i,6n,42p,256b,219s stack positions out of 5000i,500n,10000p,200000b,80000s
-{/usr/local/texlive/2015/texmf-dist/fonts/enc/dvips/c
-m-super/cm-super-t1.enc}{/usr/local/texlive/2015/texmf-dist/fonts/enc/dvips/cm-
-super/cm-super-ts1.enc}</usr/local/texlive/2015/texmf-dist/fonts/type1/public/c
-m-super/sfbx1440.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/cm-
-super/sfrm1000.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/cm-su
-per/sfrm1200.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/cm-supe
-r/sfrm1728.pfb>
-Output written on Contents.pdf (3 pages, 54179 bytes).
+{/usr/local/texlive/2015/texmf-dist/fonts/enc/dvips/cm-su
+per/cm-super-t1.enc}{/usr/local/texlive/2015/texmf-dist/fonts/enc/dvips/cm-supe
+r/cm-super-ts1.enc}</usr/local/texlive/2015/texmf-dist/fonts/type1/public/cm-su
+per/sfbx1440.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/cm-supe
+r/sfrm1000.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/cm-super/
+sfrm1200.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/cm-super/sf
+rm1728.pfb>
+Output written on Contents.pdf (2 pages, 52900 bytes).
 PDF statistics:
- 34 PDF objects out of 1000 (max. 8388607)
- 24 compressed objects within 1 object stream
+ 31 PDF objects out of 1000 (max. 8388607)
+ 22 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  1 words of extra memory for PDF output out of 10000 (max. 10000000)
 

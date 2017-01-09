@@ -233,12 +233,24 @@ def Newton_manual(F, udp, bcs, atol, rtol, max_it, lmbda,udp_res):
     dw = TrialFunction(VVQ)
     Jac = derivative(F, udp,dw)                # Jacobi
 
+    a = assemble(Jac)
+    a.vector().zero()
     while rel_res > rtol and residual > atol and Iter < max_it:
-        A = assemble(Jac)
+        A = assemble(Jac, tensor = a)
         A.ident_zeros()
         b = assemble(-F)
 
         [bc.apply(A, b, udp.vector()) for bc in bcs]
+
+        """b['up'] = assemble(Fs['up'], tensor=b['up'])
+        for bc in bcs['up']:
+            bc.apply(b['up'], x_['up'])
+
+        for scalar in scalar_components:
+            b[scalar] = assemble(Fs[scalar], tensor=b[scalar])
+            for bc in bcs[scalar]:
+                bc.apply(b[scalar], x_[scalar])    """
+
 
         #solve(A, udp_res.vector(), b, "superlu_dist")
 
@@ -349,7 +361,7 @@ Lift = []
 counter = 0
 t = dt
 
-
+time_script_list = []
 
 
 while t <= T:
@@ -363,9 +375,11 @@ while t <= T:
     #J1 = J(d0)
     #Reset counters
     atol = 1e-6;rtol = 1e-6; max_it = 100; lmbda = 1.0;
-
+    time0 = time.time()
     udp = Newton_manual(F, udp, bcs, atol, rtol, max_it, lmbda,udp_res)
-
+    thistime = time.time()-time0
+    print "Time_newton: %.4f" %(thistime)
+    time_script_list.append(thistime)
     #solve(lhs(F)==rhs(F),udp,bcs)
     u,d,p = udp.split(True)
 
@@ -407,7 +421,8 @@ while t <= T:
     d0.assign(d)
     t += dt
     counter +=1
-print "script time: ", time.time()-time0
+print "mean time: ",np.mean(time_script_list)
+#print "script time: ", time.time()-time0
 plt.plot(time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
 plt.savefig("results/FSI-" +str(FSI_deg) +"/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
 #plt.show()
