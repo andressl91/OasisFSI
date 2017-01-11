@@ -27,12 +27,20 @@ def Venant_Kirchhof(d):
 def linear(d):
     return 2*mu_s*sym(grad(d)) + lamda*tr(sym(grad(d)))*Identity(2)
 
-def P2(d):
+def Cauchy(d):
+    I = Identity(2)
+    F = I + grad(d)
+    J = det(F)
+    E = 0.5*((F.T*F) - I)
+    return 1./J*F*(lamda*tr(E)*I + 2*mu_s*E )*F.T
+
+def Venant_Kirchhof2(d):
     I = Identity(2)
     F = I - grad(d)
     J = det(F)
     E = 0.5*((inv(F.T)*inv(F))-I)
-    return 2.*mu_s*E + lamda*tr(E)*I
+    return 1./J*inv(F)*(2.*mu_s*E + lamda*tr(E)*I)*F.T
+
 
 def integrateFluidStress(p, u, geo):
     ds_g = Measure("ds", subdomain_data = geo) # surface of geometry
@@ -49,6 +57,11 @@ def integrateFluidStress(p, u, geo):
 
     return fX, fY
 
+def sigma_f(p, u):
+  return - p*Identity(2) + mu_f*(grad(u) + grad(u).T)
+
+def eps(v):
+    return 0.5*(grad(v).T + grad(v))
 
 mesh = Mesh("fluid_new.xml")
 m = "fluid_new.xml"
@@ -65,7 +78,7 @@ for coord in mesh.coordinates():
 
 # VectorFunctionSpaces
 V1 = VectorFunctionSpace(mesh, "CG", v_deg) # Velocity
-V2 = VectorFunctionSpace(mesh, "CG", d_deg) # Structure deformation
+V2 = VectorFunctionSpace(mesh, "CG", d_deg) # mesh welocity deformation
 Q  = FunctionSpace(mesh, "CG", p_deg)       # Fluid Pressure
 VVQ = MixedFunctionSpace([V1,V2,Q])
 
@@ -138,33 +151,6 @@ mu_s = 0.5E6
 nu_s = 0.4
 E_1 = 1.4E6
 lamda = nu_s*2*mu_s/(1 - 2*nu_s)
-I = Identity(2)
-def F(U):
-    I = Identity(2)
-    return I + grad(U)
-
-def J(U):
-	return det(F(U))
-
-def E(U):
-	return 0.5*(F(U).T*F(U)-I)
-
-def S(U):
-	return (2*mu_s*E(U) + lamda*tr(E(U))*I)
-
-def P1(U):
-	return F(U)*S(U)
-
-def eps(v):
-    return 0.5*(grad(v).T + grad(v))
-
-def sigma_f(p, u):
-  return - p*Identity(2) + mu_f*(grad(u) + grad(u).T)
-
-def sigma_s(d):
-    return (1./J(d))*F(d)*(2*mu_s*E(d) + lamda*tr(E(d)) * I) *F(d).T
-
-
 
 # velocity conditions
 inlet = Expression(("1.5*Um*x[1]*(H - x[1]) / pow((H/2.0), 2) * (1 - cos(t*pi/2))/2"\
@@ -176,11 +162,11 @@ u_circ    = DirichletBC(VVQ.sub(0), ((0, 0)), boundaries, 6)
 u_barwall = DirichletBC(VVQ.sub(0), ((0, 0)), boundaries, 7)
 
 # Deformation conditions
-d_inlet   = DirichletBC(VVQ.sub(1), ((0, 0)), boundaries, 3)
-d_wall    = DirichletBC(VVQ.sub(1), ((0, 0)), boundaries, 2)
-d_out     = DirichletBC(VVQ.sub(1), ((0, 0)), boundaries, 4)
-d_circ    = DirichletBC(VVQ.sub(1), ((0, 0)), boundaries, 6)
-d_barwall = DirichletBC(VVQ.sub(1), ((0, 0)), boundaries, 7)
+w_inlet   = DirichletBC(VVQ.sub(1), ((0, 0)), boundaries, 3)
+w_wall    = DirichletBC(VVQ.sub(1), ((0, 0)), boundaries, 2)
+w_out     = DirichletBC(VVQ.sub(1), ((0, 0)), boundaries, 4)
+w_circ    = DirichletBC(VVQ.sub(1), ((0, 0)), boundaries, 6)
+w_barwall = DirichletBC(VVQ.sub(1), ((0, 0)), boundaries, 7)
 
 # Pressure Conditions
 p_out     = DirichletBC(VVQ.sub(2), 0, boundaries, 4)
@@ -188,41 +174,61 @@ p_out     = DirichletBC(VVQ.sub(2), 0, boundaries, 4)
 
 # Assemble boundary conditions
 bcs = [u_inlet, u_wall, u_circ, u_barwall, \
-       d_inlet, d_wall, d_out, d_circ, d_barwall, \
+       w_inlet, w_wall, w_out, w_circ, w_barwall, \
        p_out]
 
 # Functions
 psi, gamma, eta = TestFunctions(VVQ)
 
-udp = Function(VVQ)
-u, d, p  = split(udp)
+uwp = Function(VVQ)
+u, w, p  = split(uwp)
 
-udp0 = Function(VVQ)
-u0, d0, p0  = split(udp0)
+uwp0 = Function(VVQ)
+u0, w0, p0  = split(uwp0)
 # Fluid variational form
 Fluid_momentum = (rho_f/k)*inner(u - u0, psi)*dx(1) \
-                + rho_f*inner(dot(grad(u), u - (d-d0)/k), psi)*dx(1) \
-                + inner(sigma_f(p, u), eps(psi))*dx(1) \
+                + rho_f*(theta*inner(dot(grad(u), u - w), psi) + (1 - theta)*inner(dot(grad(u0),(u0 - w0)), psi) )*dx(1) \
+                + inner(theta*sigma_f(p, u)   + (1 - theta)*sigma_f(p0, u0), eps(psi))*dx(1) \
+                #- inner(theta*sigma_f(p, u)*n + (1 - theta)*sigma_f(p0, u0)*n, psi)*ds(2) \
+                #- inner(theta*sigma_f(p, u)*n + (1 - theta)*sigma_f(p0, u0)*n, psi)*ds(3) \
+                #- inner(theta*sigma_f(p, u)*n + (1 - theta)*sigma_f(p0, u0)*n, psi)*ds(4) \
+                #- inner(theta*sigma_f(p, u)*n + (1 - theta)*sigma_f(p0, u0)*n, psi)*ds(6)
 
 
 Fluid_continuity = eta*div(u)*dx(1)
 
-Solid_momentum = (rho_s/k)*inner((u - u0), psi)*dx(2) \
-+ rho_s*inner(dot(grad(u), u), psi)*dx(2) \
-+ inner(P2(d), grad(psi))*dx(2)
+# Structure Variational form
+d0 = Function(V2)
+d = d0 + w*k
+I = Identity(2)
+F_ = I - grad(d)
+J_ = det(F_)
+F_1 = I - grad(d0)
+J_1 = det(F_1)
 
-#Solid_deformation = inner(d - d0 + k*dot(grad(d), u)  - k*u, gamma)*dx(2)
-Solid_deformation = inner(d - d0 - k*u, gamma)*dx(2)
+Solid_momentum = (rho_s/k*inner(u - u0, psi) \
+                + rho_s*(theta*inner(dot(grad(u), u), psi) + (1 - theta)*inner(dot(grad(u0), u0), psi) ) \
+                + inner(theta*linear(d) + (1 - theta)*linear(d0) , eps(psi))) * dx(2) \
+
+Solid_deformation = inner(d - d0 - k*(theta*u + (1 -theta)*u0 ), gamma)  * dx(2)
+
+#Solid_momentum = ( J_*rho_s/k*inner(u - u0, psi) \
+#                + rho_s*( J_*theta*inner(dot(grad(u), u), psi) + J_1*(1 - theta)*inner(dot(grad(u0), u0), psi) ) \
+#                + inner(J_*theta*Venant_Kirchhof(d) + (1 - theta)*J_1*Venant_Kirchhof(d0) , grad(psi))) * dx(2) \
+
+
+#Solid_deformation = inner(d - d0 + k*(theta*dot(grad(d), u) + (1-theta)*dot(grad(d0), u0) ) \
+#                    - k*(theta*u + (1 -theta)*u0 ), gamma)  * dx(2)
 
 F_laplace = inner(grad(d), grad(gamma))*dx(1) #+ 1./k*inner(d - d0, gamma)*dx(1)
 
-G = Fluid_momentum + Fluid_continuity \
+F = Fluid_momentum + Fluid_continuity \
   + Solid_momentum + Solid_deformation + F_laplace
 
 #Reset counters
 d_up = TrialFunction(VVQ)
-J = derivative(G, udp, d_up)
-udp_res = Function(VVQ)
+J = derivative(F, uwp, d_up)
+uwp_res = Function(VVQ)
 
 #Solver parameters
 atol, rtol = 1e-6, 1e-6             # abs/rel tolerances
@@ -235,8 +241,8 @@ Iter = 0                            # Iteration counter
 vel_file = File("./velocity/vel.pvd")
 def_file = File("./deformation/def.pvd")
 
-#[bc.apply(udp0.vector()) for bc in bcs]
-u0, d0, p0  = udp0.split(True)
+#[bc.apply(uwp0.vector()) for bc in bcs]
+u0, d0, p0  = uwp0.split(True)
 u0.rename("u", "velocity")
 d0.rename("d", "deformation")
 #vel_file << u0
@@ -255,9 +261,9 @@ while t <= T:
     if t >= 2:
         inlet.t = 2;
 
-    Newton_manual(G, udp, bcs, J, atol, rtol, max_it, lmbda, udp_res)
+    Newton_manual(F, uwp, bcs, J, atol, rtol, max_it, lmbda, uwp_res)
 
-    u_, d_, p_  = udp.split(True)
+    u_, w_, p_  = uwp.split(True)
     #if count % 10 == 0:
         #print "here"
         #u_.rename("u", "velocity")
@@ -265,17 +271,16 @@ while t <= T:
         #d_.rename("d", "deformation")
         #def_file << d_
 
-    u0, d0, p0  = udp0.split(True)
+    u0, w0, p0  = uwp0.split(True)
 
     drag = -assemble((sigma_f(p_, u_)*n)[0]*ds(6)) - assemble((sigma_f(p_('-'), u_('-'))* n('-'))[0]*dS(5))
     lift = -assemble((sigma_f(p_, u_)*n)[1]*ds(6)) - assemble((sigma_f(p_('-'), u_('-'))* n('-'))[1]*dS(5))
 
     # Mesh deformation function in fluid domain
-    d_disp = Function(V2)
-    #d_disp.vector()[:]  = d_.vector()[:]
-    d_disp.vector()[:]  = d_.vector()[:] - d0.vector()[:]
+    w_.vector()[:] *= float(k)
+    d0.vector()[:] += w_.vector()[:]
 
-    to_move = interpolate(d_disp, V3)
+    to_move = interpolate(d0, V3)
     ALE.move(mesh, to_move)
     mesh.bounding_box_tree().build(mesh)
 
@@ -283,12 +288,12 @@ while t <= T:
     #Drag.append(drag)
     #Lift.append(lift)
     if MPI.rank(mpi_comm_world()) == 0:
-        print "Time: ",t ," drag: ",drag, "lift: ",lift, "dis_x: ", d_(coord)[0], "dis_y: ", d_(coord)[1]
+        print "Time: ",t ," drag: ",drag, "lift: ",lift, "dis_x: ", d0(coord)[0], "dis_y: ", d0(coord)[1]
 
-    udp0.assign(udp)
+    uwp0.assign(uwp)
 
-    dis_x.append(d_(coord)[0])
-    dis_y.append(d_(coord)[1])
+    dis_x.append(d0(coord)[0])
+    dis_y.append(d0(coord)[1])
     #plot(d_, mode="displacement")
 
     count += 1
