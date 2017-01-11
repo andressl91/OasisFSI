@@ -97,15 +97,9 @@ def NS(N, dt, T, L, rho, mu, solver):
     bcu = []
     bcp = []
 
-    #mpi_comm = mpi_comm_world()
-    #my_rank = MPI.rank(mpi_comm)
-    #num_threads = dolfin.parameters["num_threads"]
-    #dolfin.parameters["num_threads"] = 0
-
     # Create functions
     u0 = project(u_e, V, solver_type="bicgstab")
-    p0 = project(p_e, Q, solver_type="gmres", preconditioner_type="hypre_amg")
-    #p0 = project(p_e, Q)
+    p0 = project(p_e, Q)
     u1 = Function(V)
     up1 = Function(W)
 
@@ -118,15 +112,15 @@ def NS(N, dt, T, L, rho, mu, solver):
         return 0.5*(grad(u) + grad(u).T)
 
     # Advection-diffusion step (explicit coupling)
-    F1 = (1/k)*inner(u_hat - u0, psi)*dx + inner(grad(u_hat)*u0, psi)*dx + \
-         2*nu*inner(eps(u_hat), eps(psi))*dx #- inner(f, v)*dx
+    F1 = (1./k)*inner(u_hat - u0, psi)*dx + inner(grad(u_hat)*u0, psi)*dx + \
+         2.*nu*inner(eps(u_hat), eps(psi))*dx
     a1 = lhs(F1)
     L1 = rhs(F1)
 
     # Projection step(implicit coupling)
-    a2 = (1./k)*inner(u, v)*dx - inner(p, div(v))*dx + inner(div(u), q)*dx
-    L2 = (1./k)*inner(u1, v)*dx
-
+    F2 = (rho/k)*inner(u - u1, v)*dx - inner(p, div(v))*dx + inner(div(u), q)*dx
+    a2 = lhs(F2)
+    L2 = rhs(F2)
 
     # Assemble matrices
     A1 = assemble(a1); A2 = assemble(a2)
@@ -153,7 +147,8 @@ def NS(N, dt, T, L, rho, mu, solver):
         # Pressure correction
         begin("Computing pressure correction")
         b2 = assemble(L2, tensor=b2)
-        #solve(A2, p1.vector(), b2, "gmres", "hypre_amg")
+        #solve(A2, up1.vector(), b2, "gmres", "hypre_amg")
+        #solve(lhs(F2) == rhs(F2), up1, bcu)
         solve(A2, up1.vector(), b2)
         end()
 
