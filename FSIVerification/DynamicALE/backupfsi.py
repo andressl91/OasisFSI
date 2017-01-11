@@ -24,8 +24,12 @@ def Venant_Kirchhof(d):
     E = 0.5*((inv(F.T)*inv(F))-I)
     return inv(F)*(2.*mu_s*E + lamda*tr(E)*I)*inv(F.T)
 
-def linear(d):
-    return 2*mu_s*sym(grad(d)) + lamda*tr(sym(grad(d)))*Identity(2)
+def Cauchy(d):
+    I = Identity(2)
+    F = I + grad(d)
+    J = det(F)
+    E = 0.5*((F.T*F) - I)
+    return 1./J*F*(lamda*tr(E)*I + 2*mu_s*E )*F.T
 
 def P2(d):
     I = Identity(2)
@@ -33,6 +37,14 @@ def P2(d):
     J = det(F)
     E = 0.5*((inv(F.T)*inv(F))-I)
     return 2.*mu_s*E + lamda*tr(E)*I
+
+def Venant_Kirchhof2(d):
+    I = Identity(2)
+    F = I - grad(d)
+    J = det(F)
+    E = 0.5*((inv(F.T)*inv(F))-I)
+    return 1./J*inv(F)*(2.*mu_s*E + lamda*tr(E)*I)*F.T
+
 
 def integrateFluidStress(p, u, geo):
     ds_g = Measure("ds", subdomain_data = geo) # surface of geometry
@@ -49,6 +61,11 @@ def integrateFluidStress(p, u, geo):
 
     return fX, fY
 
+def sigma_f(p, u):
+  return - p*Identity(2) + mu_f*(grad(u) + grad(u).T)
+
+def eps(v):
+    return 0.5*(grad(v).T + grad(v))
 
 mesh = Mesh("fluid_new.xml")
 m = "fluid_new.xml"
@@ -138,33 +155,6 @@ mu_s = 0.5E6
 nu_s = 0.4
 E_1 = 1.4E6
 lamda = nu_s*2*mu_s/(1 - 2*nu_s)
-I = Identity(2)
-def F(U):
-    I = Identity(2)
-    return I + grad(U)
-
-def J(U):
-	return det(F(U))
-
-def E(U):
-	return 0.5*(F(U).T*F(U)-I)
-
-def S(U):
-	return (2*mu_s*E(U) + lamda*tr(E(U))*I)
-
-def P1(U):
-	return F(U)*S(U)
-
-def eps(v):
-    return 0.5*(grad(v).T + grad(v))
-
-def sigma_f(p, u):
-  return - p*Identity(2) + mu_f*(grad(u) + grad(u).T)
-
-def sigma_s(d):
-    return (1./J(d))*F(d)*(2*mu_s*E(d) + lamda*tr(E(d)) * I) *F(d).T
-
-
 
 # velocity conditions
 inlet = Expression(("1.5*Um*x[1]*(H - x[1]) / pow((H/2.0), 2) * (1 - cos(t*pi/2))/2"\
@@ -201,27 +191,56 @@ udp0 = Function(VVQ)
 u0, d0, p0  = split(udp0)
 # Fluid variational form
 Fluid_momentum = (rho_f/k)*inner(u - u0, psi)*dx(1) \
-                + rho_f*inner(dot(grad(u), u - (d-d0)/k), psi)*dx(1) \
-                + inner(sigma_f(p, u), eps(psi))*dx(1) \
+                + rho_f*(theta*inner(dot(grad(u), u - (d - d0)/k), psi) + (1 - theta)*inner(dot(grad(u0),(u0 - (d-d0)/k)), psi) )*dx(1) \
+                + inner(theta*sigma_f(p, u)   + (1 - theta)*sigma_f(p0, u0), eps(psi))*dx(1) \
+                #- inner(theta*sigma_f(p, u)*n + (1 - theta)*sigma_f(p0, u0)*n, psi)*ds(2) \
+                #- inner(theta*sigma_f(p, u)*n + (1 - theta)*sigma_f(p0, u0)*n, psi)*ds(3) \
+                #- inner(theta*sigma_f(p, u)*n + (1 - theta)*sigma_f(p0, u0)*n, psi)*ds(4) \
+                #- inner(theta*sigma_f(p, u)*n + (1 - theta)*sigma_f(p0, u0)*n, psi)*ds(6)
 
 
 Fluid_continuity = eta*div(u)*dx(1)
 
-Solid_momentum = (rho_s/k)*inner((u - u0), psi)*dx(2) \
-+ rho_s*inner(dot(grad(u), u), psi)*dx(2) \
-+ inner(P2(d), grad(psi))*dx(2)
+# Structure Variational form
+I = Identity(2)
+F_ = I - grad(d)
+J_ = det(F_)
+F_1 = I - grad(d0)
+J_1 = det(F_1)
 
-#Solid_deformation = inner(d - d0 + k*dot(grad(d), u)  - k*u, gamma)*dx(2)
-Solid_deformation = inner(d - d0 - k*u, gamma)*dx(2)
+#Solid_momentum = ( rho_s/k*inner(u - u0, psi) + \
+#                + inner(theta*Cauchy(d) + (1 - theta)*Cauchy(d0) , grad(psi))) * dx(2) \
+#                + rho_s*(theta*inner(dot(grad(u), u), psi) + (1 - theta)*inner(dot(grad(u0), u0), psi) ) * dx(2)
+
+#Solid_deformation = inner(d - d0 - k*(theta*u + (1 -theta)*u0 ), gamma)  * dx(2)
+
+#Solid_momentum = ( J_*rho_s/k*inner(u - u0, psi) \
+#                + inner(J_*theta*Venant_Kirchhof2(d)*inv(F_.T) + (1 - theta)*J_1*Venant_Kirchhof2(d0)*inv(F_1.T) , grad(psi))) * dx(2) \
+
+#Solid_deformation = inner(d - d0 - k*(theta*u + (1 -theta)*u0 ), gamma)  * dx(2)
+
+#Solid_momentum = ( J_*rho_s/k*inner(u - u0, psi) \
+#                + rho_s*( J_*theta*inner(dot(grad(u), u), psi) + J_1*(1 - theta)*inner(dot(grad(u0), u0), psi) ) \
+#                + inner(J_*theta*Venant_Kirchhof2(d) + (1 - theta)*J_1*Venant_Kirchhof2(d0) , grad(psi))) * dx(2) \
+
+#Solid_deformation = inner(d - d0 + k*(theta*dot(grad(d), u) + (1-theta)*dot(grad(d0), u0) ) \
+#                    - k*(theta*u + (1 -theta)*u0 ), gamma)  * dx(2)
+
+Solid_momentum = ( J_*rho_s/k*inner(u - u0, psi) \
+                + rho_s*( J_*theta*inner(dot(grad(u), u), psi) + J_1*(1 - theta)*inner(dot(grad(u0), u0), psi) ) \
+                + inner(J_*theta*Venant_Kirchhof(d) + (1 - theta)*J_1*Venant_Kirchhof(d0) , grad(psi))) * dx(2) \
+
+Solid_deformation = inner(d - d0 + k*(theta*dot(grad(d), u) + (1-theta)*dot(grad(d0), u0) ) \
+                    - k*(theta*u + (1 -theta)*u0 ), gamma)  * dx(2)
 
 F_laplace = inner(grad(d), grad(gamma))*dx(1) #+ 1./k*inner(d - d0, gamma)*dx(1)
 
-G = Fluid_momentum + Fluid_continuity \
+F = Fluid_momentum + Fluid_continuity \
   + Solid_momentum + Solid_deformation + F_laplace
 
 #Reset counters
 d_up = TrialFunction(VVQ)
-J = derivative(G, udp, d_up)
+J = derivative(F, udp, d_up)
 udp_res = Function(VVQ)
 
 #Solver parameters
@@ -255,7 +274,7 @@ while t <= T:
     if t >= 2:
         inlet.t = 2;
 
-    Newton_manual(G, udp, bcs, J, atol, rtol, max_it, lmbda, udp_res)
+    Newton_manual(F, udp, bcs, J, atol, rtol, max_it, lmbda, udp_res)
 
     u_, d_, p_  = udp.split(True)
     #if count % 10 == 0:
@@ -274,6 +293,7 @@ while t <= T:
     d_disp = Function(V2)
     #d_disp.vector()[:]  = d_.vector()[:]
     d_disp.vector()[:]  = d_.vector()[:] - d0.vector()[:]
+    #d_disp = d_.vector().axpy(-1, d0.vector())
 
     to_move = interpolate(d_disp, V3)
     ALE.move(mesh, to_move)
