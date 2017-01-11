@@ -69,8 +69,9 @@ V1 = VectorFunctionSpace(mesh, "CG", v_deg) # Fluid velocity
 V2 = VectorFunctionSpace(mesh, "CG", d_deg) # displacement
 Q  = FunctionSpace(mesh, "CG", p_deg)       # Fluid Pressure
 
-VVQ = MixedFunctionSpace([V1, V2, Q])
-print "Dofs: ",VVQ.dim(), "Cells:", mesh.num_cells()
+VQ = MixedFunctionSpace([V1,Q])
+
+print "Dofs: ",VQ.dim(), "Cells:", mesh.num_cells()
 # BOUNDARIES
 
 #NOS = AutoSubDomain(lambda x: "on_boundary" and( near(x[1],0) or near(x[1], 0.41)))
@@ -141,25 +142,25 @@ class inlet(Expression):
 		return (2,)
 inlet = inlet()
 #Fluid velocity conditions
-u_inlet  = DirichletBC(VVQ.sub(0), inlet, boundaries, 3)
-u_wall   = DirichletBC(VVQ.sub(0), ((0.0, 0.0)), boundaries, 2)
-u_circ   = DirichletBC(VVQ.sub(0), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
-u_bar    = DirichletBC(VVQ.sub(0), ((0.0, 0.0)), boundaries, 5) #No slip on geometry in fluid
-u_barwall= DirichletBC(VVQ.sub(0), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
+u_inlet  = DirichletBC(VQ.sub(0), inlet, boundaries, 3)
+u_wall   = DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 2)
+u_circ   = DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
+u_bar    = DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 5) #No slip on geometry in fluid
+u_barwall= DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
 
 #displacement conditions:
-d_wall    = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 2)
-d_inlet   = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 3)
-d_outlet  = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 4)
-d_circle  = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 6)
-d_barwall = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
+d_wall    = DirichletBC(V2, ((0.0, 0.0)), boundaries, 2)
+d_inlet   = DirichletBC(V2, ((0.0, 0.0)), boundaries, 3)
+d_outlet  = DirichletBC(V2, ((0.0, 0.0)), boundaries, 4)
+d_circle  = DirichletBC(V2, ((0.0, 0.0)), boundaries, 6)
+d_barwall = DirichletBC(V2, ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
 
 
 #deformation condition
 #d_barwall = DirichletBC(VVQ.sub(2), ((0, 0)), boundaries, 7)
 
 #Pressure Conditions
-p_out = DirichletBC(VVQ.sub(2), 0, boundaries, 4)
+p_out = DirichletBC(VQ.sub(1), 0, boundaries, 4)
 #p_bar = DirichletBC(VVQ.sub(2), Constant(0), boundaries, 8)
 
 #Assemble boundary conditions
@@ -169,23 +170,26 @@ bc_p = [p_out]
 bcs = bc_u + bc_d + bc_p
 
 
+
 # TEST TRIAL FUNCTIONS
-phi, psi, gamma = TestFunctions(VVQ)
+phi, gamma = TestFunctions(VQ)
+psi = TestFunction(V2)
 #u,d,w,p
 #u,d, p  = TrialFunctions(VVQ)
 
-udp = Function(VVQ)
+up = Function(VQ)
+u, p  = split(up)
+up0 = Function(VQ)
+u0,p0 = split(up0)
+up_res = Function(VQ)
+d_res = Function(V2)
 
-udp_res = Function(VVQ)
 
-u, d, p  = split(udp)
-#u0, d0, p0  = split(udp0)
-
-#d = Function(V)
+#d = TrialFunction(V2)
+d = Function(V2)
 d0 = Function(V2)
 d1 = Function(V2)
-u0 = Function(V1)
-
+d2 = Function(V2)
 
 #dt = float(sys.argv[2])
 k = Constant(dt)
@@ -222,6 +226,39 @@ def integrateFluidStress(p, u):
   fY = assemble(forceY)
 
   return fX, fY
+def Newton_manual_s(F, d, bc_d, atol, rtol, max_it, lmbda,d_res):
+    #Reset counters
+    Iter      = 0
+    residual   = 1
+    rel_res    = residual
+    dw = TrialFunction(V2)
+    Jac_1 = derivative(F, d,dw)                # Jacobi
+
+    a = assemble(Jac_1)#,keep_diagonal)
+    #a.vector().zero()
+    while rel_res > rtol and residual > atol and Iter < max_it:
+         A = assemble(Jac_1, tensor = a)
+         A.ident_zeros()
+         b = assemble(-F) - Mass_s_L
+
+         [bc.apply(A, b, d.vector()) for bc in bc_d]
+
+         #solve(A, udp_res.vector(), b, "superlu_dist")
+
+         solve(A, d_res.vector(), b)#, "mumps")
+
+         d.vector()[:] = d.vector()[:] + lmbda*d_res.vector()[:]
+         #udp.vector().axpy(1., udp_res.vector())
+         [bc.apply(d.vector()) for bc in bc_d]
+         rel_res = norm(d_res, 'l2')
+         residual = b.norm('l2')
+
+         if MPI.rank(mpi_comm_world()) == 0:
+             print "Newton iteration %d: r (atol) = %.3e (tol = %.3e), r (rel) = %.3e (tol = %.3e) " \
+         % (Iter, residual, atol, rel_res, rtol)
+         Iter += 1
+
+    return d
 def Newton_manual(F, udp, bcs, atol, rtol, max_it, lmbda,udp_res):
     #Reset counters
     Iter      = 0
@@ -233,9 +270,9 @@ def Newton_manual(F, udp, bcs, atol, rtol, max_it, lmbda,udp_res):
     a = assemble(Jac)
     a.vector().zero()
     while rel_res > rtol and residual > atol and Iter < max_it:
-        A = assemble(Jac, tensor = a)
+        A = assemble(Jac, tensor = a) + Mass_l_rhs_L
         A.ident_zeros()
-        b = assemble(-F)
+        b = assemble(-F) - Mass_b_rhs_L
 
         [bc.apply(A, b, udp.vector()) for bc in bcs]
 
@@ -290,28 +327,49 @@ delta = 1.0E10
 alpha = 1.0
 h =  mesh.hmin()
 
+#The operator B_h is very simple to implement.
+#You simply need to add to the fluid matrix the diagonal entries of the solid lumped-mass matrix related to the solid nodes lying on the fluid-solid interface.
+#Note that, when you add these entries to the fluid matrix, you have to take into account the mapping between fluid and solid interface nodes.
 #Fluid domain update:
 #Ext operator:
-F_Ext =  inner(grad(d_star), grad(psi))*dx_f #- inner(grad(d)*n, psi)*ds
-
-# Fluid variational form
-
-
-F_fluid =(rho_f/k)*inner(J_(d_star)*(u - u0), phi)*dx_f \
-        + rho_f*inner(J_(d_star)*inv(F_(d_star))*grad(u)*(u - ((d_star-d0)/k)), phi)*dx_f \
-        + inner(sigma_f_hat(u,p,d_star), grad(phi))*dx_f \
-        - inner(div(J_(d_star)*inv(F_(d_star).T)*u), gamma)*dx_f
-        #+ inner(J_(d_star("-"))*sigma_f(u("-"),p("-"))*inv(F_(d_star("-"))).T*n("-"),phi)*dS(5) + (rho_s/k)*Lumpedmass()*u  \
-        #+ inner(P1(d_star("-"))*n("-"),phi)*dS(5) - (rho_s/k)*Lumpedmass()*(d0´ + k*d0´´)
+F_Ext =  inner(grad(d), grad(psi))*dx_f #- inner(grad(d)*n, psi)*ds
 
 
 # Structure var form
-F_structure = (rho_s/k*k)*inner(d-2*d0+d1,phi)*dx_s  + inner(P1(d),grad(phi))*dx_s #+ ??alpha*(rho_s/k)*(0.5*(d-d1))*dx_s??
+
+
+Mass_b_rhs =  assemble((rho_s/k)*inner((2*((d0("-")-d1("-"))/k) - ((d1("-") - d2("-"))/k))*n("-"), psi("-"))*dS(2)) #Mass matrix
+Mass_b_lhs = assemble((rho_s/k)*inner(u("-") *n("-"), phi("-"))*dS(2))
+
+Mass_s_time = assemble((rho_s/k*k)*inner(d-2*d0+d1, psi)*dx_s)
+
+ones_d = Function(V2)
+ones_u = Function(V1)
+ones.vector()[:] = 1.
+Mass_s_L = Mass_s_time*ones_d.vector() #Mass structure matrix lumped
+
+Mass_b_rhs_L = Mass_b_rhs*ones.vector_d() #Mass structure matrix lumped
+Mass_b_lhs_L = Mass_b_lhs*ones.vector_u() #Mass structure matrix lumped
+
+#from IPython import embed
+#embed()
+
+F_structure = inner(P1(d),grad(psi))*dx_s #+ ??alpha*(rho_s/k)*(0.5*(d-d1))*dx_s??
 
 F_structure += delta*((1.0/k)*inner(d-d0,psi)*dx_s - inner(u,psi)*dx_s)
 
-F_structure += inner(P1(d("-"))*n("-"),phi)*dS(5) + inner(J_(d("-")) * sigma_f(u("-"),p("-")) * inv(F_(d("-"))).T*n("-"),phi)*dS(5)
+F_structure += inner(P1(d0("-"))*n("-"),phi)*dS(5) + inner(J_(d("-")) * sigma_f(u("-"),p("-")) * inv(F_(d("-"))).T*n("-"),phi)*dS(5)
 
+# Fluid variational form
+F_fluid =(rho_f/k)*inner(J_(d)*(u - u0), phi)*dx_f \
+        + rho_f*inner(J_(d)*inv(F_(d))*grad(u)*(u - ((d-d0)/k)), phi)*dx_f \
+        + inner(sigma_f_hat(u,p,d), grad(phi))*dx_f \
+        - inner(div(J_(d)*inv(F_(d).T)*u), gamma)*dx_f\
+        + inner(sigma_f_hat(u("-"),p("-"),d("-"))*n("-"),phi)*dS(5)   \
+        + inner(P1(d0("-"))*n("-"),phi)*dS(5)
+if v_deg == 1:
+    F_fluid += - beta*h*h*inner(J_(d)*inv(F_(d).T)*grad(p),grad(gamma))*dx_f
+    print "v_deg",v_deg
 
 
 #T = 5.0
@@ -349,14 +407,15 @@ while t <= T:
         inlet.t = 2;
 
     #Update fluid domain, solving laplace d = 0, solve for d_star?????????
-    solve(F_Ext == 0 , d_star, bc_d)
+    solve(F_Ext == 0 , d, bc_d)
 
 
     # Solve fluid step, find u and p
-    up = Newton_manual(F_fluid, up, bcs, atol, rtol, max_it, lmbda,udp_res)
-
+    up = Newton_manual(F_fluid, up, bc_u, atol, rtol, max_it, lmbda,udp_res)
+    up0.assign(up)
+    u,p = up.split(True)
     # Solve structure step find d
-    udp = Newton_manual(F_fluid, udp, bcs, atol, rtol, max_it, lmbda,udp_res)
+    d = Newton_manual(F_structure , d, bc_d, atol, rtol, max_it, lmbda,udp_res)
 
     if counter%step==0:
         #if MPI.rank(mpi_comm_world()) == 0:
@@ -387,10 +446,10 @@ while t <= T:
             print "t = %.4f " %(t)
             print 'Drag/Lift : %g %g' %(Dr,Li)
             print "dis_x/dis_y : %g %g "%(dsx,dsy)
-
-    u0.assign(u)
-    #d1.assign(d0)
+    d2.assign(d1)
+    d1.assign(d0)
     d0.assign(d)
+    plot(u)
     t += dt
     counter +=1
 print "mean time: ",np.mean(time_script_list)
