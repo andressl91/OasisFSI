@@ -36,13 +36,14 @@ def dolfincode(expr, assign_to=None, **settings):
 def find_my_f_1():
     x,y,t,mu_s,rho_s,lamda = sp.symbols('x y t mu_s rho_s lamda')
 
-    u = t**3
-    v = t**3
+    u = x**3 + t**3
+    v = y**3 + t**3
+    #u = sp.sin(2*sp.pi*t) + sp.cos(sp.pi*y)
+    #v = sp.cos(2*sp.pi*t) + sp.cos(sp.pi*x)
     #u = sp.sin(2*sp.pi*t) + sp.sin(2*sp.pi*x)*sp.sin(2*sp.pi*y)
     #v = sp.cos(2*sp.pi*t) + sp.cos(2*sp.pi*x)*sp.cos(2*sp.pi*y)
+
     var = [u,v]
-    #u = sin(2*pi*t) + sin(2*pi*x)*sin(2*pi*y)
-    #v = cos(2*pi*t) + cos(2*pi*x)*cos(2*pi*y)
 
     ux = sp.diff(u,x)
     uy = sp.diff(u,y)

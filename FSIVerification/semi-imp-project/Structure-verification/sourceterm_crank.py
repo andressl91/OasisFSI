@@ -45,9 +45,7 @@ if len(dt) == 0:
 
 def Solid(N, dt):
     mesh = UnitSquareMesh(N,N)
-    mesh2 = UnitSquareMesh(30,30)
     V = VectorFunctionSpace(mesh, "CG", 1)
-    V2 = VectorFunctionSpace(mesh2, "CG", 2)
 
     d_exact, f = find_my_f_1()
 
@@ -57,12 +55,10 @@ def Solid(N, dt):
     nu_s = 0.4
     E_1 = 1.4E6
     lamda = nu_s*2.*mu_s/(1. - 2.*nu_s)
-    g = Constant((0, -2.*rho_s))
 
-    T = 4
-    t = 0
+    t = dt
     k = Constant(dt)
-    beta = Constant(0.25)
+
 
     implementation = "1"
 
@@ -75,17 +71,20 @@ def Solid(N, dt):
         return (lamda*tr(E)*I + 2*mu_s*E)
 
     if implementation =="1":
+        d_exact.t = 0
+        f.t = 0; f_1 = f
+        f.t = dt; f1 = f
         bcs = DirichletBC(V, d_exact, "on_boundary")
         psi = TestFunction(V)
         d = Function(V)
         d0 = Function(V)
         d1 = Function(V)
-        d_exact.t = 0
         d1 = interpolate(d_exact, V)
         d0 = interpolate(d_exact, V)
-        f.t = dt
+
         G =rho_s*((1./k**2)*inner(d - 2*d0 + d1, psi))*dx \
-        + inner(s_s_n_l(0.5*(d + d1)), grad(psi))*dx - inner(f, psi)*dx
+        + inner(0.5*(s_s_n_l(d) + s_s_n_l(d1)), grad(psi))*dx \
+        - inner(0.5*(f1 + f_1), psi)*dx
 
     #Variational form with double spaces
     if implementation =="2":
@@ -107,12 +106,14 @@ def Solid(N, dt):
     tic()
     while t < T:
         if implementation == "1":
-            #f.t = t
             solve(G == 0,d, bcs, solver_parameters={"newton_solver": \
             {"relative_tolerance": 1E-7,"absolute_tolerance":1E-7,"maximum_iterations":100,"relaxation_parameter":1.0}})
 
             d1.assign(d0)
             d0.assign(d)
+            d_exact.t = t
+            f.t = t - dt; f_1 = f
+            f.t = t + dt; f1 = f
 
             #dis_x.append(d(coord)[0])
             #dis_y.append(d(coord)[1])
@@ -124,7 +125,6 @@ def Solid(N, dt):
             solve(G == 0, wd, bcs, solver_parameters={"newton_solver": \
             {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
             w0d0.assign(wd)
-            w0,d0 = w0d0.split(True)
             w,d = wd.split(True)
 
             #dis_x.append(d(coord)[0])
@@ -136,10 +136,10 @@ def Solid(N, dt):
         t += dt
     time.append(toc())
     d_exact.t = t
-    d_ = interpolate(d_exact,V)
+    #d_ = interpolate(d_exact,V2)
 
     #d_new = interpolate(d, V)
-    L2 = errornorm(d_, d, norm_type="l2",degree_rise=3)
+    L2 = errornorm(d_exact, d, norm_type = "l2", degree_rise = 2)
     print "HERERE", L2
     E.append(L2)
     h.append(mesh.hmin())
@@ -148,7 +148,12 @@ time = []; E = []; h = []
 for t in dt:
     for n in N:
         Solid(n, t)
-"""
+
+#for i in range(len(E)-1):
+    #r = np.log(E[i+1]/E[i])/np.log(h[i+1]/h[i])
+    #r = np.log(E[i+1]/E[i])/np.log(dt[i+1]/dt[i])
+    #print "Here", r
+
 if len(dt) == 1:
     check = N; opp = dt
 else:
@@ -194,4 +199,3 @@ if MPI.rank(mpi_comm_world()) == 0:
             headers.append("%g to %g" % (check[i], check[i+1]))
         print tabulate(table, headers)
         #print tabulate(table, headers, tablefmt="fancy_grid")
-"""

@@ -34,12 +34,9 @@ k = Constant(dt)
 beta = Constant(0.25)
 
 #############
-implementation = "1"
+implementation = "3"
 #############
 
-#Hookes
-def sigma_structure(d):
-    return 2*mu_s*sym(grad(d)) + lamda*tr(sym(grad(d)))*Identity(2)
 
 #Second Piola Kirchhoff Stress tensor
 def s_s_n_l(d):
@@ -49,6 +46,14 @@ def s_s_n_l(d):
     #J = det(F)
     return (lamda*tr(E)*I + 2*mu_s*E)
 
+def piola_adam(d, d0, d_1, lamda, mu):
+    I = Identity(2)
+    return lamda/8. *( tr((3*grad(d0) - grad(d_1))*(grad(d) + grad(d0)) - I) * I \
+    + mu*(grad(d) + grad(d0)) + mu/4.*(grad(d) + grad(d0))*(3*grad(d0).T - grad(d_1).T) )
+
+
+
+#Second order derivative
 if implementation =="1":
     bcs = DirichletBC(V, ((0,0)), boundaries, 1)
     psi = TestFunction(V)
@@ -59,7 +64,7 @@ if implementation =="1":
     G =rho_s*((1./k**2)*inner(d - 2*d0 + d1, psi))*dx - inner(g,psi)*dx\
     + inner(s_s_n_l(0.5*(d + d1)), grad(psi))*dx
 
-#Variational form with double spaces
+#Split problem to two 1.order differential equations
 if implementation =="2":
     bc1 = DirichletBC(VV.sub(0), ((0,0)), boundaries, 1)
     bc2 = DirichletBC(VV.sub(1), ((0,0)), boundaries, 1)
@@ -75,6 +80,19 @@ if implementation =="2":
 
     #G = rho_s/k*inner(w - w0, psi)*dx + inner(s_s_n_l(0.5*(d + d0)), grad(psi))*dx \
     #- inner(g,psi)*dx + dot(d-d0,phi)*dx - k*dot(0.5*(w+w0),phi)*dx
+
+if implementation =="3":
+    bc1 = DirichletBC(VV.sub(0), ((0,0)), boundaries, 1)
+    bc2 = DirichletBC(VV.sub(1), ((0,0)), boundaries, 1)
+    bcs = [bc1,bc2]
+    psi, phi = TestFunctions(VV)
+    wd = Function(VV)
+    w, d = split(wd)
+    w0 = Function(V); w_1 = Function(V)
+    d0 = Function(V); d_1 = Function(V)
+
+    G = rho_s/k*inner(w - w0, psi)*dx - inner(grad(piola_adam(d, d0, d_1, lamda, mu_s)), grad(psi) )*dx \
+    + 1./k*(d - d0) - 0.5*(w + w0)*dx
 
 
 T = 4
@@ -107,6 +125,18 @@ while t <= T:
 
         dis_x.append(d(coord)[0])
         dis_y.append(d(coord)[1])
+        time.append(t)
+        if MPI.rank(mpi_comm_world()) == 0:
+            print "Time: ",t #,"dis_x: ", d(coord)[0], "dis_y: ", d(coord)[1]
+
+    if implementation =="3":
+        solve(G == 0, wd, bcs, solver_parameters={"newton_solver": \
+        {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
+        w0d0.assign(wd)
+        w0,d0 = w0d0.split(True)
+        d_1.append(d0)
+        dis_x.append(d0(coord)[0])
+        dis_y.append(d0(coord)[1])
         time.append(t)
         if MPI.rank(mpi_comm_world()) == 0:
             print "Time: ",t #,"dis_x: ", d(coord)[0], "dis_y: ", d(coord)[1]
