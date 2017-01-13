@@ -39,140 +39,199 @@ implementation = "3"
 
 
 #Second Piola Kirchhoff Stress tensor
-def s_s_n_l(d):
+def Piola2(d, lamda, mu):
     I = Identity(2)
     F = I + grad(d)
     E = 0.5*((F.T*F) - I)
-    #J = det(F)
+
     return (lamda*tr(E)*I + 2*mu_s*E)
 
-#Test for solving d directly
-def piola_adam(d_n, d_n1, d_n2, lamda, mu):
+def simple_lin(d_n, d_n1, lamda, mu):
     I = Identity(2)
-    E = 1/4.*( (grad(d_n).T + grad(d_n2).T + grad(d_n) + grad(d_n2)) \
-    + (3*grad(d_n1) - grad(d_n2)).T * (grad(d_n) + grad(d_n2)) )
+    E = 1./2 * (grad(d_n) + grad(d_n).T + grad(d_n1)*grad(d_n).T)
 
-    return (lamda*tr(E)*I + 2*mu_s*E)
+    return lamda*tr(E)*I + 2*mu_s*E
 
-#Test for solving d and
-def piola_adam2(d_n, d_n1, d_n2, lamda, mu):
+def piola_adam_single(d_n, d_n1, d_n2, lamda, mu):
     I = Identity(2)
-    E = 1/4.*( (grad(d_n).T + grad(d_n1).T + grad(d_n) + grad(d_n1)) \
-    + (3*grad(d_n1) - grad(d_n2)).T * (grad(d_n) + grad(d_n1)) )
+    E = 1./2* ( 0.5*(grad(d_n).T + grad(d_n2).T + grad(d_n) + grad(d_n2)) \
+    +  1./2*(grad(d_n) + grad(d_n2)) * (3./2*grad(d_n1).T - 1./2*grad(d_n2).T) )
 
     return (lamda*tr(E)*I + 2*mu_s*E)
 
+def piola2_adam_double(d_n, d_n1, d_n2, lamda, mu):
+    I = Identity(2)
+    E = 1./2* ( 0.5*(grad(d_n).T + grad(d_n1).T + grad(d_n) + grad(d_n1)) \
+    +  1./2*(grad(d_n) + grad(d_n1)) * (3./2*grad(d_n1).T - 1./2*grad(d_n2).T) )
 
-#Second order derivative
-if implementation =="1":
-    bcs = DirichletBC(V, ((0, 0)), boundaries, 1)
-    psi = TestFunction(V)
-    d = Function(V)
-    d0 = Function(V)
-    d1 = Function(V)
+    return (lamda*tr(E)*I + 2*mu_s*E)
 
-    #Testing proposed tensor
-    G =rho_s*((1./k**2)*inner(d - 2*d0 + d1, psi))*dx \
-    + inner(piola_adam(d, d0, d1, lamda, mu_s), grad(psi))*dx \
-    - inner(g,psi)*dx
+def solver(T, space, implementation, count, betterstart):
 
-    #original
-    #G =rho_s*((1./k**2)*inner(d - 2*d0 + d1, psi))*dx - inner(g,psi)*dx\
-    #+ inner(s_s_n_l(0.5*(d + d1)), grad(psi))*dx
+    t = 0
+    dis_x = []; dis_y = []; time = []
 
+    if space == "singlespace":
+            bcs = DirichletBC(V, ((0, 0)), boundaries, 1)
+            psi = TestFunction(V)
+            d = Function(V)
+            d0 = Function(V)
+            d1 = Function(V)
+            if betterstart == True:
+                G =rho_s*((1./k**2)*inner(d - 2*d0 + d1, psi))*dx - inner(g,psi)*dx\
+                + 0.5*inner(Piola2(d, lamda, mu_s) + Piola2(d1, lamda, mu_s), grad(psi))*dx
 
-#Split problem to two 1.order differential equations
-if implementation =="2":
-    bc1 = DirichletBC(VV.sub(0), ((0, 0)), boundaries, 1)
-    bc2 = DirichletBC(VV.sub(1), ((0, 0)), boundaries, 1)
-    bcs = [bc1,bc2]
-    psi, phi = TestFunctions(VV)
-    wd = Function(VV)
-    w, d = split(wd)
-    w0d0 = Function(VV)
-    w0, d0 = split(w0d0)
+                while t < 2*dt:
+                    solve(G == 0, d, bcs, solver_parameters={"newton_solver": \
+                    {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
+                    d1.assign(d0)
+                    d0.assign(d)
 
-    G = rho_s/k*inner(w - w0, psi)*dx + inner(0.5*(s_s_n_l(d) + s_s_n_l(d0)), grad(psi))*dx \
-    - inner(g,psi)*dx + dot(d - d0,phi)*dx - k*dot(0.5*(w + w0), phi)*dx
+                    dis_x.append(d(coord)[0])
+                    dis_y.append(d(coord)[1])
+                    time.append(t)
+                    if MPI.rank(mpi_comm_world()) == 0:
+                        print "Time: ",t #,"dis_x: ", d(coord)[0], "dis_y: ", d(coord)[1]
 
-    #G = rho_s/k*inner(w - w0, psi)*dx + inner(s_s_n_l(0.5*(d + d0)), grad(psi))*dx \
-    #- inner(g,psi)*dx + dot(d-d0,phi)*dx - k*dot(0.5*(w+w0),phi)*dx
+                    print "HERERERE"
+                    t += dt
 
-if implementation =="3":
-    bc1 = DirichletBC(VV.sub(0), ((0,0)), boundaries, 1)
-    bc2 = DirichletBC(VV.sub(1), ((0,0)), boundaries, 1)
-    bcs = [bc1,bc2]
-    psi, phi = TestFunctions(VV)
-    wd = Function(VV)
-    w, d = split(wd)
-    w0 = Function(V); w_1 = Function(V)
-    d0 = Function(V); d_1 = Function(V)
+            if implementation == "C-N":
+                print "CN"
+                G =rho_s*((1./k**2)*inner(d - 2*d0 + d1, psi))*dx - inner(g,psi)*dx\
+                + 0.5*inner(Piola2(d, lamda, mu_s) + Piola2(d1, lamda, mu_s), grad(psi))*dx
 
-    G = rho_s/k*inner(w - w0, psi)*dx + inner(piola_adam2(d, d0, d_1, lamda, mu_s), grad(psi) )*dx \
-    - inner(g,psi)*dx \
-    + 1./k*inner(d - d0, phi)*dx - 0.5*inner(w + w0, phi)*dx
+            if implementation == "simple_lin":
+                G =rho_s*((1./k**2)*inner(d - 2*d0 + d1, psi))*dx - inner(g,psi)*dx\
+                + inner(simple_lin(d, d0, lamda, mu_s), grad(psi))*dx
 
-
-T = 4
-t = 0
+            if implementation == "A-B":
+                G =rho_s*((1./k**2)*inner(d - 2*d0 + d1, psi))*dx - inner(g,psi)*dx\
+                + inner(piola_adam_single(d, d0, d1, lamda, mu_s), grad(psi))*dx
 
 
-#dis_file = File("results/x_direction.pvd")
+    if space == "mixedspace":
+    #Split problem to two 1.order differential equations
+        psi, phi = TestFunctions(VV)
+        bc1 = DirichletBC(VV.sub(0), ((0, 0)), boundaries, 1)
+        bc2 = DirichletBC(VV.sub(1), ((0, 0)), boundaries, 1)
+        bcs = [bc1, bc2]
+        wd = Function(VV)
+        w, d = split(wd)
+        wd0 = Function(VV)
+        w0, d0 = split(wd0)
+        wd_1 = Function(VV)
+        w_1, d_1 = split(wd_1)
 
-dis_x = []; dis_y = []; time = []
-from time import sleep
-while t <= T:
-    if implementation == "1":
-        solve(G == 0, d, bcs, solver_parameters={"newton_solver": \
-        {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
-        d1.assign(d0)
-        d0.assign(d)
+        if betterstart == True:
+            G = rho_s/k*inner(w - w0, psi)*dx + 0.5*inner(Piola2(d, lamda, mu_s) + Piola2(d0, lamda, mu_s), grad(psi))*dx \
+            - inner(g, psi)*dx + dot(d - d0,phi)*dx - k*dot(0.5*(w + w0),phi)*dx
 
-        dis_x.append(d(coord)[0])
-        dis_y.append(d(coord)[1])
-        time.append(t)
-        if MPI.rank(mpi_comm_world()) == 0:
-            print "Time: ",t #,"dis_x: ", d(coord)[0], "dis_y: ", d(coord)[1]
+            while t < 2*dt:
+                print "HERE"
+                solve(G == 0, wd, bcs, solver_parameters={"newton_solver": \
+                {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
 
-    if implementation =="2":
-        solve(G == 0, wd, bcs, solver_parameters={"newton_solver": \
-        {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
-        w0d0.assign(wd)
-        w0,d0 = w0d0.split(True)
-        w,d = wd.split(True)
+                wd_1.assign(wd0)
+                wd0.assign(wd)
+                w_1, d_1 = wd_1.split(True)
+                w0, d0 = wd0.split(True)
+                w, d = wd.split(True)
 
-        dis_x.append(d(coord)[0])
-        dis_y.append(d(coord)[1])
-        time.append(t)
-        if MPI.rank(mpi_comm_world()) == 0:
-            print "Time: ",t #,"dis_x: ", d(coord)[0], "dis_y: ", d(coord)[1]
+                dis_x.append(d0(coord)[0])
+                dis_y.append(d0(coord)[1])
+                time.append(t)
+                t += dt
 
-    if implementation =="3":
-        solve(G == 0, wd, bcs, solver_parameters={"newton_solver": \
-        {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
-        w, d = wd.split(True)
-        d_1.assign(d0)
-        d0.assign(d)
-        w0.assign(w)
+                if MPI.rank(mpi_comm_world()) == 0:
+                    print "Time: ",t #,"dis_x: ", d(coord)[0], "dis_y: ", d(coord)[1]
 
-        dis_x.append(d0(coord)[0])
-        dis_y.append(d0(coord)[1])
-        time.append(t)
-        if MPI.rank(mpi_comm_world()) == 0:
-            print "Time: ",t #,"dis_x: ", d(coord)[0], "dis_y: ", d(coord)[1]
+        if implementation =="C-N":
+            G = rho_s/k*inner(w - w0, psi)*dx + 0.5*inner(Piola2(d, lamda, mu_s) + Piola2(d0, lamda, mu_s), grad(psi))*dx \
+            - inner(g, psi)*dx + dot(d-d0,phi)*dx - k*dot(0.5*(w+w0),phi)*dx
 
-    t += dt
+        if implementation == "simple_lin":
+            G = rho_s/k*inner(w - w0, psi)*dx + inner(simple_lin(d, d0, lamda, mu_s), grad(psi) )*dx \
+            - inner(g, psi)*dx \
+            + 1./k*inner(d - d0, phi)*dx - inner(w, phi)*dx
+
+        if implementation =="A-B":
+            G = rho_s/k*inner(w - w0, psi)*dx + inner(piola2_adam_double(d, d0, d_1, lamda, mu_s), grad(psi) )*dx \
+            - inner(g, psi)*dx \
+            + 1./k*inner(d - d0, phi)*dx - k*dot(0.5*(w + w0),phi)*dx
+
+    #dis_file = File("results/x_direction.pvd")
+
+    from time import sleep
+
+    if space == "singlespace":
+        tic()
+        while t <= T:
+            solve(G == 0, d, bcs, solver_parameters={"newton_solver": \
+            {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
+            d1.assign(d0)
+            d0.assign(d)
+
+            dis_x.append(d(coord)[0])
+            dis_y.append(d(coord)[1])
+            time.append(t)
+
+            t += dt
+            if MPI.rank(mpi_comm_world()) == 0:
+                print "Time: ",t #,"dis_x: ", d(coord)[0], "dis_y: ", d(coord)[1]
+        comp_time.append(toc())
+    if space == "mixedspace":
+        while t <= T:
+            tic()
+            solve(G == 0, wd, bcs, solver_parameters={"newton_solver": \
+            {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
+
+            wd_1.assign(wd0)
+            wd0.assign(wd)
+            w0, d0 = wd0.split(True)
+            w, d = wd.split(True)
 
 
-title = plt.title("Double space")
+            dis_x.append(d0(coord)[0])
+            dis_y.append(d0(coord)[1])
+            time.append(t)
 
+            t += dt
+            if MPI.rank(mpi_comm_world()) == 0:
+                print "Time: ",t #,"dis_x: ", d(coord)[0], "dis_y: ", d(coord)[1]
+        comp_time.append(toc())
+
+    plt.figure(count)
+    plt.title("implementation %s, y_dir" % (implementation))
+    plt.plot(time,dis_y); plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
+    plt.savefig("%s_%s_Ydef.jpg" % (space, implementation))
+    #plt.show()
+
+#space = ["singlespace"]
+space = ["singlespace"]
+implementation = ["simple_lin"]
+#implementation = ["simple_lin"]
+#implementation = ["A-B"]
+
+
+comp_time = []
+T = 1.0
+count = 1
+for s in space:
+    for i in implementation:
+        solver(T, s, i, count, betterstart = True)
+        count += 1
+
+for i in range(len(space)):
+    for j in range(len(implementation)):
+        print "CPU TIME %.3f" % comp_time[i*len(implementation) + j]
+
+    #plt.show()
+
+"""
 plt.figure(1)
 plt.title("implementation %s, x-dir" % (implementation))
 plt.plot(time,dis_x,);title; plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
 plt.savefig("run_x_imp%s.jpg" % (implementation))
 #plt.show()
-plt.figure(2)
-plt.title("implementation %s, y_dir" % (implementation))
-plt.plot(time,dis_y);title;plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
-plt.savefig("run_y_imp%s.jpg" % (implementation))
-#plt.show()
+"""
