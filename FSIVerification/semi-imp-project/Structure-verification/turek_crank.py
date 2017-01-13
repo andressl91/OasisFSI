@@ -46,28 +46,45 @@ def s_s_n_l(d):
     #J = det(F)
     return (lamda*tr(E)*I + 2*mu_s*E)
 
-def piola_adam(d, d0, d_1, lamda, mu):
+#Test for solving d directly
+def piola_adam(d_n, d_n1, d_n2, lamda, mu):
     I = Identity(2)
-    return lamda/8. *( tr((3*grad(d0) - grad(d_1))*(grad(d) + grad(d0)) - I) * I \
-    + mu*(grad(d) + grad(d0)) + mu/4.*(grad(d) + grad(d0))*(3*grad(d0).T - grad(d_1).T) )
+    E = 1/4.*( (grad(d_n).T + grad(d_n2).T + grad(d_n) + grad(d_n2)) \
+    + (3*grad(d_n1) - grad(d_n2)).T * (grad(d_n) + grad(d_n2)) )
 
+    return (lamda*tr(E)*I + 2*mu_s*E)
+
+#Test for solving d and
+def piola_adam2(d_n, d_n1, d_n2, lamda, mu):
+    I = Identity(2)
+    E = 1/4.*( (grad(d_n).T + grad(d_n1).T + grad(d_n) + grad(d_n1)) \
+    + (3*grad(d_n1) - grad(d_n2)).T * (grad(d_n) + grad(d_n1)) )
+
+    return (lamda*tr(E)*I + 2*mu_s*E)
 
 
 #Second order derivative
 if implementation =="1":
-    bcs = DirichletBC(V, ((0,0)), boundaries, 1)
+    bcs = DirichletBC(V, ((0, 0)), boundaries, 1)
     psi = TestFunction(V)
     d = Function(V)
     d0 = Function(V)
     d1 = Function(V)
 
-    G =rho_s*((1./k**2)*inner(d - 2*d0 + d1, psi))*dx - inner(g,psi)*dx\
-    + inner(s_s_n_l(0.5*(d + d1)), grad(psi))*dx
+    #Testing proposed tensor
+    G =rho_s*((1./k**2)*inner(d - 2*d0 + d1, psi))*dx \
+    + inner(piola_adam(d, d0, d1, lamda, mu_s), grad(psi))*dx \
+    - inner(g,psi)*dx
+
+    #original
+    #G =rho_s*((1./k**2)*inner(d - 2*d0 + d1, psi))*dx - inner(g,psi)*dx\
+    #+ inner(s_s_n_l(0.5*(d + d1)), grad(psi))*dx
+
 
 #Split problem to two 1.order differential equations
 if implementation =="2":
-    bc1 = DirichletBC(VV.sub(0), ((0,0)), boundaries, 1)
-    bc2 = DirichletBC(VV.sub(1), ((0,0)), boundaries, 1)
+    bc1 = DirichletBC(VV.sub(0), ((0, 0)), boundaries, 1)
+    bc2 = DirichletBC(VV.sub(1), ((0, 0)), boundaries, 1)
     bcs = [bc1,bc2]
     psi, phi = TestFunctions(VV)
     wd = Function(VV)
@@ -91,13 +108,14 @@ if implementation =="3":
     w0 = Function(V); w_1 = Function(V)
     d0 = Function(V); d_1 = Function(V)
 
-    G = rho_s/k*inner(w - w0, psi)*dx - inner(grad(piola_adam(d, d0, d_1, lamda, mu_s)), grad(psi) )*dx \
-    + 1./k*(d - d0) - 0.5*(w + w0)*dx
+    G = rho_s/k*inner(w - w0, psi)*dx + inner(piola_adam2(d, d0, d_1, lamda, mu_s), grad(psi) )*dx \
+    - inner(g,psi)*dx \
+    + 1./k*inner(d - d0, phi)*dx - 0.5*inner(w + w0, phi)*dx
 
 
 T = 4
 t = 0
-time = np.linspace(0, T, (T/dt)+1)
+
 
 #dis_file = File("results/x_direction.pvd")
 
@@ -109,7 +127,7 @@ while t <= T:
         {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
         d1.assign(d0)
         d0.assign(d)
-        print "Timestep: ",t#,"Error: ",e_list[counter]
+
         dis_x.append(d(coord)[0])
         dis_y.append(d(coord)[1])
         time.append(t)
@@ -132,9 +150,11 @@ while t <= T:
     if implementation =="3":
         solve(G == 0, wd, bcs, solver_parameters={"newton_solver": \
         {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
-        w0d0.assign(wd)
-        w0,d0 = w0d0.split(True)
-        d_1.append(d0)
+        w, d = wd.split(True)
+        d_1.assign(d0)
+        d0.assign(d)
+        w0.assign(w)
+
         dis_x.append(d0(coord)[0])
         dis_y.append(d0(coord)[1])
         time.append(t)
@@ -147,12 +167,12 @@ while t <= T:
 title = plt.title("Double space")
 
 plt.figure(1)
-plt.title("Eulerian Mixed, schewed Crank-Nic")
+plt.title("implementation %s, x-dir" % (implementation))
 plt.plot(time,dis_x,);title; plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
-plt.savefig("run_x.jpg")
+plt.savefig("run_x_imp%s.jpg" % (implementation))
 #plt.show()
 plt.figure(2)
-plt.title("Eulerian Mixed, schewed Crank-Nic")
+plt.title("implementation %s, y_dir" % (implementation))
 plt.plot(time,dis_y);title;plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
-plt.savefig("run_y.jpg")
+plt.savefig("run_y_imp%s.jpg" % (implementation))
 #plt.show()
