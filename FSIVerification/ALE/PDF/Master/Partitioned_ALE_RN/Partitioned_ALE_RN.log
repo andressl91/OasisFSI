@@ -1,10 +1,10 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2016.2.23)  14 DEC 2016 10:38
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2016.2.23)  13 JAN 2017 13:40
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
  %&-line parsing enabled.
-**Benchmark.tex
-(./Benchmark.tex
+**Partitioned_ALE_RN.tex
+(./Partitioned_ALE_RN.tex
 LaTeX2e <2015/01/01>
 Babel <3.9l> and hyphenation patterns for 79 languages loaded.
 (./preamble.tex (/usr/local/texlive/2015/texmf-dist/tex/latex/base/report.cls
@@ -302,15 +302,8 @@ LaTeX Font Info:    Redeclaring font encoding OMS on input line 567.
 LaTeX Info: Redefining \[ on input line 2665.
 LaTeX Info: Redefining \] on input line 2666.
 )
-(./Benchmark.aux
-
-LaTeX Warning: Label `my-label' multiply defined.
-
-
-LaTeX Warning: Label `my-label' multiply defined.
-
-)
-\openout1 = `Benchmark.aux'.
+(./Partitioned_ALE_RN.aux)
+\openout1 = `Partitioned_ALE_RN.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 6.
 LaTeX Font Info:    ... okay on input line 6.
@@ -326,7 +319,8 @@ LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 6.
 LaTeX Font Info:    ... okay on input line 6.
 LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 6.
 LaTeX Font Info:    Try loading font information for TS1+cmr on input line 6.
- (/usr/local/texlive/2015/texmf-dist/tex/latex/base/ts1cmr.fd
+
+(/usr/local/texlive/2015/texmf-dist/tex/latex/base/ts1cmr.fd
 File: ts1cmr.fd 2014/09/29 v2.5h Standard LaTeX font definitions
 )
 LaTeX Font Info:    ... okay on input line 6.
@@ -400,96 +394,33 @@ Package caption Info: End \AtBeginDocument code.
 [1
 
 {/usr/local/texlive/2015/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
-<geometry.png, id=8, 399.4925pt x 127.47626pt>
-File: geometry.png Graphic file (type png)
- <use geometry.png>
-Package pdftex.def Info: geometry.png used on input line 15.
-(pdftex.def)             Requested size: 359.53992pt x 114.72755pt.
-
-Overfull \hbox (14.53992pt too wide) in paragraph at lines 15--22
-[]
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 15--22
-
- []
-
-
-LaTeX Warning: `h' float specifier changed to `ht'.
-
-<med_diff_x.png, id=9, 578.16pt x 433.62pt>
-File: med_diff_x.png Graphic file (type png)
- <use med_diff_x.png>
-Package pdftex.def Info: med_diff_x.png used on input line 55.
-(pdftex.def)             Requested size: 207.0021pt x 155.24954pt.
-
-<med_diff_y.png, id=11, 578.16pt x 433.62pt>
-File: med_diff_y.png Graphic file (type png)
- <use med_diff_y.png>
-Package pdftex.def Info: med_diff_y.png used on input line 61.
-(pdftex.def)             Requested size: 207.0021pt x 155.24954pt.
-
-<uten_diff_x.png, id=12, 578.16pt x 433.62pt>
-File: uten_diff_x.png Graphic file (type png)
- <use uten_diff_x.png>
-Package pdftex.def Info: uten_diff_x.png used on input line 67.
-(pdftex.def)             Requested size: 207.0021pt x 155.24954pt.
-
-<uten_diff_y.png, id=13, 578.16pt x 433.62pt>
-File: uten_diff_y.png Graphic file (type png)
- <use uten_diff_y.png>
-Package pdftex.def Info: uten_diff_y.png used on input line 73.
-(pdftex.def)             Requested size: 207.0021pt x 155.24954pt.
-
-Overfull \hbox (69.00421pt too wide) in paragraph at lines 53--77
-[][][]
- []
-
-
-Overfull \hbox (69.00421pt too wide) in paragraph at lines 53--77
-[][] 
- []
-
-[1 <./geometry.png>]
-Overfull \hbox (98.09593pt too wide) in paragraph at lines 106--115
- [][] 
- []
-
-No file Benchmark.bbl.
-[2] [3 <./med_diff_x.png> <./med_diff_y.png> <./uten_diff_x.png> <./uten_diff_y
-.png>] (./Benchmark.aux)
-
-LaTeX Warning: There were multiply-defined labels.
-
- ) 
+[1] [2] (./Partitioned_ALE_RN.aux) ) 
 Here is how much of TeX's memory you used:
- 5927 strings out of 493089
- 85976 string characters out of 6134842
- 160560 words of memory out of 5000000
- 9326 multiletter control sequences out of 15000+600000
- 14428 words of font info for 37 fonts, out of 8000000 for 9000
+ 5885 strings out of 493089
+ 85405 string characters out of 6134842
+ 153499 words of memory out of 5000000
+ 9292 multiletter control sequences out of 15000+600000
+ 13652 words of font info for 36 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 46i,10n,42p,257b,344s stack positions out of 5000i,500n,10000p,200000b,80000s
-{/usr/local/texlive/2015/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc}
-</usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb><
-/usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi5.pfb></u
-sr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></usr
-/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/l
-ocal/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmr5.pfb></usr/loca
-l/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/local/t
-exlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/te
-xlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/local/texl
-ive/2015/texmf-dist/fonts/type1/public/cm-super/sfbx1000.pfb></usr/local/texliv
-e/2015/texmf-dist/fonts/type1/public/cm-super/sfbx1200.pfb></usr/local/texlive/
-2015/texmf-dist/fonts/type1/public/cm-super/sfbx1440.pfb></usr/local/texlive/20
-15/texmf-dist/fonts/type1/public/cm-super/sfrm1000.pfb></usr/local/texlive/2015
-/texmf-dist/fonts/type1/public/cm-super/sfrm1200.pfb></usr/local/texlive/2015/t
-exmf-dist/fonts/type1/public/cm-super/sfrm1728.pfb>
-Output written on Benchmark.pdf (4 pages, 339317 bytes).
+ 46i,12n,42p,872b,219s stack positions out of 5000i,500n,10000p,200000b,80000s
+{/usr/local/texlive/2015/texmf-dist/fonts/e
+nc/dvips/cm-super/cm-super-t1.enc}</usr/local/texlive/2015/texmf-dist/fonts/typ
+e1/public/amsfonts/cm/cmex10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type
+1/public/amsfonts/cm/cmmi10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1
+/public/amsfonts/cm/cmmi7.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/p
+ublic/amsfonts/cm/cmr10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/pub
+lic/amsfonts/cm/cmr7.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public
+/amsfonts/cm/cmsy10.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/
+amsfonts/cm/cmsy7.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/cm
+-super/sfbx1200.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/cm-s
+uper/sfbx1440.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/cm-sup
+er/sfrm1000.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/cm-super
+/sfrm1200.pfb></usr/local/texlive/2015/texmf-dist/fonts/type1/public/cm-super/s
+frm1728.pfb>
+Output written on Partitioned_ALE_RN.pdf (3 pages, 141284 bytes).
 PDF statistics:
- 85 PDF objects out of 1000 (max. 8388607)
- 54 compressed objects within 1 object stream
+ 63 PDF objects out of 1000 (max. 8388607)
+ 45 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
- 26 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 1 words of extra memory for PDF output out of 10000 (max. 10000000)
 

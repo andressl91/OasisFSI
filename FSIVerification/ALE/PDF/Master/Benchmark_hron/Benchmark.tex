@@ -1,14 +1,6 @@
-\input{preamble}
-\usepackage{listings}
-\usepackage{amsmath}
-\title{Benchmark}
-\author{Sebastian Gjertsen}
-\begin{document}
-\maketitle
 
 
 
-\newpage
 
 \section*{Problem Defintion}
 \subsection*{Domain}
@@ -82,7 +74,7 @@ $g $ & 2 & 2 & 2 \\ \hline
 \newpage 
 
 \subsection*{FSI test}
-\begin{table}[h]
+\begin{table}[ht]
 \centering
 \caption{Parameters}
 \label{my-label}
@@ -99,13 +91,13 @@ $\mu_s[10^6 \frac{m^2}{s}]$ & 0.5 & 0.5 & 2 \\ \hline
 \end{tabular}
 \end{table}
 Results: 
-\begin{table}[ht]
+\begin{table}[h]
 \centering
 \caption{FSI 1}
 \label{my-label}
 \begin{tabular}{|l|l|l|l|l|l|l|}
 \hline
-Cells & Dofs & ux of A $[×10^{-3}]$ & uy of A $[×10^{-3}]$ & Drag & Lift & Spaces \\ \hline
+Cells & Dofs & ux of A $[x10^{-3}]$ & uy of A $[x10^{-3}]$ & Drag & Lift & Spaces \\ \hline
 2698 & 7095 & 0.0234594 & 0.797218  & 14.4963 & 0.915801 & P1-P1-P1 stab= 0.01 \\ \hline
 2698 & 23563 & 0.02271 & 0.80288 & 14.1736 & 0.787891 & P2-P2-P1 \\ \hline
 10792 & 92992 & 0.0227341 & 0.808792 & 14.1855 & 0.801044 & P2-P2-P1 \\ \hline
@@ -115,12 +107,4 @@ Cells & Dofs & ux of A $[×10^{-3}]$ & uy of A $[×10^{-3}]$ & Drag & Lift & Space
 \end{table}
 
 
-\bibliographystyle{plain}
-@article{quaini2014extended,
-  title={An extended ALE method for fluid-structure interaction problems with large structural displacements},
-  author={Quaini S ?Canic, S Basting A and Glowinski, R},
-  year={2014}
-}
-\bibliography{./Cite/cites}
 
-\end{document}

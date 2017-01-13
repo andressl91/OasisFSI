@@ -12,12 +12,12 @@ parser = argparse.ArgumentParser(description="Implementation of Turek test case 
  formatter_class=RawTextHelpFormatter, \
   epilog="############################################################################\n"
   "Example --> python ALE_FSI.py \n"
-  "Example --> python ALE_FSI.py -v_deg 2 -p_deg 1 -d_deg 2 -r -dt 0.5 -T 10 -step 10 -FSI_number 1  (Refines mesh one time, -rr for two etc.) \n"
+  "Example --> python FSI_ALE_Partitioned.py -v_deg 1 -p_deg 1 -d_deg 1 -dt 0.5 -T 10 -step 1 -FSI_number 1  (Refines mesh one time, -rr for two etc.) \n"
   "############################################################################")
 group = parser.add_argument_group('Parameters')
 group.add_argument("-p_deg",       type=int,   help="Set degree of pressure                     --> Default=1", default=1)
-group.add_argument("-v_deg",       type=int,   help="Set degree of velocity                     --> Default=2", default=2)
-group.add_argument("-d_deg",       type=int,   help="Set degree of displacement                 --> Default=2", default=2)
+group.add_argument("-v_deg",       type=int,   help="Set degree of velocity                     --> Default=2", default=1)
+group.add_argument("-d_deg",       type=int,   help="Set degree of displacement                 --> Default=2", default=1)
 group.add_argument("-FSI_number",  type=int,   help="FSI number                                 --> Default=1", default=1)
 group.add_argument("-T",           type=float, help="End time                     --> Default=20", default=20)
 group.add_argument("-dt",          type=float, help="Time step                     --> Default=0.5", default=0.5)
@@ -172,7 +172,8 @@ bcs = bc_u + bc_d + bc_p
 
 
 # TEST TRIAL FUNCTIONS
-phi, gamma = TestFunctions(VQ)
+pg= TestFunction(VQ)
+phi,gamma = split(pg)
 psi = TestFunction(V2)
 #u,d,w,p
 #u,d, p  = TrialFunctions(VVQ)
@@ -186,31 +187,18 @@ d_res = Function(V2)
 
 
 #d = TrialFunction(V2)
+
 d = Function(V2)
 d0 = Function(V2)
 d1 = Function(V2)
 d2 = Function(V2)
+d_res = Function(V2)
 
-#dt = float(sys.argv[2])
 k = Constant(dt)
-#EkPa = '62500'
-#E = Constant(float(EkPa))
 
 
 
-"""
-#Fluid properties
-rho_f   = Constant(1.0E3)
-nu_f = Constant(1.0E-3)
-mu_f    = Constant(1.0)
 
-#Structure properties
-rho_s = 1.0E3
-mu_s = 0.5E6
-nu_s = 0.4
-E_1 = 1.4E6
-lamda_s = nu_s*2*mu_s/(1-2*nu_s)
-g = Constant((0,-2*rho_s))"""
 
 print "Re = %f" % (Um/(mu_f/rho_f))
 
@@ -232,14 +220,15 @@ def Newton_manual_s(F, d, bc_d, atol, rtol, max_it, lmbda,d_res):
     residual   = 1
     rel_res    = residual
     dw = TrialFunction(V2)
-    Jac_1 = derivative(F, d,dw)                # Jacobi
+    F_1 = assemble(F) + Mass_s_L
+    Jac_1 = derivative(F_1, d,dw)                # Jacobi
 
-    a = assemble(Jac_1)#,keep_diagonal)
+    #a = assemble(Jac_1)#,keep_diagonal)
     #a.vector().zero()
     while rel_res > rtol and residual > atol and Iter < max_it:
          A = assemble(Jac_1, tensor = a)
          A.ident_zeros()
-         b = assemble(-F) - Mass_s_L
+         b = assemble(-F_1)
 
          [bc.apply(A, b, d.vector()) for bc in bc_d]
 
@@ -259,31 +248,32 @@ def Newton_manual_s(F, d, bc_d, atol, rtol, max_it, lmbda,d_res):
          Iter += 1
 
     return d
-def Newton_manual(F, udp, bcs, atol, rtol, max_it, lmbda,udp_res):
+def Newton_manual(F, up, bcs, atol, rtol, max_it, lmbda,udp_res):
     #Reset counters
     Iter      = 0
     residual   = 1
     rel_res    = residual
-    dw = TrialFunction(VVQ)
-    Jac = derivative(F, udp,dw)                # Jacobi
+    dw = TrialFunction(VQ)
+    F = assemble(F)
+    Jac = derivative(F, up,dw)   # Jacobi
 
     a = assemble(Jac)
-    a.vector().zero()
+    #a.vector().zero()
     while rel_res > rtol and residual > atol and Iter < max_it:
-        A = assemble(Jac, tensor = a) + Mass_l_rhs_L
+        A = assemble(Jac, tensor = a)
         A.ident_zeros()
-        b = assemble(-F) - Mass_b_rhs_L
+        b = assemble(-F)
 
-        [bc.apply(A, b, udp.vector()) for bc in bcs]
+        [bc.apply(A, b, up.vector()) for bc in bc_u]
 
         #solve(A, udp_res.vector(), b, "superlu_dist")
 
-        solve(A, udp_res.vector(), b)#, "mumps")
+        solve(A, up_res.vector(), b)#, "mumps")
 
-        udp.vector()[:] = udp.vector()[:] + lmbda*udp_res.vector()[:]
+        up.vector()[:] = up.vector()[:] + lmbda*up_res.vector()[:]
         #udp.vector().axpy(1., udp_res.vector())
-        [bc.apply(udp.vector()) for bc in bcs]
-        rel_res = norm(udp_res, 'l2')
+        [bc.apply(up.vector()) for bc in bc_u]
+        rel_res = norm(up_res, 'l2')
         residual = b.norm('l2')
 
         if MPI.rank(mpi_comm_world()) == 0:
@@ -291,7 +281,7 @@ def Newton_manual(F, udp, bcs, atol, rtol, max_it, lmbda,udp_res):
         % (Iter, residual, atol, rel_res, rtol)
         Iter += 1
 
-    return udp
+    return up
 
 I = Identity(2)
 
@@ -338,21 +328,32 @@ F_Ext =  inner(grad(d), grad(psi))*dx_f #- inner(grad(d)*n, psi)*ds
 # Structure var form
 
 
-Mass_b_rhs =  assemble((rho_s/k)*inner((2*((d0("-")-d1("-"))/k) - ((d1("-") - d2("-"))/k))*n("-"), psi("-"))*dS(2)) #Mass matrix
-Mass_b_lhs = assemble((rho_s/k)*inner(u("-") *n("-"), phi("-"))*dS(2))
+Mass_s = assemble((rho_s/(k*k))*inner(d-2*d0+d1, psi)*dx_s)
 
-Mass_s_time = assemble((rho_s/k*k)*inner(d-2*d0+d1, psi)*dx_s)
+Mass_s_b = assemble(inner(d("-"), psi("-"))*dS(5))
+
+Mass_s_b_lhs = assemble((rho_s/k)*inner(u("-"), psi("-"))*dS(5))
+Mass_s_b_rhs = assemble((rho_s/k)*inner((2*((d0("-")-d1("-"))/k) - ((d1("-") - d2("-"))/k)),psi("-"))*dS(5))
+
 
 ones_d = Function(V2)
 ones_u = Function(V1)
-ones.vector()[:] = 1.
-Mass_s_L = Mass_s_time*ones_d.vector() #Mass structure matrix lumped
+ones_d.vector()[:] = 1.
+ones_u.vector()[:] = 1.
+Mass_s_L = Mass_s*ones_u.vector() #Mass_time structure matrix lumped
+Mass_s_b_L = Mass_s_b*ones_u.vector()#Mass structure matrix lumped
 
-Mass_b_rhs_L = Mass_b_rhs*ones.vector_d() #Mass structure matrix lumped
-Mass_b_lhs_L = Mass_b_lhs*ones.vector_u() #Mass structure matrix lumped
+#d = WP.sub(0).dofmap().collapse(mesh)[1].values()
+#up.vector()[d] = u.vector()
 
-#from IPython import embed
-#embed()
+Mass_s_and_lhs = Mass_s_b*Mass_s_b_lhs
+Mass_s_and_rhs = Mass_s_b*Mass_s_b_rhs
+
+#a,b = VQ.sub(0).dofmap().collapse(mesh)
+#print a
+#print b
+dof_values = VQ.sub(0).dofmap().collapse(mesh)[1].values()
+
 
 F_structure = inner(P1(d),grad(psi))*dx_s #+ ??alpha*(rho_s/k)*(0.5*(d-d1))*dx_s??
 
@@ -365,8 +366,9 @@ F_fluid =(rho_f/k)*inner(J_(d)*(u - u0), phi)*dx_f \
         + rho_f*inner(J_(d)*inv(F_(d))*grad(u)*(u - ((d-d0)/k)), phi)*dx_f \
         + inner(sigma_f_hat(u,p,d), grad(phi))*dx_f \
         - inner(div(J_(d)*inv(F_(d).T)*u), gamma)*dx_f\
-        + inner(sigma_f_hat(u("-"),p("-"),d("-"))*n("-"),phi)*dS(5)   \
-        + inner(P1(d0("-"))*n("-"),phi)*dS(5)
+        #+ inner(sigma_f_hat(u("-"),p("-"),d("-"))*n("-"),phi("-"))*dS(5) \
+        #+ inner(P1(d0("-"))*n("-"),phi("-"))*dS(5)
+
 if v_deg == 1:
     F_fluid += - beta*h*h*inner(J_(d)*inv(F_(d).T)*grad(p),grad(gamma))*dx_f
     print "v_deg",v_deg
@@ -411,11 +413,11 @@ while t <= T:
 
 
     # Solve fluid step, find u and p
-    up = Newton_manual(F_fluid, up, bc_u, atol, rtol, max_it, lmbda,udp_res)
+    up = Newton_manual(F_fluid, up, bc_u, atol, rtol, max_it, lmbda,up_res)
     up0.assign(up)
     u,p = up.split(True)
     # Solve structure step find d
-    d = Newton_manual(F_structure , d, bc_d, atol, rtol, max_it, lmbda,udp_res)
+    d = Newton_manual(F_structure , d, bc_d, atol, rtol, max_it, lmbda,d_res)
 
     if counter%step==0:
         #if MPI.rank(mpi_comm_world()) == 0:

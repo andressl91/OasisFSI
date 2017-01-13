@@ -1,0 +1,109 @@
+\ProvidesPackage{preamble}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc,url}
+\usepackage{babel,textcomp}
+\usepackage{graphicx}
+\usepackage{pdfpages}
+\usepackage{fancyhdr}
+\usepackage{afterpage}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{caption}
+\usepackage{mathtools}
+\usepackage{listings}
+\usepackage{color}
+\usepackage[margin=1.2in]{geometry}
+
+%\usepackage[hidelinks]{hyperref} % make links black
+\usepackage{hyperref}
+%\hypersetup{
+  %colorlinks=false,
+  %colorlinks=true,
+  % citecolor=black,
+  % filecolor=black,
+  % linkcolor=red,
+  % urlcolor=blue,
+  % linktoc=all,
+  % linktocpage,
+%}
+
+\pagestyle{fancy}
+\fancyhead{}
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0.0pt}
+\renewcommand{\footrulewidth}{0.0pt}
+\fancyhead[R]{\thepage}
+\fancyhead[L]{\emph{}}
+
+\renewcommand{\vec}[1]{\mathbf{#1}}    % vektorer i bf fremfor pil
+\let\oldhat\hat
+\renewcommand{\hat}[1]{\oldhat{\mathbf{#1}}} % enhetsvektorer i bf med hatt
+
+\definecolor{keywords}{RGB}{50,50,250}
+\definecolor{comments}{RGB}{190,70,20} % Orange
+\definecolor{red}{RGB}{160,0,0}
+\definecolor{green}{RGB}{0,150,0}
+\definecolor{grey}{RGB}{225,225,225}
+
+\lstdefinestyle{terminal}
+{
+  frame=single,
+  basicstyle=\ttfamily,%\small,
+}
+
+\lstdefinestyle{fortran}
+{
+  frame=shadowbox,
+  rulesepcolor=\color{black},
+  language=Fortran,
+  basicstyle=\ttfamily,%\small,
+  keywordstyle=\bf\color{keywords},
+  morekeywords={as,range,len,float},
+  commentstyle=\color{comments},
+  stringstyle=\color{red},
+  showstringspaces={false}
+}
+
+\lstdefinestyle{python}
+{
+  %frame=shadowbox,
+  rulesepcolor=\color{black},
+  language=Python,
+  basicstyle=\ttfamily,%\small,
+  keywordstyle=\bf\color{keywords},
+  morekeywords={as,range,len,float},
+  commentstyle=\color{comments},
+  stringstyle=\color{red},
+  showstringspaces={false}
+}
+  % numbers=left,                     # Numbered lines
+  % numbersep=5pt,                    # Dist from num to code
+  % numberstyle=\small,%\color{mygray},
+  % identifierstyle=\color{green}%,
+  % backgroundcolor=\color{},
+  % emph={MyClass,__init__},          % Custom highlighting
+  % emphstyle=\ttb\color{deepred}}    % Custom highlighting style
+
+% Custom commands
+\newcommand{\pder}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\ppder}[2]{\frac{\partial^2 #1}{\partial^2 #2^2}}
+\newcommand{\half}{\frac{1}{2}}
+\newcommand{\intO}{\int_{\Omega}}
+\newcommand{\intdO}{\int_{\partial\Omega}}
+\newcommand{\intu}{\int^1_{-1}}
+\newcommand{\ti}[1]{\tilde{#1}}
+\newcommand{\md}{\;\mathrm{d}}
+\newcommand{\ha}[1]{\text{\^{#1}}}
+
+\title{
+	{Thesis Title}\\
+	{\large Institution Name}\\
+}
+\author{Author Name}
+\date{Day Month Year}
+
+\usepackage{amsmath,amsfonts,amssymb,amsthm,epsfig,epstopdf,titling,url,array}
+\theoremstyle{definition}
+\newtheorem{defn}{Definition}[section]
+\newtheorem{conj}{Conjecture}[section]
+\newtheorem{exmp}{Example}[section]
