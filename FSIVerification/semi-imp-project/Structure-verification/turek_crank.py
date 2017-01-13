@@ -204,7 +204,7 @@ def solver(T, space, implementation, count, betterstart):
     plt.figure(count)
     plt.title("implementation %s, y_dir" % (implementation))
     plt.plot(time,dis_y); plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
-    plt.savefig("%s_%s_Ydef.jpg" % (space, implementation))
+    plt.savefig("%s_%s_Ydef.png" % (space, implementation))
     #plt.show()
 
 #space = ["singlespace"]
