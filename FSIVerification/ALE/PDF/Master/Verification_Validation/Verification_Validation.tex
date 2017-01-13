@@ -1,0 +1,8 @@
+\chapter{Verification and validation. }
+The goal of this is section is to verify and validate the different numerical schemes implemented. To solve a real world problem FSI-problem we need to know that we are solving the right equations and that the equations are solved right. By verification of code means that we make sure we are solving the given equation in the right fashion. This can be done with a convergence test, using the method of manufactured solution for instance. We can then check with mathematical theory to see if our solution converges with decreasing time-step or increasing number of cells in our computation.
+\section{Verification}
+\section{Validation}
+After the code has been verified to see that we are indeed computing in the right fashion. We have to see that it is the right equations that are being solved. This is achieved using known benchmark tests. These tests supply us with a problem setup, initial and boundary conditions, and lastly results that we can compare with. In the following we will look at tests for the fluid solvers both alone, testing laminar to turbulent flow, and with solid. We will test the solid solver, and lastly the entire coupled FSI problem.
+\subsection{Taylor-Green vortex}
+
+\subsection{Fluid-Structure Interaction between an elastic object and laminar incompressible flow}

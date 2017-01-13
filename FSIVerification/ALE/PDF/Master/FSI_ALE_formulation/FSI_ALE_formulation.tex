@@ -1,10 +1,3 @@
-\input{preamble}
-\usepackage{listings}
-\usepackage{amsmath}
-\title{FSI, ALE formulation}
-\author{Sebastian Gjertsen}
-\begin{document}
-\maketitle
 
 
 \section*{Fluid Structure Interaction Problem formulation in ALE coordinates}
@@ -15,6 +8,17 @@ u - Velocity in fluid and structure. \\
 w - Velocity in the domain. It is the velocity of the mesh in the calculations. This will also be the velocity in structure when defined in the lagrangian formulation. \\
 d - Displacement of the solid. The time derivative of the displacement will be the domain velocity. \\
 p - Pressure in the fluid. 
+
+\section*{Full FSI problem}
+Find $u \in \mathcal{F} , p \in \mathcal{F} \text{  and  } d \in \mathcal{S} \text{  such that}:$ 
+\begin{align}
+\rho_f  \frac{\partial u}{\partial t} + (\nabla u)(u-\frac{\partial d}{\partial t})  + \nabla \cdot \sigma_f  &= 0 \text{  on  } \mathcal{F } \\
+\nabla \cdot u  &= 0 \text{  on  } \mathcal{F}   \\
+\nabla^2 d &= 0  \text{  on  } \mathcal{F}\\
+\rho_s \frac{\partial u}{\partial t} + \nabla \cdot \sigma_s &=0  \text{  on  } \mathcal{ S }\\
+u- \frac{\partial d}{\partial t}  &= 0  \text{  on  } \mathcal{ S }\\
+\sigma_f  n_f &= \sigma_s  n_s \text{  on  } \Gamma
+\end{align}
 
 \subsection*{Reference domain}
 \subsection*{Mapping and identites}
@@ -80,6 +84,17 @@ $$  J\sigma_f F^{-T} n_f = \sigma_s  n_s \hspace{4mm} on  \hspace{2mm}\Gamma^0 (
 We can introduce a global domain $\Omega \in \mathcal{S} \cup \mathcal{F} $ that is made up of the fluid and the structure and the interface. We define a global velocity function $u$ that is the fluid velocity in the fluid domain and the structure velocity in the structure domain. This can be done due to the interface condition making the velocity field continuous over the entire domain.  
 
 
+\section{FSI Problem in reference domain}
+Find $u \in \mathcal{F} , p \in \mathcal{F} \text{  and  } d \in \mathcal{S} \text{  such that}:$ 
+\begin{align}
+\rho_f J \frac{\partial u}{\partial t} + (\nabla u)F^{-1}(u-\frac{\partial d}{\partial t})  + \nabla \cdot( J\sigma_f F^{-T})  &= 0 \text{  on  } \mathcal{\hat{F} } \\
+\nabla \cdot (J u F^{-T})\big) &= 0 \text{  on  } \mathcal{\hat{F}}   \\
+\rho_s \frac{\partial u}{\partial t} + \nabla \cdot F S_s,&=0  \text{  on  } \mathcal{\hat{S}}\\
+\nabla^2 d &= 0  \text{  on  } \mathcal{\hat{F}}\\
+u- \frac{\partial d}{\partial t}  &= 0  \text{  on  } \mathcal{\hat{S}}\\
+J\sigma_f F^{-T} n_f &= \sigma_s  n_s \text{  on  } \Gamma
+\end{align}
+
 \subsection*{Domain move}
 Here we will look at the approach involving moving the mesh each time step. \\
 The fluid equation is simply Navier-Stokes with a domain mapping in the transport term giving:
@@ -133,7 +148,6 @@ We then look at the variational formulation for moving the mesh, here we employ 
 
 
 
-\end{document}
 
 
 
