@@ -145,7 +145,7 @@ inlet = inlet()
 u_inlet  = DirichletBC(VQ.sub(0), inlet, boundaries, 3)
 u_wall   = DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 2)
 u_circ   = DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
-u_bar    = DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 5) #No slip on geometry in fluid
+u_bar    = DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 5) #TODO: this is wrong!
 u_barwall= DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
 
 #displacement conditions:
@@ -178,8 +178,8 @@ psi = TestFunction(V2)
 #u,d,w,p
 #u,d, p  = TrialFunctions(VVQ)
 
-up = Function(VQ)
-u, p  = split(up)
+#up = Function(VQ)
+#u, p  = split(up)
 up0 = Function(VQ)
 u0,p0 = split(up0)
 up_res = Function(VQ)
@@ -220,7 +220,7 @@ def Newton_manual_s(F, d, bc_d, atol, rtol, max_it, lmbda,d_res):
     residual   = 1
     rel_res    = residual
     dw = TrialFunction(V2)
-    F_1 = assemble(F) + Mass_s_L
+    F_1 = assemble(F) #+ Mass_s_L
     Jac_1 = derivative(F_1, d,dw)                # Jacobi
 
     #a = assemble(Jac_1)#,keep_diagonal)
@@ -327,51 +327,65 @@ F_Ext =  inner(grad(d), grad(psi))*dx_f #- inner(grad(d)*n, psi)*ds
 
 # Structure var form
 
-
+up_ = Function(VQ)
+u_,p_ = split(up_)
 Mass_s = assemble((rho_s/(k*k))*inner(d-2*d0+d1, psi)*dx_s)
 
-Mass_s_b = assemble(inner(d("-"), psi("-"))*dS(5))
+Mass_s_b = assemble(inner(d("-"), phi("-"))*dS(5))
+#from IPython import embed
+#embed()
 
-Mass_s_b_lhs = assemble((rho_s/k)*inner(u("-"), psi("-"))*dS(5))
-Mass_s_b_rhs = assemble((rho_s/k)*inner((2*((d0("-")-d1("-"))/k) - ((d1("-") - d2("-"))/k)),psi("-"))*dS(5))
+Mass_s_b_lhs = assemble((rho_s/k)*inner(u_("-"), phi("-"))*dS(5))
+
+Mass_s_b_rhs = assemble((rho_s/k)*inner((2*((d0("-")-d1("-"))/k) - ((d1("-") - d2("-"))/k)),phi("-"))*dS(5))
 
 
 ones_d = Function(V2)
-ones_u = Function(V1)
+ones_u = Function(VQ)
 ones_d.vector()[:] = 1.
 ones_u.vector()[:] = 1.
-Mass_s_L = Mass_s*ones_u.vector() #Mass_time structure matrix lumped
-Mass_s_b_L = Mass_s_b*ones_u.vector()#Mass structure matrix lumped
+Mass_s_L = Mass_s*ones_d.vector() #Mass_time structure matrix lumped
+Mass_s_b_L = Mass_s_b*ones_u.vector() #Mass structure matrix lumped
 
 #d = WP.sub(0).dofmap().collapse(mesh)[1].values()
 #up.vector()[d] = u.vector()
 
-Mass_s_and_lhs = Mass_s_b*Mass_s_b_lhs
-Mass_s_and_rhs = Mass_s_b*Mass_s_b_rhs
+Mass_s_and_lhs = Mass_s_b_L*Mass_s_b_lhs
+Mass_s_and_rhs = Mass_s_b_L*Mass_s_b_rhs
 
 #a,b = VQ.sub(0).dofmap().collapse(mesh)
 #print a
 #print b
 dof_values = VQ.sub(0).dofmap().collapse(mesh)[1].values()
 
+up = TrialFunction(VQ)
+u, p  = split(up)
+
 
 F_structure = inner(P1(d),grad(psi))*dx_s #+ ??alpha*(rho_s/k)*(0.5*(d-d1))*dx_s??
 
-F_structure += delta*((1.0/k)*inner(d-d0,psi)*dx_s - inner(u,psi)*dx_s)
+F_structure += delta*((1.0/k)*inner(d-d0,psi)*dx_s - inner(u_,psi)*dx_s)
 
-F_structure += inner(P1(d0("-"))*n("-"),phi)*dS(5) + inner(J_(d("-")) * sigma_f(u("-"),p("-")) * inv(F_(d("-"))).T*n("-"),phi)*dS(5)
+F_structure += inner(P1(d0("-"))*n("-"),phi)*dS(5) + inner(J_(d("-")) * sigma_f(u_("-"),p_("-")) * inv(F_(d("-"))).T*n("-"),phi)*dS(5)
 
 # Fluid variational form
-F_fluid =(rho_f/k)*inner(J_(d)*(u - u0), phi)*dx_f \
-        + rho_f*inner(J_(d)*inv(F_(d))*grad(u)*(u - ((d-d0)/k)), phi)*dx_f \
+"""F_fluid =(rho_f/k)*inner(J_(d)*(u - u0), phi)*dx_f \
+        + rho_f*inner(J_(d)*inv(F_(d))*grad(u)*(u0 - ((d-d0)/k)), phi)*dx_f \
         + inner(sigma_f_hat(u,p,d), grad(phi))*dx_f \
         - inner(div(J_(d)*inv(F_(d).T)*u), gamma)*dx_f\
-        #+ inner(sigma_f_hat(u("-"),p("-"),d("-"))*n("-"),phi("-"))*dS(5) \
+        + inner(sigma_f_hat(u("-"),p("-"),d("-"))*n("-"),phi("-"))*dS(5) \
+        + inner(P1(d0("-"))*n("-"),phi("-"))*dS(5)"""
+
+F_fluid =(rho_f/k)*inner((u - u0), phi)*dx_f \
+        + rho_f*inner(grad(u)*(u0), phi)*dx_f \
+        + inner(sigma_f(u,p), grad(phi))*dx_f \
+        - inner(div(u), gamma)*dx_f\
+        #+ inner(sigma_f(u("-"),p("-"))*n("-"),phi("-"))*dS(5) \
         #+ inner(P1(d0("-"))*n("-"),phi("-"))*dS(5)
 
-if v_deg == 1:
-    F_fluid += - beta*h*h*inner(J_(d)*inv(F_(d).T)*grad(p),grad(gamma))*dx_f
-    print "v_deg",v_deg
+#if v_deg == 1:
+#    F_fluid += - beta*h*h*inner(J_(d)*inv(F_(d).T)*grad(p),grad(gamma))*dx_f
+#    print "v_deg",v_deg
 
 
 #T = 5.0
@@ -386,6 +400,9 @@ p_file = File("results/FSI-" +str(FSI_deg) +"/P-"+str(v_deg) +"/dt-"+str(dt)+"/p
 
 #[bc.apply(udp0.vector()) for bc in bcs]
 #[bc.apply(udp.vector()) for bc in bcs]
+a = lhs(F_fluid)
+b = rhs(F_fluid)
+
 
 
 dis_x = []
@@ -396,9 +413,10 @@ counter = 0
 t = dt
 
 time_script_list = []
-
 # Newton parameters
 atol = 1e-6;rtol = 1e-6; max_it = 100; lmbda = 1.0;
+#A = assemble(a)
+
 
 while t <= T:
     print "Time t = %.5f" % t
@@ -413,9 +431,18 @@ while t <= T:
 
 
     # Solve fluid step, find u and p
-    up = Newton_manual(F_fluid, up, bc_u, atol, rtol, max_it, lmbda,up_res)
-    up0.assign(up)
-    u,p = up.split(True)
+    #up = Newton_manual(F_fluid, up, bc_u, atol, rtol, max_it, lmbda,up_res)
+    A=assemble(a,keep_diagonal=True)#, tensor=A) #+ Mass_s_b_L
+    b = assemble(b)
+    #[bc.apply(A,b) for bc in bcs]
+    [bc.apply(A, b, up_.vector()) for bc in bc_u]
+
+    #pc = PETScPreconditioner("default")
+    #sol = PETScKrylovSolver("default",pc)
+    solve(A ,up_.vector(),b)
+
+    up0.assign(up_)
+    u,p = up_.split(True)
     # Solve structure step find d
     d = Newton_manual(F_structure , d, bc_d, atol, rtol, max_it, lmbda,d_res)
 

@@ -188,6 +188,7 @@ u, d, p  = split(udp)
 d0 = Function(V2)
 d1 = Function(V2)
 u0 = Function(V1)
+p0 = Function(Q)
 
 
 #dt = float(sys.argv[2])
@@ -304,27 +305,32 @@ h =  mesh.hmin()
 #F_ = I + grad(d0)
 #J = det(F_)
 # Fluid variational form
-F_fluid = (rho_f/k)*inner(J_(d)*(u - u0), phi)*dx_f \
+"""F_fluid = (rho_f/k)*inner(J_(d)*(u - u0), phi)*dx_f \
         + rho_f*inner(J_(d)*inv(F_(d))*grad(u)*(u - ((d-d0)/k)), phi)*dx_f \
         + inner(sigma_f_hat(u,p,d), grad(phi))*dx_f \
-        - inner(div(J_(d)*inv(F_(d).T)*u), gamma)*dx_f
+        - inner(div(J_(d)*inv(F_(d).T)*u), gamma)*dx_f"""
+F_fluid = (rho_f/k)*inner(J_(0.5*(d+d1))*(u - u0), phi)*dx_f \
+        + rho_f*inner(J_(0.5*(d+d1))*inv(F_(0.5*(d+d1)))*grad(0.5*(u+u0))*(0.5*(u+u0) - ((0.5*(d+d0)-0.5*(d0+d1))/k)), phi)*dx_f \
+        + inner(sigma_f_hat(0.5*(u+u0),0.5*(p+p0),0.5*(d+d1)), grad(phi))*dx_f \
+        - inner(div(J_(0.5*(d+d1))*inv(F_(0.5*(d+d1)).T)*0.5*(u+u0)), gamma)*dx_f
 if v_deg == 1:
-    F_fluid += - beta*h*h*inner(J_(d)*inv(F_(d).T)*grad(p),grad(gamma))*dx_f
+    F_fluid += - beta*h*h*inner(J_(0.5*(d+d1))*inv(F_(0.5*(d+d1)).T)*grad(0.5*(p+p0)),grad(gamma))*dx_f
     print "v_deg",v_deg
 
         #- 0.05*h**2*inner(grad(p),grad(gamma))*dx_f
        #- inner(J*sigma_fluid(p,u)*inv(F_.T)*n, phi)*ds
 
 # Structure var form
-F_structure = (rho_s/k)*inner(u-u0,phi)*dx_s + inner(P1(d),grad(phi))*dx_s
-#F_structure = (rho_s/(k*k))*inner(J_(0.5*(d+d1))*(d-2*d0+d1),phi)*dx_s + inner(0.5*(P1(d)+P1(d1)),grad(phi))*dx_s
+#F_structure = (rho_s/k)*inner(u-u0,phi)*dx_s + inner(P1(d),grad(phi))*dx_s
+F_structure = (rho_s/(k*k))*inner((d-2*d0+d1),phi)*dx_s + inner(0.5*(P1(d)+P1(d1)),grad(phi))*dx_s
 #G =rho_s*((1./k)*inner(w-w0,psi))*dx  + rho_s*inner(dot(grad(0.5*(w+w0)),0.5*(w+w0)),psi)*dx \
 
 # Setting w = u on the structure using (d-d0)/k = w
-F_w = delta*((1.0/k)*inner(d-d0,psi)*dx_s - inner(u,psi)*dx_s)
+F_w = delta*((1.0/k)*inner(0.5*(d+d0)-0.5*(d0+d1),psi)*dx_s - inner(0.5*(u+u0),psi)*dx_s)
 
 # laplace
-F_laplace =  (1./k)*inner(d-d0,psi)*dx_f +inner(grad(d), grad(psi))*dx_f #- inner(grad(d)*n, psi)*ds
+#F_laplace =  (1./k)*inner(d-d0,psi)*dx_f +inner(grad(d), grad(psi))*dx_f #- inner(grad(d)*n, psi)*ds
+F_laplace =  inner(grad(0.5*(d+d1)), grad(psi))*dx_f #- inner(grad(d)*n, psi)*ds
 
 F = F_fluid + F_structure + F_w + F_laplace
 
@@ -403,8 +409,9 @@ while t <= T:
             print "dis_x/dis_y : %g %g "%(dsx,dsy)
 
     u0.assign(u)
-    #d1.assign(d0)
+    d1.assign(d0)
     d0.assign(d)
+    p0.assign(p)
     t += dt
     counter +=1
 print "script time: ", time.time()-time0
