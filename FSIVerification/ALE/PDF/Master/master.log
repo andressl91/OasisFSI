@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2016.2.23)  13 JAN 2017 16:48
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2016.2.23)  17 JAN 2017 17:45
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -841,14 +841,7 @@ Package: array 2014/10/28 v2.4c Tabular extension package (FMi)
 \c@defn=\count129
 \c@conj=\count130
 \c@exmp=\count131
-) (./master.aux
-
-LaTeX Warning: Label `my-label' multiply defined.
-
-
-LaTeX Warning: Label `my-label' multiply defined.
-
-)
+) (./master.aux)
 \openout1 = `master.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 4.
@@ -865,7 +858,8 @@ LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 4.
 LaTeX Font Info:    ... okay on input line 4.
 LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 4.
 LaTeX Font Info:    Try loading font information for TS1+cmr on input line 4.
- (/usr/local/texlive/2015/texmf-dist/tex/latex/base/ts1cmr.fd
+
+(/usr/local/texlive/2015/texmf-dist/tex/latex/base/ts1cmr.fd
 File: ts1cmr.fd 2014/09/29 v2.5h Standard LaTeX font definitions
 )
 LaTeX Font Info:    ... okay on input line 4.
@@ -963,111 +957,45 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 \openout4 = `master.toc'.
 
 
-(./IntroductionToFSI/IntroductionToFSI.tex) [3]
-(./FSI_ALE_formulation/FSI_ALE_formulation.tex
-<continuum_mapping.png, id=27, 682.55pt x 341.275pt>
+(./Solid_equations/Solid_equations.tex [3] [4
+
+]
+<continuum_mapping.png, id=31, 682.55pt x 341.275pt>
 File: continuum_mapping.png Graphic file (type png)
 
 <use continuum_mapping.png>
-Package pdftex.def Info: continuum_mapping.png used on input line 25.
+Package pdftex.def Info: continuum_mapping.png used on input line 7.
 (pdftex.def)             Requested size: 273.01517pt x 136.50757pt.
- [4 <./continuum_mapping.png>]
-Underfull \hbox (badness 10000) in paragraph at lines 50--52
+ [5 <./continuum_mapping.png>]) [6]
+(./FSI_ALE_formulation/FSI_ALE_formulation.tex
+Underfull \hbox (badness 10000) in paragraph at lines 28--30
 
  []
 
-[5]
-Underfull \vbox (badness 1221) has occurred while \output is active []
+[7] [8]
+Underfull \vbox (badness 5802) has occurred while \output is active []
 
- [6]
-[7]) [8] (./Partitioned_ALE_RN/Partitioned_ALE_RN.tex [9]) [10]
-(./Verification_Validation/Verification_Validation.tex
-Kapittel 1.
-) [11
-
-] (./Benchmark_hron/Benchmark.tex
-<geometry.png, id=121, 399.4925pt x 127.47626pt>
-File: geometry.png Graphic file (type png)
- <use geometry.png>
-Package pdftex.def Info: geometry.png used on input line 7.
-(pdftex.def)             Requested size: 359.53992pt x 114.72755pt.
-
-Underfull \hbox (badness 10000) in paragraph at lines 7--14
-
- []
-
-<med_diff_x.png, id=122, 578.16pt x 433.62pt>
-File: med_diff_x.png Graphic file (type png)
- <use med_diff_x.png>
-Package pdftex.def Info: med_diff_x.png used on input line 47.
-(pdftex.def)             Requested size: 254.43878pt x 190.82646pt.
-
-<med_diff_y.png, id=124, 578.16pt x 433.62pt>
-File: med_diff_y.png Graphic file (type png)
- <use med_diff_y.png>
-Package pdftex.def Info: med_diff_y.png used on input line 53.
-(pdftex.def)             Requested size: 254.43878pt x 190.82646pt.
-
-<uten_diff_x.png, id=125, 578.16pt x 433.62pt>
-File: uten_diff_x.png Graphic file (type png)
- <use uten_diff_x.png>
-Package pdftex.def Info: uten_diff_x.png used on input line 59.
-(pdftex.def)             Requested size: 254.43878pt x 190.82646pt.
-
-<uten_diff_y.png, id=126, 578.16pt x 433.62pt>
-File: uten_diff_y.png Graphic file (type png)
- <use uten_diff_y.png>
-Package pdftex.def Info: uten_diff_y.png used on input line 65.
-(pdftex.def)             Requested size: 254.43878pt x 190.82646pt.
-
-Overfull \hbox (84.81723pt too wide) in paragraph at lines 45--69
-[][][]
- []
-
-
-Overfull \hbox (84.81723pt too wide) in paragraph at lines 45--69
-[][] 
- []
-
-[12 <./geometry.png>]
-Overfull \hbox (18.11049pt too wide) in paragraph at lines 98--107
- [][] 
- []
-
-
-LaTeX Warning: `h' float specifier changed to `ht'.
-
-)
+ [9])
+[10] (./Partitioned_ALE_RN/Partitioned_ALE_RN.tex [11])
 No file master.bbl.
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 21.
-[13 <./med_diff_x.png> <./med_diff_y.png> <./uten_diff_x.png> <./uten_diff_y.pn
-g>] [14]
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 21.
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 23.
+[12]
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 23.
  (./master.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 21.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 21.
-
-
-Package rerunfilecheck Warning: File `master.out' has changed.
-(rerunfilecheck)                Rerun to get outlines right
-(rerunfilecheck)                or use package `bookmark'.
-
-Package rerunfilecheck Info: Checksums for `master.out':
-(rerunfilecheck)             Before: FD6C304BCEC1F3506CF02EB215D319A4;68
-(rerunfilecheck)             After:  5F70A417D3BAB39E4EBEE06DE9C7DDD4;456.
-
-LaTeX Warning: There were multiply-defined labels.
-
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 21.
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 23.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 23.
+Package rerunfilecheck Info: File `master.out' has not changed.
+(rerunfilecheck)             Checksum: FD6C304BCEC1F3506CF02EB215D319A4;68.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 23.
  ) 
 Here is how much of TeX's memory you used:
- 12160 strings out of 493089
- 176976 string characters out of 6134842
- 285762 words of memory out of 5000000
- 15347 multiletter control sequences out of 15000+600000
- 23177 words of font info for 59 fonts, out of 8000000 for 9000
+ 12106 strings out of 493089
+ 175996 string characters out of 6134842
+ 284663 words of memory out of 5000000
+ 15318 multiletter control sequences out of 15000+600000
+ 21627 words of font info for 57 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 44i,12n,45p,1106b,385s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 44i,12n,45p,978b,385s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/local/texlive/2015/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t1.enc}
 </usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb><
 /usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx7.pfb></u
@@ -1083,15 +1011,14 @@ e/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></usr/local/texlive/
 2015/texmf-dist/fonts/type1/public/cm-super/sfbx1000.pfb></usr/local/texlive/20
 15/texmf-dist/fonts/type1/public/cm-super/sfbx1200.pfb></usr/local/texlive/2015
 /texmf-dist/fonts/type1/public/cm-super/sfbx1440.pfb></usr/local/texlive/2015/t
-exmf-dist/fonts/type1/public/cm-super/sfbx2074.pfb></usr/local/texlive/2015/tex
-mf-dist/fonts/type1/public/cm-super/sfbx2488.pfb></usr/local/texlive/2015/texmf
--dist/fonts/type1/public/cm-super/sfrm1000.pfb></usr/local/texlive/2015/texmf-d
-ist/fonts/type1/public/cm-super/sfrm1200.pfb></usr/local/texlive/2015/texmf-dis
-t/fonts/type1/public/cm-super/sfrm1728.pfb>
-Output written on master.pdf (14 pages, 459785 bytes).
+exmf-dist/fonts/type1/public/cm-super/sfbx2488.pfb></usr/local/texlive/2015/tex
+mf-dist/fonts/type1/public/cm-super/sfrm1000.pfb></usr/local/texlive/2015/texmf
+-dist/fonts/type1/public/cm-super/sfrm1200.pfb></usr/local/texlive/2015/texmf-d
+ist/fonts/type1/public/cm-super/sfrm1728.pfb>
+Output written on master.pdf (12 pages, 237301 bytes).
 PDF statistics:
- 232 PDF objects out of 1000 (max. 8388607)
- 184 compressed objects within 2 object streams
- 70 named destinations out of 1000 (max. 500000)
- 39 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 197 PDF objects out of 1000 (max. 8388607)
+ 162 compressed objects within 2 object streams
+ 59 named destinations out of 1000 (max. 500000)
+ 14 words of extra memory for PDF output out of 10000 (max. 10000000)
 

@@ -220,15 +220,15 @@ def Newton_manual_s(F, d, bc_d, atol, rtol, max_it, lmbda,d_res):
     residual   = 1
     rel_res    = residual
     dw = TrialFunction(V2)
-    F_1 = assemble(F) #+ Mass_s_L
-    Jac_1 = derivative(F_1, d,dw)                # Jacobi
+    #F_1 = assemble(F) + Mass_s_b_L
+    Jac_1 = derivative(F, d,dw)                # Jacobi
 
     #a = assemble(Jac_1)#,keep_diagonal)
     #a.vector().zero()
     while rel_res > rtol and residual > atol and Iter < max_it:
-         A = assemble(Jac_1, tensor = a)
-         A.ident_zeros()
-         b = assemble(-F_1)
+         A = assemble(Jac_1,keep_diagonal=True)#, tensor = a)
+         #A.ident_zeros()
+         b = assemble(-F)
 
          [bc.apply(A, b, d.vector()) for bc in bc_d]
 
@@ -366,20 +366,20 @@ F_structure = inner(P1(d),grad(psi))*dx_s #+ ??alpha*(rho_s/k)*(0.5*(d-d1))*dx_s
 
 F_structure += delta*((1.0/k)*inner(d-d0,psi)*dx_s - inner(u_,psi)*dx_s)
 
-F_structure += inner(P1(d0("-"))*n("-"),phi)*dS(5) + inner(J_(d("-")) * sigma_f(u_("-"),p_("-")) * inv(F_(d("-"))).T*n("-"),phi)*dS(5)
+#F_structure += inner(P1(d0("-"))*n("-"),psi("-"))*dS(5) + inner(J_(d("-")) * sigma_f(u_("-"),p_("-")) * inv(F_(d("-"))).T*n("-"),psi("-"))*dS(5)
 
 # Fluid variational form
-"""F_fluid =(rho_f/k)*inner(J_(d)*(u - u0), phi)*dx_f \
+F_fluid =(rho_f/k)*inner(J_(d)*(u - u0), phi)*dx_f \
         + rho_f*inner(J_(d)*inv(F_(d))*grad(u)*(u0 - ((d-d0)/k)), phi)*dx_f \
         + inner(sigma_f_hat(u,p,d), grad(phi))*dx_f \
         - inner(div(J_(d)*inv(F_(d).T)*u), gamma)*dx_f\
         + inner(sigma_f_hat(u("-"),p("-"),d("-"))*n("-"),phi("-"))*dS(5) \
-        + inner(P1(d0("-"))*n("-"),phi("-"))*dS(5)"""
+        + inner(P1(d0("-"))*n("-"),phi("-"))*dS(5)
 
-F_fluid =(rho_f/k)*inner((u - u0), phi)*dx_f \
+"""F_fluid =(rho_f/k)*inner((u - u0), phi)*dx_f \
         + rho_f*inner(grad(u)*(u0), phi)*dx_f \
         + inner(sigma_f(u,p), grad(phi))*dx_f \
-        - inner(div(u), gamma)*dx_f\
+        - inner(div(u), gamma)*dx_f"""
         #+ inner(sigma_f(u("-"),p("-"))*n("-"),phi("-"))*dS(5) \
         #+ inner(P1(d0("-"))*n("-"),phi("-"))*dS(5)
 
@@ -442,15 +442,15 @@ while t <= T:
     solve(A ,up_.vector(),b)
 
     up0.assign(up_)
-    u,p = up_.split(True)
+    u_,p_ = up_.split(True)
     # Solve structure step find d
-    d = Newton_manual(F_structure , d, bc_d, atol, rtol, max_it, lmbda,d_res)
+    d = Newton_manual_s(F_structure , d, bc_d, atol, rtol, max_it, lmbda,d_res)
 
     if counter%step==0:
         #if MPI.rank(mpi_comm_world()) == 0:
-        u_file << u
+        u_file << u_
         d_file << d
-        p_file << p
+        p_file << p_
         #print "u-norm:",norm(u),"d-norm:", norm(d),"p-norm:",norm(p)
         Dr = -assemble((sigma_f_hat(u,p,d)*n)[0]*ds(6))
         Li = -assemble((sigma_f_hat(u,p,d)*n)[1]*ds(6))

@@ -20,29 +20,7 @@ u- \frac{\partial d}{\partial t}  &= 0  \text{  on  } \mathcal{ S }\\
 \sigma_f  n_f &= \sigma_s  n_s \text{  on  } \Gamma
 \end{align}
 
-\subsection*{Reference domain}
-\subsection*{Mapping and identites}
-\includegraphics[scale=0.4]{continuum_mapping.png}
 
-We define $ \hat{\mathcal{S}}$ as the initial stress free configuration of a given body, $\mathcal{S}$ as the reference and $\mathcal{S}(t)$ as the current configuration.
-To get an ALE formulation from a reference frame, we need to define a smooth mapping that maps from the reference configuration to the current configuration:
-$$  \chi^s(t) : \hat{\mathcal{S}} \rightarrow \mathcal{S}(t)     $$ 
-The same is for the fluid domain.
-$$  \chi^f(t) : \hat{\mathcal{F}} \rightarrow \mathcal{F}(t)     $$ 
-The solid mapping is set as $\chi^s(\textbf{X},t) = \textbf{X}  + d^s(\textbf{X} ,t)$
-hence giving:
-$$  d^s(\textbf{X},t) = \chi^s(\textbf{X},t) -\textbf{X}   $$
-$$  w(\textbf{X},t) = \frac{\partial \chi^s(\textbf{X},t)}{\partial t}   $$
-
-where $\textbf{X}$ denote a material point in the reference domain and $\chi^s$ denotes the mapping from the reference configuration. 
-$d^s(\textbf{X},t)$ denotes the displacement field and w(\textbf{X},t) is the domain velocity.
-
-\subsection*{Deformation gradient}
-In continuum mechanics relative change of location of particles is called strain and this is the fundamental quality that causes stress in a material. [godboka]. We say that stress is the internal forces between neighboring particles. 
-If $d(\textbf{X},t)$ is differentiable deformation field in a given body. We define the deformation gradient as:  
-$$F = \frac{\partial \chi}{\partial \textbf{X}} = I + \nabla d(\textbf{X},t)$$ 
-which denotes relative change of position under deformation in a Lagrangian frame of reference. The similar Eulerian viewpoint is defined as the inverse deformation gradient 
-$$ \hat{F} = I - \nabla  d(\textbf{X},t)$$
 
 
 
