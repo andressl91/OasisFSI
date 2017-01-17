@@ -2,24 +2,27 @@ from dolfin import *
 def eps(u):
     return 0.5*(grad(u) + grad(u).T)
 
-def projection(k, nu, mu, u, u_tilde, u0, u0_tilde, u1, v, p, p1, q):
+def projection(k, nu, mu, w, u, u_hat, u0, u0_hat, u_hat_sol, v, p, p1, q):
     # Define coefficients
 
-    # Tentative velocity step
-    F1 = (1/k)*inner(u_tilde - u0, v)*dx + inner(grad(u_tilde)*(u0_tilde - w), v)*dx + \
-         2*nu*inner(grad(eps(u_tilde)), grad(v))*dx
+    # Define coefficients
+    k = Constant(dt)
+    #f = Constant((0, 0, 0))
+    nu = Constant(mu/rho)
+
+    # Advection-diffusion step (explicit coupling)
+    F1 = (1./k)*inner(u_hat - u0, psi)*dx + inner(grad(u_hat)*(u0 - w), psi)*dx + \
+         2.*nu*inner(eps(u_hat), eps(psi))*dx
     a1 = lhs(F1)
     L1 = rhs(F1)
 
-    # Pressure update
-    a2 = inner(grad(p), grad(q))*dx
-    L2 = -(1./k)*div(u1)*q*dx
+    # Projection step(implicit coupling)
+    F2 = (rho/k)*inner(u - u_hat_sol, v)*dx - inner(p, div(v))*dx + inner(div(u), q)*dx
+    a2 = lhs(F2)
+    L2 = rhs(F2)
 
-    # Velocity update
-    a3 = inner(u, v)*dx
-    L3 = inner(u1, v)*dx - dot(k*grad(p1), v)*dx
 
-    return a1, L1, a2, L2, a3, L3
+    return a1, L1, a2, L2
 
 
 def fluid_solve(A1, A2, A3, L1, L2, L3, fluid_solver, pressure_solver):
@@ -33,13 +36,5 @@ def fluid_solve(A1, A2, A3, L1, L2, L3, fluid_solver, pressure_solver):
         # Pressure correction
         begin("Computing pressure correction")
         b2 = assemble(L2, tensor=b2)
-        solve(A2, p1.vector(), b2, "gmres", "hypre_amg")
-        end()
-
-        # Velocity correction
-        begin("Computing velocity correction")
-        b3 = assemble(L3, tensor=b3)
-        pc2 = PETScPreconditioner("jacobi")
-        sol2 = PETScKrylovSolver("bicgstab", pc2)
-        sol2.solve(A3, u1.vector(), b3)
+        solve(A2, p1.vector(), b2)
         end()
