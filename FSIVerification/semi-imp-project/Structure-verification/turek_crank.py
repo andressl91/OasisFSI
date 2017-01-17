@@ -56,9 +56,15 @@ def simple_lin(d_n, d_n1, lamda, mu):
 
     return lamda*tr(E)*I + 2*mu_s*E
 
+def simple_lin_T(d_n, d_n1, lamda, mu):
+    I = Identity(2)
+    E = 1./2 * (grad(d_n) + grad(d_n).T + grad(d_n).T*grad(d_n1))
+
+    return lamda*tr(E)*I + 2*mu_s*E
+
 def simple_lin_crank(d_n, d_n0, d_n1, lamda, mu):
     I = Identity(2)
-    E = 1./2* ( 0.5*(grad(d_n).T + grad(d_n0).T + grad(d_n) + grad(d_n0)) +  grad(d_n1).T*grad(d_n))
+    E = 1./2* ( 0.5*(grad(d_n).T + grad(d_n0).T + grad(d_n) + grad(d_n0)) +  0.5*(grad(d_n).T*grad(d_n1) + grad(d_n).T*grad(d_n)) )
 
     return lamda*tr(E)*I + 2*mu_s*E
 
@@ -84,7 +90,9 @@ def piola_adam_single(d_n, d_n1, d_n2, lamda, mu):
 def piola2_adam_double(d_n, d_n1, d_n2, lamda, mu):
     I = Identity(2)
     E = 1./2* ( 0.5*(grad(d_n).T + grad(d_n1).T + grad(d_n) + grad(d_n1)) \
-    +  (3./2*grad(d_n1).T - 1./2*grad(d_n2).T)* 0.5*(grad(d_n).T + grad(d_n1).T) )
+    +  grad(3./2*d_n1 -1./2*d_n2).T * 0.5*(grad(d_n + d_n1)) )
+    #+  (3./2*grad(d_n1).T -1./2*grad(d_n2).T)* 0.5*(grad(d_n) + grad(d_n1)) )
+
 
     return (lamda*tr(E)*I + 2*mu_s*E)
 """
@@ -113,7 +121,7 @@ def solver(T, dt, space, implementation, betterstart):
 
                 while t < 2*dt:
                     solve(G == 0, d, bcs, solver_parameters={"newton_solver": \
-                    {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
+                    {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":150,"relaxation_parameter":1.0}})
                     d1.assign(d0)
                     d0.assign(d)
 
@@ -290,33 +298,29 @@ def solver(T, dt, space, implementation, betterstart):
             w_k, d_k = wd_k.split(VV)
             #d_k.assign(d0)
             #CHECK WITCH IS BEST
-            #G = rho_s/k*inner(w - w0, psi)*dx + inner(simple_lin(d, d_k, lamda, mu_s), grad(psi))*dx \
-            #- inner(g, psi)*dx + dot(d - d0, phi)*dx - k*inner(w, phi)*dx #- k*dot(0.5*(w + w0), phi)*dx
-
-            G = rho_s/k*inner(w - w0, psi)*dx + inner(simple_lin_crank(d, d0, d_k, lamda, mu_s), grad(psi))*dx \
-            - inner(g, psi)*dx + dot(d - d0, phi)*dx - k*dot(0.5*(w + w0), phi)*dx# k*inner(w, phi)*dx #
+            G = rho_s/k*inner(w - w0, psi)*dx + inner(simple_lin_T(d, d_k, lamda, mu_s), grad(psi))*dx \
+            - inner(g, psi)*dx + dot(d - d0, phi)*dx - k*inner(w, phi)*dx #- k*dot(0.5*(w + w0), phi)*dx
 
 
         if implementation == "Lin-CN":
             wd = TrialFunction(VV)
             w, d = split(wd)
-            G = rho_s/k*inner(w - w0, psi)*dx + 0.5*inner(simple_lin_2(d, d0, d_1, lamda, mu_s) + Piola2(d0, lamda, mu_s), grad(psi))*dx \
+            G = rho_s/k*inner(w - w0, psi)*dx + 0.5*inner(simple_lin_crank(d, d0, d_1, lamda, mu_s) + Piola2(d0, lamda, mu_s), grad(psi))*dx \
             - inner(g, psi)*dx + dot(d - d0, phi)*dx - k*dot(0.5*(w + w0), phi)*dx
 
         if implementation == "simple_lin":
             wd = TrialFunction(VV)
             w, d = split(wd)
 
-            G = rho_s/k*inner(w - w0, psi)*dx + inner(simple_lin_2(d, d0, d_1, lamda, mu_s), grad(psi) )*dx \
-            - inner(g, psi)*dx + 1./k*inner(d - d0, phi)*dx - 0.5*inner(w + w0, phi)*dx#- inner(w, phi)*dx
-
+            G = rho_s/k*inner(w - w0, psi)*dx + inner(simple_lin_2(d, d0, d_1, lamda, mu_s), grad(psi))*dx \
+            - inner(g, psi)*dx + dot(d - d0, phi)*dx - k*inner(w, phi)*dx
 
         if implementation =="A-B":
             wd = TrialFunction(VV)
             w, d = split(wd)
             G = rho_s/k*inner(w - w0, psi)*dx + inner(piola2_adam_double(d, d0, d_1, lamda, mu_s), grad(psi) )*dx \
             - inner(g, psi)*dx \
-            + 1./k*inner(d - d0, phi)*dx - inner(w, phi)*dx#k*dot(0.5*(w + w0),phi)*dx# i#
+            + 1./k*inner(d - d0, phi)*dx + dot(0.5*(w + w0),phi)*dx# i#
             #+ 1./k*inner(d - d0, phi)*dx - inner(w, phi)*dx#
 
 
@@ -354,13 +358,13 @@ def solver(T, dt, space, implementation, betterstart):
             while t <= T:
                 eps = 1.0           # error measure ||u-u_k||
                 iter = 0            # iteration counter
-                b = assemble(L, tensor=b)
+                #b = assemble(L, tensor=b)
                 while eps > tol and iter < maxiter:
                     iter += 1
-                    #solve(a == L, wd_sol, bcs)
-                    A = assemble(a)
-                    [bc.apply(A,b) for bc in bcs]
-                    solve(A, wd_sol.vector(), b)
+                    solve(a == L, wd_sol, bcs)
+                    #A = assemble(a)
+                    #[bc.apply(A,b) for bc in bcs]
+                    #solve(A, wd_sol.vector(), b)
                     #diff = d_sol.vector().array() - d_k.vector().array()
                     #eps = np.linalg.norm(diff, ord=np.Inf)
                     w_, d_ = wd_sol.split(True)
@@ -418,20 +422,19 @@ def solver(T, dt, space, implementation, betterstart):
     plt.title("dt = %g, y_dir" % (dt))
     plt.savefig("Ydef.png")
 
+    if MPI.rank(mpi_comm_world()) == 0:
+        if os.path.exists("./results/" + space + "/" + implementation + "/"+str(dt)) == False:
+           os.makedirs("./results/" + space + "/" + implementation + "/"+str(dt))
 
-#    if MPI.rank(mpi_comm_world()) == 0:
-#        if os.path.exists("./results/" + space + "/" + implementation + "/"+str(dt)) == False:
-#           os.makedirs("./results/" + space + "/" + implementation + "/"+str(dt))
-#
-#        np.savetxt("./results/" + space + "/" + implementation + "/"+str(dt)+"/time.txt", time, delimiter=',')
-#        np.savetxt("./results/" + space + "/" + implementation + "/"+str(dt)+"/dis_y.txt", dis_y, delimiter=',')
-#
-    #    name = "./results/" + space + "/" + implementation + "/"+str(dt) + "/report.txt"  # Name of text file coerced with +.txt
-    #    f = open(name, 'w')
-    #    f.write("""Case parameters parameters\n """)
-    #    f.write("""T = %(T)g\ndt = %(dt)g\nImplementation = %(implementation)s
-    #    """ %vars())
-    #    f.close()
+        np.savetxt("./results/" + space + "/" + implementation + "/"+str(dt)+"/time.txt", time, delimiter=',')
+        np.savetxt("./results/" + space + "/" + implementation + "/"+str(dt)+"/dis_y.txt", dis_y, delimiter=',')
+
+        name = "./results/" + space + "/" + implementation + "/"+str(dt) + "/report.txt"  # Name of text file coerced with +.txt
+        f = open(name, 'w')
+        f.write("""Case parameters parameters\n """)
+        f.write("""T = %(T)g\ndt = %(dt)g\nImplementation = %(implementation)s
+        """ %vars())
+        f.close()
 
     #plt.show()
 
@@ -444,25 +447,25 @@ implementation = ["A-B"]
 
 comp_time = []
 runs = []
-#AB1 = {"space": "mixedspace", "implementation": "A-B", "T": 0.5, "dt": 0.005, "betterstart": False}; runs.append(AB1)
+#AB1 = {"space": "mixedspace", "implementation": "A-B", "T": 0.2, "dt": 0.001, "betterstart": False}; runs.append(AB1)
 #AB2 = {"space": "mixedspace", "implementation": "A-B", "T": 0.5, "dt": 0.005, "betterstart": True}; runs.append(AB2)
 #AB3 = {"space": "singlespace", "implementation": "A-B", "T": 0.5, "dt": 0.005, "betterstart": False}; runs.append(AB3)
 #AB4 = {"space": "singlespace", "implementation": "A-B", "T": 0.5, "dt": 0.005, "betterstart": True}; runs.append(AB4)
 
 #PI1 = {"space": "singlespace", "implementation": "Piccard", "T": 0.2, "dt": 0.005, "betterstart": True}; runs.append(PI1)
 #PI2 = {"space": "singlespace", "implementation": "Piccard", "T": 0.2, "dt": 0.005, "betterstart": False}; runs.append(PI2)
-PI3 = {"space": "mixedspace", "implementation": "Piccard", "T": 0.5, "dt": 0.005, "betterstart": False}; runs.append(PI3)
+PI3 = {"space": "mixedspace", "implementation": "Piccard", "T": 1.0, "dt": 0.0005, "betterstart": False}; runs.append(PI3)
 
 #SI1 = {"space": "singlespace", "implementation": "simple_lin", "T": 0.3, "dt": 0.005, "betterstart": True}; runs.append(SI1)
-#SI1 = {"space": "singlespace", "implementation": "simple_lin", "T": 0.3, "dt": 0.005, "betterstart": False}; runs.append(SI1)
-SI2 = {"space": "mixedspace", "implementation": "simple_lin", "T": 0.5, "dt": 0.005, "betterstart": False}; runs.append(SI2)
+#SI1 = {"space": "mixedspace", "implementation": "simple_lin", "T": 0.5, "dt": 0.002, "betterstart": False}; runs.append(SI1)
+SI2 = {"space": "mixedspace", "implementation": "simple_lin", "T": 1.0, "dt": 0.0005, "betterstart": False}; runs.append(SI2)
 
 #LC1 = {"space": "singlespace", "implementation": "Lin-CN", "T": 0.3, "dt": 0.005, "betterstart": True}; runs.append(LC1)
 #LC1 = {"space": "singlespace", "implementation": "Lin-CN", "T": 0.3, "dt": 0.005, "betterstart": False}; runs.append(LC1)
 #LC2 = {"space": "mixedspace", "implementation": "Lin-CN", "T": 0.5, "dt": 0.005, "betterstart": False}; runs.append(LC2)
 
 #CN1 = {"space": "singlespace", "implementation": "C-N", "T": 0.5, "dt": 0.02, "betterstart": False}; runs.append(CN1)
-CN2 = {"space": "mixedspace", "implementation": "C-N", "T": 0.5, "dt": 0.005, "betterstart": False}; runs.append(CN2)
+CN2 = {"space": "mixedspace", "implementation": "C-N", "T": 1.0, "dt": 0.0005, "betterstart": False}; runs.append(CN2)
 
 for r in runs:
     print r["implementation"], r["betterstart"]
