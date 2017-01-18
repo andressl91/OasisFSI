@@ -1,8 +1,9 @@
 
 
 \section*{Fluid Structure Interaction Problem formulation in ALE coordinates}
-\subsection*{Introduction}
-Here we will look at the ALE formulation of solving the FSI problem. The ALE approach stands for Arbitrary Lagrangian Eulerian, meaning that we define the fluid problem in an Eulerian framework and the solid problem in an Lagrangian framework. The ALE method can be solved by moving the mesh for each time step, following the structure body movements [Houston paperet]. This approach gives advantages as we can explicitly represent the fluid-structure interface. But problems arise when there are large deformations in solid structure, giving major mesh deformations in the fluid mesh. Another way of approaching the ALE-FSI problem is to used reference or fixed meshes. Instead of updating the mesh for each time step, we instead use a series of mappings to map the solution from a reference mesh and onto our current mesh. First we look at the mapping and identities needed to solve the reference approach to ALE.
+The ALE formulation stands for Arbitrary Lagrangian Eulerian. This entails formulating the fluid equations in an Eulerian and the solid in a Lagrangian framework. This is as previously stated a very nice approach as it describes both fluid velocity and displacement in known configurations. The ALE method can be solved by moving the mesh for each time step following the structure body movements, and calculating on a "new" mesh every time. This approach gives advantages as we can explicitly represent the fluid-structure interface, but problems arise when there are large deformations in the solid giving large deformations to the fluid domain. We will therefore approach the ALE from a reference frame. That is we solve the equation on a initial, stress free domain, and use a series of mappings to account for the movements of the domain. From a technical point of view, both formulations are equivalent. But the ease of computing on fixed mesh does so that we chose fixed approach. \newline
+Since the domain is moving with the structure movements, we will need to state the fluid in a little different.        
+
 \subsection*{Notation}
 u - Velocity in fluid and structure. \\
 w - Velocity in the domain. It is the velocity of the mesh in the calculations. This will also be the velocity in structure when defined in the lagrangian formulation. \\
@@ -26,27 +27,21 @@ u- \frac{\partial d}{\partial t}  &= 0  \text{  on  } \mathcal{ S }\\
 
 \section*{Balance laws}
 We will formulate the equations in the Eulerian, Lagrangian and the ALE description.
-The Eulerian description suits a fluid problem nicely as the points in the grid are fixed and the fluid particles move through the domain. Whilst the Lagrangian description fits a solid problem as the material particles are fixed with the gridpoints. The fluid velocity vector and the displacement vector are the quantities describing motion of the fluid and solid respectively. Since we here have fluid structure interaction problem we need to formulate the fluid in the fixed mesh description. The fluid velocity will still be the quantity describing motion but it will also have the displacement of the fluid, describing the change in fluid domain. The solid will be described in Lagrangian. We will only look at incompressible fluids where the volume of the fluid domain stays constant.\\
+
 \subsection*{Solid}
 We express the solid balance laws in the Lagrangian formulation from the initial configuration
 $$\rho_s \frac{\partial^2 d}{\partial t^2} = \nabla \cdot (J \sigma_s F^{-T}) \hspace{4mm}in\hspace{4mm} \mathcal{\hat{S}} $$
-Second Piola-Kirchhoff tensor following from the St. Venant-Kirchhoff material with the  Green-Lagrange strain tensor: $  E = \frac{1}{2}(F^TF- I)  $.
-\begin{align*}
- \sigma_s = & \frac{1}{J} F (\lambda_s (tr E)I + 2\mu_s E) F^{-T}  \\
- S_s = & \lambda_s (tr E)I + 2\mu_s E  \\
-\lambda_s = & \frac{2\mu_s nu_s}{1-2 \nu_s} 
-\end{align*}
+
 \section*{Fluid}
 The fluid equations are denoted from the initial configuration:
-$$ \rho_f J \big( \frac{\partial u}{\partial t} + ((\nabla u)F^{-1}(u-w)\big) = \nabla \cdot (J\sigma_f F^{-T} )\hspace{4mm} in \mathcal{\hat{F}}$$
-$$ \nabla \cdot (J u F^{-T}) = 0 \hspace{4mm} in \hspace{2mm} \mathcal{\hat{F}}$$
-As we see the only difference from the usual way of seeing the N-S equations, is that in the convection term we have $u-w $ which is needed since the not only are the fluid particles moving but the domain, here denoted with $w$ as the domain velocity, is also moving. So $u-w$ will be the actual fluid velocity. 
+$$ \rho_f J \big( \frac{\partial u}{\partial t} + ((\nabla u)F^{-1}(u-\frac{\partial d}{\partial t})\big) = \nabla \cdot (J\sigma_f F^{-T} )\hspace{4mm} on \hspace{2mm} \mathcal{\hat{F}}$$
+$$ \nabla \cdot (J u F^{-T}) = 0 \hspace{4mm} on \hspace{2mm} \mathcal{\hat{F}}$$
+As we see the only difference from the usual N-S equations, is that in the convection term we have $u-\frac{\partial d}{\partial t} $ which is needed since the not only are the fluid particles moving but the domain, here denoted with $\frac{\partial d}{\partial t}$ as the domain velocity, is also moving. So $u-\frac{\partial d}{\partial t}$ will be the actual fluid velocity. 
 
 \subsection*{Harmonic extension}
 To bind together the computation of fluid and structure domain, we need a harmonic extension to the boundary values. The solid deformation $d$ is extended from the interface into the fluid domain and is done to help deal with big deformations in fluid domain. These big deformations can then cause several challenges to the ALE mapping. 
 For this purpose define the following harmonic extension equation in the fluid domain:
-$$ \nabla^2 d^f = 0\hspace{4mm}in \hspace{2mm} \mathcal{\hat{F}}$$
-This 
+$$ \nabla^2 d^f = 0\hspace{4mm}in \hspace{2mm} \mathcal{\hat{F}}$$ 
 This equation is chosen for its good regularity and smoothing properties.
 
 It is also possible to chose an harmonic extension with stiffening, which can give better control of the deformed meshes. This in practice behaves like a transport problem, transporting the deformation into the fluid domain. Another possibility is extension by pseudo-elasticity which defines the extension operator by means of the Navier-Lame equation. And lastly we can chose a biharmonic extension, that is of fourth order character, and thus will have a high computational cost. For now I will stick with the harmonic extension and maybe look at these in the future. [Godboka.]
@@ -61,8 +56,9 @@ $$  J\sigma_f F^{-T} n_f = \sigma_s  n_s \hspace{4mm} on  \hspace{2mm}\Gamma^0 (
 
 We can introduce a global domain $\Omega \in \mathcal{S} \cup \mathcal{F} $ that is made up of the fluid and the structure and the interface. We define a global velocity function $u$ that is the fluid velocity in the fluid domain and the structure velocity in the structure domain. This can be done due to the interface condition making the velocity field continuous over the entire domain.  
 
+We  set $u- \frac{\partial d}{\partial t}  = 0  $ on the solid domain to strongly imply that the velocity on the solid is the derivative of the deformation.  
 
-\section{FSI Problem in reference domain}
+\section*{FSI Problem in reference domain}
 Find $u \in \mathcal{F} , p \in \mathcal{F} \text{  and  } d \in \mathcal{S} \text{  such that}:$ 
 \begin{align}
 \rho_f J \frac{\partial u}{\partial t} + (\nabla u)F^{-1}(u-\frac{\partial d}{\partial t})  + \nabla \cdot( J\sigma_f F^{-T})  &= 0 \text{  on  } \mathcal{\hat{F} } \\
@@ -73,22 +69,8 @@ u- \frac{\partial d}{\partial t}  &= 0  \text{  on  } \mathcal{\hat{S}}\\
 J\sigma_f F^{-T} n_f &= \sigma_s  n_s \text{  on  } \Gamma
 \end{align}
 
-\subsection*{Domain move}
-Here we will look at the approach involving moving the mesh each time step. \\
-The fluid equation is simply Navier-Stokes with a domain mapping in the transport term giving:
-$$ \rho_f \big( \frac{\partial u}{\partial t} + (\nabla u)(u-w)\big) = \nabla \cdot \sigma_f \hspace{4mm} in \mathcal{F}$$
-$$ \nabla \cdot u = 0  \hspace{4mm} in \hspace{4mm} \mathcal{F} $$
-After each timestep we update the mesh and compute this equation over the current mesh. The real velocity of the fluid particles is there for the fluid velocity itself minus the velocity of the mesh. 
 
-The solid equations will be formulated similar to before but we can write them with the displacement velocity: $ \frac{\partial d}{\partial t} = u_f $:
-$$ \rho_s \frac{\partial u_f}{\partial t} = \nabla \cdot \sigma_s \hspace{4mm}in\hspace{4mm} \mathcal{\hat{S}} $$
-Laplace operator:
-$$ \nabla^2 d_f = 0\hspace{4mm}in \hspace{2mm} \mathcal{\hat{F}}$$
 
-Boundary conditions stay the same but without mappings:
-
-The two approaches to the ALE method is equivalent [Godboka]. 
-From a technical point of view, both formulations are equivalent. Wether we use a fixed and reference formulation or a moving mesh and Eulerian formulation. 
 \section*{Finite Element FSI in ALE}
 \subsection*{Variational formulation}
 \subsection*{Reference domain}
@@ -108,21 +90,7 @@ We denote $u_h \in V_h$ and $ d_h \in W_h $, here the finite element pair og pre
 $$   \inf_{\substack{p_h \in L_{h,f}}}  \sup_{\substack{v_h \in V_{h,f}}} \frac{ (p_h, div(J_f F_f^{-1} u_h))_{\mathcal{F}} }{ \|\|J^{\frac{1}{2}} p_h  \|\|_{\mathcal{F}} \|\|  J^{\frac{1}{2}}_{f} \nabla u_h F_f^{-T} \|\|_{\mathcal{F}}  } \geq \gamma     $$
 A good choice of spaces will be P2-P2-P1 for velocity, displacement and fluid pressure respectively. 
 
-\subsection*{Locking}
-The problem og shear locking can happen FEM computations with certain elements. 
-[mek4250 Kent] - Locking occurs if  $ \lambda >> \nu $ that is, the material is nearly incompressible. The reason is that all the elements discussed in this course are poor at approximating the divergence. Locking refers to the case where the displacement is to small because the divergence term essentially lock the displacement. It is a numerical artifact not a physical feature. [Verbatum]
 
-
-\subsection*{Domain move}
-
-We then look at the variational formulation for moving the mesh, here we employ a global function for u in the fluid and solid. Which is the fluid velocity in the fluid domain and displacement velocity solid domain. And in the last equation we force $w$ to be the solid displacement in the solid domain.
-\begin{align*}
-\rho_f \big( \frac{\partial u}{\partial t} + (\nabla u)(u-w) , \phi\big)_{\mathcal{F}} + (\sigma_f ,\nabla \phi )_{\mathcal{F}} &= 0  \\
- \big( \nabla \cdot (u ),\gamma \big)_{\mathcal{F}} &= 0 \\
-\big(\rho_s \frac{\partial u}{\partial t},\phi \big)_{\mathcal{S}} + \big( \sigma_s(d), \nabla \phi \big)_{\mathcal{S}} &=0 \\
- \big( \nabla d , \nabla \epsilon \big)_{\mathcal{F}} &= 0 \\
- \big( w- u,\epsilon \big)_{\mathcal{S}} &= 0 \\
-\end{align*}
 
 
 

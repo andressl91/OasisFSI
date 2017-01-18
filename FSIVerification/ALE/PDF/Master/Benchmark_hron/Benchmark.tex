@@ -4,16 +4,18 @@
 
 \section*{Problem Defintion}
 \subsection*{Domain}
-\includegraphics[scale=0.9]{geometry.png}
 The computational domain resembles the classic cfd benchmark with an added bar, with dimensions: \\
 The box: L = 2.5, H = 0.41 \\
 The bar: l = 0.35, h = 0.02 \\
 The circle is positioned at (0.2, 0.2) making it 0.05 of center from bottom to top, this is done to induce oscillations to an otherwise laminar flow.\\
 Boundary conditions:\\
 The fluid velocity has a parabolic profile on the inlet that changes over time:\\
-$$ u(0,y) = 1.5u_0 \frac{y(H-y)}{(\frac{H}{2})^2}  $$
-$$ u(0,y,t) = u(0,y)\frac{1-cos(\frac{\pi}{2}t)}{2} \text{  for  } t<2.0$$
-$$ u(0,y,t) = u(0,y) \text{  for  } t \leq 2.0 $$
+
+\begin{align*}
+u(0,y) &= 1.5u_0 \frac{y(H-y)}{(\frac{H}{2})^2}  \\
+u(0,y,t) &= u(0,y)\frac{1-cos(\frac{\pi}{2}t)}{2} \text{  for  } t<2.0 \\
+u(0,y,t) &= u(0,y) \text{  for  } t \leq 2.0
+\end{align*}
 
 We set no slip on the "floor" and "ceiling" so to speak.\\
 On the fluid solid interface the boundary conditions are set to:
@@ -39,38 +41,6 @@ $g $ & 2 & 2 & 2 \\ \hline
 \end{tabular}
 \end{table}
 
-
-\begin{figure}[ht] 
-  \label{ fig7} 
-  \begin{minipage}[b]{0.6\linewidth}
-    \centering
-    \includegraphics[width=1\linewidth]{med_diff_x.png} 
-    \caption{diff x with diffusion term} 
-    \vspace{4ex}
-  \end{minipage}%%
-  \begin{minipage}[b]{0.6\linewidth}
-    \centering
-    \includegraphics[width=1\linewidth]{med_diff_y.png} 
-    \caption{diff y with diffusion term} 
-    \vspace{4ex}
-  \end{minipage} 
-  \begin{minipage}[b]{0.6\linewidth}
-    \centering
-    \includegraphics[width=1\linewidth]{uten_diff_x.png} 
-    \caption{diff x without diffusion term} 
-    \vspace{4ex}
-  \end{minipage}%% 
-  \begin{minipage}[b]{0.6\linewidth}
-    \centering
-    \includegraphics[width=1\linewidth]{uten_diff_y.png} 
-    \caption{diff y without diffusion term} 
-    \vspace{4ex}
-  \end{minipage} 
-\end{figure}
-
-
-
-\newpage
 \newpage 
 
 \subsection*{FSI test}

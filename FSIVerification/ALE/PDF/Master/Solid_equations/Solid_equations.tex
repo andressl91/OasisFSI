@@ -37,7 +37,11 @@ where $f$ is the body force and $\Sigma $ denotes the St. Venant Kirchhoff mater
 $$ \Sigma = 2\mu_s E + \lambda_s tr(E) I $$ 
 Multiplying $\Sigma $ with $F$ we get the 2nd Piola Krichhoff stress tensor. This gives us a non-linear stress tensor.
 
-\subsection*{Some shit about Locking}
+\subsection*{Locking}
+The problem og shear locking can happen FEM computations with certain elements. 
+[mek4250 Kent] - Locking occurs if  $ \lambda >> \nu $ that is, the material is nearly incompressible. The reason is that all the elements discussed in this course are poor at approximating the divergence. Locking refers to the case where the displacement is to small because the divergence term essentially lock the displacement. It is a numerical artifact not a physical feature. [Verbatum]
+
+
 
 
 
