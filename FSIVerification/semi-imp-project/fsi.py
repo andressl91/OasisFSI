@@ -39,115 +39,177 @@ Circle.mark(boundaries, 6)
 Barwall.mark(boundaries, 7)
 plot(boundaries,interactive=True)
 
-
 ds = Measure("ds", subdomain_data = boundaries)
 dS = Measure("dS", subdomain_data = boundaries)
 n = FacetNormal(mesh)
 
 Bar_area = AutoSubDomain(lambda x: (0.19 <= x[1] <= 0.21) and 0.24<= x[0] <= 0.6) # only the "flag" or "bar"
-domains = CellFunction("size_t",mesh)
+domains = CellFunction("size_t", mesh)
 domains.set_all(1)
-Bar_area.mark(domains,2) #Overwrites structure domain
-dx = Measure("dx",subdomain_data=domains)
+Bar_area.mark(domains, 2) #Overwrites structure domain
+dx = Measure("dx", subdomain_data = domains)
 #plot(domains,interactive = True)
-dx_f = dx(1,subdomain_data=domains)
-dx_s = dx(2,subdomain_data=domains)
+dx_f = dx(1, subdomain_data = domains)
+dx_s = dx(2, subdomain_data = domains)
 
-#FluidSpace
-V = VectorFunctionSpace(mesh, "CG", v_deg)
-Q = FunctionSpace(mesh, "CG", p_deg)
-VQ = V*Q
-
-psiphi = TestFunction(VQ)
-psi, phi = split(psiphi)
-up = TrialFunction(VQ);
-u, p = split(up)
-up0 = Function(VQ)
-u0, p0 = split(up0)
-up_sol = Function(VQ)
-
-v = TestFunction(V)
-u_hat = TrialFunction(V)
-u_hat_sol = Function(V)
-u0 = Function(V)
-u0_hat = Function(V)
-
+dt = 0.1
+mu = 1
+rho = 1
 k = Constant(dt)
-#f = Constant((0, 0, 0))
-nu = Constant(mu/rho)
+
+#Fluid properties
+rho_f   = Constant(1.0E3)
+mu_f    = Constant(1.0)
+nu = Constant(mu_f/rho_f)
+
+#Structure properties
+rho_s = 1.0E3
+mu_s = 2.0E6
+nu_s = 0.4
+E_1 = 1.4E6
+lamda_s = nu_s*2*mu_s/(1-2*nu_s)
+g = Constant((0,-2*rho_s))
 
 
-# Define boundary conditions
-bcu = []
-bcp = []
+############## Define FunctionSpaces ##################
 
-#StructureSpace
-D = VectorFunctionSpace(mesh, "CG", d_deg)
-U = VectorFunctionSpace(mesh, "CG", d_deg)
-W = D*U
-psi = TestFunction(W)
-w_sol = Function(W)
+V = VectorFunctionSpace(mesh, "CG", 2)
+V1 = VectorFunctionSpace(mesh, "CG", 1)
+P = FunctionSpace(mesh, "CG", 1)
+W = MixedFunctionSpace([V, V])
 
-wd = Function(W)
-w, d = split(wd)
-wd0 = Function(W)
-w0, d0 = split(wd0)
-wd_1 = Function(W)
-w_1, d_1 = split(wd_1)
+u = TrialFunction(V)
+phi = TestFunction(V)
+w = TrialFunction(V)
 
-gamma = TestFunction(D)
-d_eta = TrialFunction(D)
-d_eta_sol = Function(D)
-#d0 = Function(W); d_1 = Function(W)
-w_meshvel = TrialFunction(D)
-w_sol = Function(D)
+p = TrialFunction(P)
+q = TestFunction(P)
 
-d_tomove = Function(D)
+vd = Function(W)
+v, d = split(vd)
 
-# Get fluid variational formula
-mu = 1; rho = 1; dt = 1.
-k = Constant(dt)
-nu = Constant(mu/rho)
+vd0 = Function(W)
+# Make a deep copy to create two new Functions u and p (not subfunctions of W)
+#Must be done in solve as well to redo step 0
+v0, d0 = vd0.split(deepcopy=True) #
 
-# Step 0: Extrapolation of the fluid-structure interface
-F_d = inner(d_eta - d0 + k*(3./2*w0 - 1./2*w_1), gamma)*dx
+vd1 = Function(W)
+v_1, d_1 = vd1.split(deepcopy=True)
 
-# Step 1: Definition of the new domain
-F_meshvel = inner(w_meshvel - 1./k*(d_eta_sol - d0, gamma))*dx_s
-F_smooth = inner(grad(w_meshvel), grad(gamma))*dx_f
+############## Define BCS ##################
+#BOUNDARY CONDITIONS
 
-#Step 2
-# Advection-diffusion step (explicit coupling)
-F1 = (1./k)*inner(u_hat - u0, psi)*dx + inner(grad(u_hat)*(u0_hat - w_sol), v)*dx + \
-     2.*nu*inner(eps(u_hat), eps(v))*dx
-a1 = lhs(F1); L1 = rhs(F1)
+Um = 2.0
+H = 0.41
+L = 2.5
+# "
+inlet = Expression(("(1.5*Um*x[1]*(H - x[1]) / pow((H/2.0), 2))*(1-cos(t*pi/2.0))/2.0" \
+,"0"), t = 0.0, Um = Um, H = H)
 
-#Step 3
-# Projection step(implicit coupling)
-F2 = (rho/k)*inner(u - u_hat_sol, psi)*dx - inner(p, div(psi))*dx \
-+ inner(div(u), phi)*dx \
-+ inner(u -  )
+#Fluid velocity conditions
+u_inlet  = DirichletBC(V, inlet, boundaries, 3)
+u_wall   = DirichletBC(V, ((0.0, 0.0)), boundaries, 2)
+u_circ   = DirichletBC(V, ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
+u_bar    = DirichletBC(V, ((0.0, 0.0)), boundaries, 5) #No slip on geometry in fluid
 
-a2 = lhs(F2); L2 = rhs(F2)
+bcs_u = [u_inlet, u_wall, u_circ, u_bar]
+
+#Pressure Conditions
+p_out = DirichletBC(P, 0, boundaries, 4)
+
+bcs_p = [p_out]
+
+#Mesh velocity conditions
+w_wall    = DirichletBC(V, ((0.0, 0.0)), boundaries, 2)
+w_inlet   = DirichletBC(V, ((0.0, 0.0)), boundaries, 3)
+w_outlet  = DirichletBC(V, ((0.0, 0.0)), boundaries, 4)
+w_circle  = DirichletBC(V, ((0.0, 0.0)), boundaries, 6)
+#w_barwall = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 7)
+#w_bar     = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 5)
+
+bcs_w = [w_wall, w_inlet, w_outlet, w_circle]
+
+# Deformation conditions
+d_inlet   = DirichletBC(W.sub(1), ((0, 0)), boundaries, 3)
+d_wall    = DirichletBC(W.sub(1), ((0, 0)), boundaries, 2)
+d_out     = DirichletBC(W.sub(1), ((0, 0)), boundaries, 4)
+d_circ    = DirichletBC(W.sub(1), ((0, 0)), boundaries, 6)
+d_barwall = DirichletBC(W.sub(1), ((0, 0)), boundaries, 7)
+
+bcs_d = [d_inlet, d_wall, d_out, d_circ, d_barwall]
+
+# Deformation conditions TILDE
+d_inlet_t   = DirichletBC(V, ((0, 0)), boundaries, 3)
+d_wall_t    = DirichletBC(V, ((0, 0)), boundaries, 2)
+d_out_t     = DirichletBC(V, ((0, 0)), boundaries, 4)
+d_circ_t    = DirichletBC(V, ((0, 0)), boundaries, 6)
+d_barwall_t = DirichletBC(V, ((0, 0)), boundaries, 7)
+
+bcs_d_tilde = [d_inlet_t, d_wall_t, d_out_t, d_circ_t, d_barwall_t]
 
 
-while dt < T:
-    #Step 0:
-    solve(lhs(F_d) == rhs(F_d), d_eta_sol, bcs_d)
+############## Step 0: Extrapolation of the fluid-structure interface
+d_tilde = Function(V) #Solution vector of F_expo
+F_expo = inner(u - d0 - k*(3./2*d0 - 1./2*d_1 ), phi)*dx
 
-    #Step 1:
-    F = F_meshvel + F_smooth
-    solve(lhs(F) == rhs(F), w_sol, bcs_w)
-    d_tomove.vector()[:] += w_sol.vector()[:]*float(k)
-    ALE.move(d_tomove)
+############## Step 1: Definition of new domain
+w_next = Function(V)   #Solution w_n+1 of F_smooth
+d_move = Function(V1)  #d_move used in ALE.move method
 
-    #Step 2 ALE-advection-diffusion step
-    #fluid_solve(A1, A2, L1, L2, fluid_solver, pressure_solver)
-    solve(a1 == L1, u1, bcs)
-    solve(a2 == L2, )
+F_smooth = inner(w - 1./k*(d_tilde -  d0), phi)*dx_s + inner(grad(u), grad(phi))*dx_f
+
+############## Step 2: ALE-advection-diffusion step (explicit coupling)
+u0 = Function(V)      # Same as u_tilde_n
+u_tent = Function(V)  # Tentative velocity: solution of F_tent
+
+#Works if dx_f is replaced by dx, fix should be ident_zeros, not work
+F_tent = (rho_f/k)*inner(u - u0, phi)*dx_f + rho_f*inner(grad(u)*(u0 - w_next), phi)*dx_f + \
+     2.*nu*inner(eps(u), eps(phi))*dx_f #+ inner(u('-') - w('-'), phi('-'))*dS(5)
+
+############## Step 3: Projection Step (implicit coupling) ITERATIVE PART
+
+# Pressure update
+p_press = Function(P) #Solution of F_press_upt, pressure
+F_press_upt = inner(grad(p), grad(q))*dx_f \
+- (1./k)*div(u_tent)*q*dx_f \
+#+ inner(dot(u, n) - 1./k*dot(d_tilde - d0, n), q)*dS(5)
+#+ inner(u('-')*n('-') - 1./k*(d_tilde('-') - d0('-')*n('-')), phi('-'))*dS(5)
+#First iterative d_tilde is gues for d_n+1
+#Question must interior facets be specified for bcs in step 3????
+
+# Velocity update
+u_vel = Function(V) #Solution of F_vel_upt, velocity
+F_vel_upt = inner(u, v)*dx_f - inner(u_tent, v)*dx_f + dot(k*grad(p_press), v)*dx_f
+
+#while dt < T:
+
+#Step 0:
+solve(lhs(F_expo) == rhs(F_expo), d_tilde, bcs_d_tilde)
+
+#Step 1:
+solve(lhs(F_smooth) == rhs(F_smooth), w_next, bcs_d_tilde)
+"""
+w_1 = interpolate(w_next, V1)
+w_1.vector()[:] *= float(k)
+d_move.vector()[:] += w_1.vector()[:]
+ALE.move(mesh, d_move)
+mesh.bounding_box_tree().build(mesh)
+"""
+#Step 2:
+#solve(lhs(F_tent) == rhs(F_tent), u_tent, bcs_u)
+A = assemble(lhs(F_tent)); L = assemble(rhs(F_tent))
+A.ident_zeros()
+#[bc.apply(A, b) for bc in bcs_u]
+#[bc.apply(A, b) for bc in bcs_p]
+#solve(A , u_tent.vector(), b)
 
 
-count += 1
-u0.assign(u1)
-p0.assign(p1)
-t += dt
+print "Step 2 DONE"
+
+#Step 3:
+solve(lhs(F_press_upt) == rhs(F_press_upt), )
+
+#count += 1
+#u0.assign(u1)
+#p0.assign(p1)
+#t += dt
