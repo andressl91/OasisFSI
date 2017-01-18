@@ -8,8 +8,10 @@ Here we will look at the partitioned approach to solving the FSI problem. This m
 The Robin-Neumann treatment of the interface proposed by Fernandez uses a boundary operator $ B_h : \Lambda_{\Sigma, h} \rightarrow \Lambda_{\Sigma, h}  $ which is used together with the known coupling of stresses:
 
 $$  J^n \sigma^f(u^n, p^n)(F^n)^{-T}n^f + \frac{\rho^s}{\tau} B_h u^n = \frac{\rho^s}{\tau} B_h (\dot{d}^{n-1} + \tau \partial_t \dot{d}^*  ) - \Pi^{*} n^s $$
-- The explicit treatment of the solid ensures uncoupling of the fluid and solid computations. Giving a genuine partitioned system. \\
-- Treating the left hand side solid tensor implicitly ensures added-mass free stability
+\begin{itemize}  
+\item The explicit treatment of the solid ensures uncoupling of the fluid and solid computations. Giving a genuine partitioned system. 
+\item Treating the left hand side solid tensor implicitly ensures added-mass free stability
+\end{itemize}
 The fluid domain is computed using a generalized Robin condition on the interface, and the solid is computed with the familiar Neumann condition on the interface, equalling the stresses from the fluid and structure.\\
 The general r-order extrapolation $x^*$ is defined: 
 \begin{equation}
