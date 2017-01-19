@@ -8,6 +8,7 @@ args = parse()
 v_deg = args.v_deg
 p_deg = args.p_deg
 d_deg = args.d_deg
+dt = args.dt
 
 mesh = Mesh("fluid_new.xml")
 #plot(mesh, interactive=True)
@@ -52,7 +53,6 @@ dx = Measure("dx", subdomain_data = domains)
 dx_f = dx(1, subdomain_data = domains)
 dx_s = dx(2, subdomain_data = domains)
 
-dt = 0.5
 mu = 1
 rho = 1
 k = Constant(dt)
@@ -178,7 +178,7 @@ bcs_d_tilde = [d_inlet_t, d_wall_t, d_out_t, d_circ_t, d_barwall_t]
 ############## Step 0: Extrapolation of the fluid-structure interface
 
 d_tilde = Function(U) #Solution vector of F_expo
-F_expo = inner(u_ - d0 - k*(3./2*d0 - 1./2*d_1 ), phi)*dx
+F_expo = inner(u_ - d0 - k*(3./2*v0 - 1./2*v_1 ), phi)*dx
 
 ############## Step 1: Definition of new domain
 
@@ -227,10 +227,11 @@ F_tent = (rho_f/k)*inner(J_(d_move)*(u_ - u0), phi)*dx_f \
 # Pressure update
 F_press_upt = (rho_f/k)*inner(J_(d)*(u - u_tent), psi)*dx_f \
 - inner(J_(d)*p*inv(F_(d)).T, grad(psi))*dx_f \
-- inner(div(J_(d)*inv(F_(d).T)*u), eta)*dx_f
-+ dot(dot(u('-'), n('-')) - 1./k*dot(d('-') - d0('-'), n('-')), eta('-'))*dS(5)
-#IS THIS RIGHT, CHECK TestFunction
-#IS ('-') nesecarry due to ident_zeros
+- inner(div(J_(d)*inv(F_(d).T)*u), eta)*dx_f \
++ inner(dot(u('-'),n('-')), eta('-'))*dS(5) \
+- 1./k*inner(dot(d('-') - d0('-'), n('-')), eta('-'))*dS(5)
+#+ dot(dot(u('-'), n('-')) - 1./k*dot(d('-') - d0('-'), n('-')), psi('-'))*dS(5)
+
 
 ############## Step 3.2: Calculate Solid
 col_0 = W.sub(0).dofmap().collapse(mesh)[1].values()
@@ -238,12 +239,12 @@ vd0.vector()[col_0] = v0.vector()
 col_1 = W.sub(1).dofmap().collapse(mesh)[1].values()
 vd0.vector()[col_1] = d0.vector()
 
-u_, p_ = up_sol.split(True)
+u_s, p_s = up_sol.split(True)
 
 Solid_v = rho_s/k*inner(v - v0, alfa)*dx_s + inner(0.5*(P1(d) + P1(d0)), grad(alfa))*dx_s
 Solid_d = 1.0/k*inner(d - d0, beta)*dx_s - 0.5*inner(v + v0, beta)*dx_s
 Solid_dynamic = inner(P1(d('+'))*n('+'), beta('+'))*dS(5) \
-              + inner(sigma_f_hat(u_('+'), p_('+'), d('+'))*n('+'), beta('+'))*dS(5)
+              + inner(sigma_f_hat(u_s('+'), p_s('+'), d('+'))*n('+'), beta('+'))*dS(5)
 
 #Newtonsolver
 G = Solid_v + Solid_d + Solid_dynamic
@@ -263,9 +264,14 @@ Iter = 0
 
 #Step 3
 
-
 t = 0
-T = 8
+T = 15
+
+up_last = Function(V)
+u_last, p_last = up_last.split(True)
+
+vd_last = Function(W)
+v_last, d_last = vd_last.split(True)
 
 while t < T:
 
@@ -301,38 +307,46 @@ while t < T:
 
     [bc.apply(A, b) for bc in bcs_u_t]
     solve(A , u_tent.vector(), b)
+    u0_tilde.assign(u_tent)
     print "STEP 2: Tentative Velocity Solved"
 
     eps_f = 1
     eps_s = 1
 
     #Step 3:
-    while eps_f > 10E-4 or eps_s > 10E-4:
+    while eps_f > 10E-6 and eps_s > 10E-6:
 
         #Step 3.1:
         A = assemble(lhs(F_press_upt), keep_diagonal = True)
         A.ident_zeros();
         b = assemble(rhs(F_press_upt))
+        [bc.apply(A, b) for bc in bcs_u]
         [bc.apply(A, b) for bc in bcs_p]
         solve(A , up_sol.vector(), b)
-        u_, p_ = up_sol.split(True)
-        u0, p0 = up0.split(True)
-        eps_f = errornorm(u_, u0, norm_type="l2", degree_rise=2)
+
+        u_s, p_s = up_sol.split(True)
+        eps_f = errornorm(u_s, u_last, norm_type="l2", degree_rise=2)
+        #eps_f = errornorm(p_s, p_last, norm_type="l2", degree_rise=2)
 
         vd = Newton_manual(G, vd, bcs_vd, J, atol, rtol, max_it, lmbda, vd_res)
         v, d = vd.split(True)
-        eps_s = errornorm(d, d0, norm_type="l2", degree_rise=2)
+        eps_s = errornorm(d, d_last, norm_type="l2", degree_rise=2)
+
+        u_last.assign(u_s)
+        #p_last.assign(p_s)
+        d_last.assign(d)
+
 
         print "L2 eps_f %g,    L2 eps_g %g" % (eps_f, eps_s)
 
-    u0.assign(u_)
+    up0.assign(up_sol)
     vd1.assign(vd0)
     vd0.assign(vd)
 
-    Dr = -assemble((sigma_f_hat(u_, p_ , d)*n)[0]*ds(6))
-    Li = -assemble((sigma_f_hat(u_, p_ , d)*n)[1]*ds(6))
-    Dr += -assemble((sigma_f_hat(u_('-'), p_('-'), d('-'))*n('-'))[0]*dS(5))
-    Li += -assemble((sigma_f_hat(u_('-'), p_('-'), d('-'))*n('-'))[1]*dS(5))
+    Dr = -assemble((sigma_f_hat(u_s, p_s , d)*n)[0]*ds(6))
+    Li = -assemble((sigma_f_hat(u_s, p_s , d)*n)[1]*ds(6))
+    Dr += -assemble((sigma_f_hat(u_s('-'), p_s('-'), d('-'))*n('-'))[0]*dS(5))
+    Li += -assemble((sigma_f_hat(u_s('-'), p_s('-'), d('-'))*n('-'))[1]*dS(5))
     #Drag.append(Dr)
     #Lift.append(Li)
 
@@ -344,7 +358,7 @@ while t < T:
     if MPI.rank(mpi_comm_world()) == 0:
         print "t = %.4f " %(t)
         print 'Drag/Lift : %g %g' %(Dr,Li)
-        print "dis_x/dis_y : %g %g "%(dsx,dsy)
+        print "dis_x/dis_y : %f %f "%(dsx,dsy)
 
     print "STEP 3 Solved"
     t += dt
