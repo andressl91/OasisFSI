@@ -22,7 +22,7 @@ CN_002_S = np.loadtxt("./results/singlespace/C-N/0.002/dis_y.txt", delimiter=','
 #Crank-Nic implementations MIXEDSPACE
 CN_02_D = np.loadtxt("./results/mixedspace/C-N/0.02/dis_y.txt", delimiter=',')
 CN_002_D = np.loadtxt("./results/mixedspace/C-N/0.002/dis_y.txt", delimiter=',')
-CN_0005_D = np.loadtxt("./results/mixedspace/C-N/0.0005/dis_y.txt", delimiter=',')
+#CN_0005_D = np.loadtxt("./results/mixedspace/C-N/0.0005/dis_y.txt", delimiter=',')
 
 #Piccard implementations MIXEDSPACE
 PC_002_D = np.loadtxt("./results/mixedspace/Piccard/0.002/dis_y.txt", delimiter=',')
@@ -55,8 +55,8 @@ plt.figure(1)
 #plt.plot(t_0005, CN_0005_S, label="CN_0005_S")
 
 #plt.plot(t_02, CN_02_D, label="CN_02_D")
-#plt.plot(t_002, CN_002_D, label="CN_002_D")
-plt.plot(t_0005, CN_0005_D, label="CN_0005_D")
+plt.plot(t_002, CN_002_D, label="CN_002_D")
+#plt.plot(t_0005, CN_0005_D, label="CN_0005_D")
 
 #Adam-Bashford
 #plt.plot(t_02, AB_02_S, label="AB_02_S")
