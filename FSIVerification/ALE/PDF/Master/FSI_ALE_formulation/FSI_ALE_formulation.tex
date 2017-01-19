@@ -46,7 +46,20 @@ This equation is chosen for its good regularity and smoothing properties.
 
 It is also possible to chose an harmonic extension with stiffening, which can give better control of the deformed meshes. This in practice behaves like a transport problem, transporting the deformation into the fluid domain. Another possibility is extension by pseudo-elasticity which defines the extension operator by means of the Navier-Lame equation. And lastly we can chose a biharmonic extension, that is of fourth order character, and thus will have a high computational cost. For now I will stick with the harmonic extension and maybe look at these in the future. [Godboka.]
 
-\subsection*{Boundary conditions}
+\subsection*{Coupled Fluid Structure Interface conditions}
+We introduce a global domain $\Omega \in \mathcal{S} \cup \mathcal{F} $ that is made up of the fluid and the structure and the interface. We define a global velocity function $u$ that is the fluid velocity in the fluid domain and the structure velocity in the structure domain. This can be done due to the interface condition making the velocity field continuous over the entire domain. Then the interface will be $ \Gamma \in \mathcal{S} \cap \mathcal{F}  $  
+We need to define conditions that couple that motions of the fluid and structure together. These consist of:
+\begin{itemize}
+\item Kinematic condition: $u_f = u_s  \hspace{4mm} on \Gamma$. The fluid and structure velocities need to be equal on the boundary. 
+\item Dynamic condition: $  \sigma_f n_f = \sigma_s n_s \hspace{4mm} on  \hspace{2mm}\Gamma^0 (interface)   $. This equals the stress from the fluid and structure 
+\item Geometrical 
+\end{itemize}
+
+
+
+
+
+
 $$  u(x,y,t=0) = u_0   $$
 
 In the place where the fluid and structure domains meet, i.e the interface. We set a dynamic condition saying that the normal stresses of the solid and fluid are equal:
@@ -54,7 +67,7 @@ $$  \sigma_f n_f = \sigma_s n_s \hspace{4mm} on  \hspace{2mm}\Gamma^0 (interface
 These will be written in the Lagrangian formulation:
 $$  J\sigma_f F^{-T} n_f = \sigma_s  n_s \hspace{4mm} on  \hspace{2mm}\Gamma^0 (interface)   $$
 
-We can introduce a global domain $\Omega \in \mathcal{S} \cup \mathcal{F} $ that is made up of the fluid and the structure and the interface. We define a global velocity function $u$ that is the fluid velocity in the fluid domain and the structure velocity in the structure domain. This can be done due to the interface condition making the velocity field continuous over the entire domain.  
+
 
 We  set $u- \frac{\partial d}{\partial t}  = 0  $ on the solid domain to strongly imply that the velocity on the solid is the derivative of the deformation.  
 

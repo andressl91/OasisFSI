@@ -13,11 +13,11 @@ def J_(U):
 def E(U):
 	return 0.5*(F_(U).T*F_(U)-I)
 
-def S(U,lamda_s):
-	return (2*mu_s*E(U) + lamda_s*tr(E(U))*I)
+def S(U,FSI):
+	return (2*mu_s(FSI)*E(U) + lamda_s*tr(E(U))*I)
 
-def P1(U,lamda_s):
-	return F_(U)*S(U,lamda_s)
+def P1(U):
+	return F_(U)*S(U)
 
 def sigma_f(v,p):
 	return 2*mu_f*sym(grad(v)) - p*Identity(2)

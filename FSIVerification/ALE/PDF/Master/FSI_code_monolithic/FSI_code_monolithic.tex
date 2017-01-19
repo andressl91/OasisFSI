@@ -86,6 +86,8 @@ F_laplace =  (1./k)*inner(d-d0,psi)*dx_f +inner(grad(d), grad(psi))*dx_f
 
 F = F_fluid + F_structure + F_w + F_laplace
 \end{lstlisting}
+The equation $ u = \frac{\partial d}{\partial t} in \mathcal{S} $, is weighted with a delta value which we will see later on is important when solving monolithic.
+
 
 To solve a non-linear problem we need make a newton solver [Mikael kompendium]
 

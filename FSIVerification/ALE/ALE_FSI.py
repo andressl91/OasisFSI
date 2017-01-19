@@ -27,25 +27,25 @@ lamda_s = lamda_s(FSI,mu_s)
 time0 = time()
 
 parameters["allow_extrapolation"] = True
-mesh = Mesh("mesh/fluid_new.xml")
+mesh_ = Mesh("mesh/fluid_new.xml")
 if args.refiner == None:
     print "None"
 else:
     for i in range(args.refiner):
-        mesh = refine(mesh)
+        mesh_ = refine(mesh_)
 
-for coord in mesh.coordinates():
+for coord in mesh_.coordinates():
     if coord[0]==0.6 and (0.199<=coord[1]<=0.2001): # to get the point [0.2,0.6] end of bar
         print coord
         break
 
 
-V1 = VectorFunctionSpace(mesh, "CG", v_deg) # Fluid velocity
-V2 = VectorFunctionSpace(mesh, "CG", d_deg) # displacement
-Q  = FunctionSpace(mesh, "CG", p_deg)       # Fluid Pressure
+V1 = VectorFunctionSpace(mesh_, "CG", v_deg) # Fluid velocity
+V2 = VectorFunctionSpace(mesh_, "CG", d_deg) # displacement
+Q  = FunctionSpace(mesh_, "CG", p_deg)       # Fluid Pressure
 
 VVQ = MixedFunctionSpace([V1, V2, Q])
-print "Dofs: ",VVQ.dim(), "Cells:", mesh.num_cells()
+print "Dofs: ",VVQ.dim(), "Cells:", mesh_.num_cells()
 # BOUNDARIES
 
 #NOS = AutoSubDomain(lambda x: "on_boundary" and( near(x[1],0) or near(x[1], 0.41)))
@@ -61,7 +61,7 @@ Allboundaries = DomainBoundary()
 Bar_area = AutoSubDomain(lambda x: (0.19 <= x[1] <= 0.21) and 0.24<= x[0] <= 0.6) # only the "flag" or "bar"
 
 
-boundaries = FacetFunction("size_t",mesh)
+boundaries = FacetFunction("size_t",mesh_)
 boundaries.set_all(0)
 Allboundaries.mark(boundaries, 1)
 Wall.mark(boundaries, 2)
@@ -76,10 +76,10 @@ Barwall.mark(boundaries, 7)
 
 ds = Measure("ds", subdomain_data = boundaries)
 dS = Measure("dS", subdomain_data = boundaries)
-n = FacetNormal(mesh)
+n = FacetNormal(mesh_)
 
 
-domains = CellFunction("size_t",mesh)
+domains = CellFunction("size_t",mesh_)
 domains.set_all(1)
 Bar_area.mark(domains,2) #Overwrites structure domain
 dx = Measure("dx",subdomain_data=domains)
@@ -99,6 +99,8 @@ class inlet(Expression):
 		value[1] = 0
 	def value_shape(self):
 		return (2,)
+#from mappings import *
+
 def Eij(U):
 	return sym(grad(U))# - 0.5*dot(grad(U),grad(U))
 
@@ -167,7 +169,7 @@ k = Constant(dt)
 I = Identity(2)
 
 delta = 1.0E10
-h =  mesh.hmin()
+h =  mesh_.hmin()
 
 # Fluid variational form
 F_fluid = (rho_f/k)*inner(J_(d)*(u - u0), phi)*dx_f \
@@ -201,15 +203,23 @@ F = F_fluid + F_structure + F_w + F_laplace
 t = 0.0
 time_list = []
 
-u_file = File("new_results_CN_structure_2/FSI-" +str(FSI) +"/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.pvd")
-d_file = File("new_results_CN_structure_2/FSI-" +str(FSI) +"/P-"+str(v_deg) +"/dt-"+str(dt)+"/d.pvd")
-p_file = File("new_results_CN_structure_2/FSI-" +str(FSI) +"/P-"+str(v_deg) +"/dt-"+str(dt)+"/pressure.pvd")
+
+u_file = XDMFFile(mpi_comm_world(), "new_results/FSI-" +str(FSI) +"/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.xdmf")
+d_file = XDMFFile(mpi_comm_world(), "new_results/FSI-" +str(FSI) +"/P-"+str(v_deg) +"/dt-"+str(dt)+"/d.xdmf")
+p_file = XDMFFile(mpi_comm_world(), "new_results/FSI-" +str(FSI) +"/P-"+str(v_deg) +"/dt-"+str(dt)+"/pressure.xdmf")
+
+for tmp_t in [u_file, d_file, p_file]:
+    tmp_t.parameters["flush_output"] = True
+    tmp_t.parameters["multi_file"] = 1
+    tmp_t.parameters["rewrite_function_mesh"] = False
+
 
 dis_x = []
 dis_y = []
 Drag = []
 Lift = []
 counter = 0
+#time_list.append(0)
 t = dt
 
 while t <= T:
