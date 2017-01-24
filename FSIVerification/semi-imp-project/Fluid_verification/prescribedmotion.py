@@ -2,7 +2,7 @@ from dolfin import *
 import numpy as np
 import sys, shutil, os
 #sys.path.append('/Users/Andreas/Desktop/OasisFSI/FSIVerification/semi-imp-project/Fluid_verification/tabulate')
-sys.path.append('../Fluid_verification/tabulate')
+#sys.path.append('../Fluid_verification/tabulate')
 from tabulate import tabulate
 
 #default values
@@ -47,41 +47,12 @@ if len(dt) == 0:
 def NS(N, dt, T, L, rho, mu, solver):
     tic()
 
-    mesh = RectangleMesh(Point(-1, -1), Point(1, 1), N, N)
-
-    class PeriodicDomain(SubDomain):
-
-        def inside(self, x, on_boundary):
-            # return True if on left or bottom boundary AND NOT on one of the two corners (0, 2) and (2, 0)
-            return bool((near(x[0], -1) or near(x[1], -1)) and
-                  (not ((near(x[0], -1) and near(x[1], 1)) or
-                        (near(x[0], 1) and near(x[1], -1)))) and on_boundary)
-
-        def map(self, x, y):
-            if near(x[0], 1) and near(x[1], 1):
-                y[0] = x[0] - 2.0
-                y[1] = x[1] - 2.0
-            elif near(x[0], 1):
-                y[0] = x[0] - 2.0
-                y[1] = x[1]
-            else:
-                y[0] = x[0]
-                y[1] = x[1] - 2.0
-
-    #constrained_domain = PeriodicDomain()
-    test = PeriodicDomain()
-
-    nu = Constant(mu/rho)
-
-    # Define time-dependent pressure boundary condition
-    p_e = Expression("-0.25*(cos(2*pi*x[0]) + cos(2*pi*x[1]))*exp(-4*t*nu*pi*pi )", nu=nu, t=0.0)
-    u_e = Expression(("-cos(pi*x[0])*sin(pi*x[1])*exp(-2*t*nu*pi*pi)",\
-                    "cos(pi*x[1])*sin(pi*x[0])*exp(-2*t*nu*pi*pi)"), nu=nu, t=0)
+    mesh = RectangleMesh(Point(0,0), Point(2, 1), 20, 20, "crossed")
 
     # Define function spaces (P2-P1)
-    V1 = VectorFunctionSpace(mesh, "CG", 3, constrained_domain = test)
-    V = VectorFunctionSpace(mesh, "CG", 3, constrained_domain = test)
-    Q = FunctionSpace(mesh, "CG", 2, constrained_domain = test)
+    V1 = VectorFunctionSpace(mesh, "CG", 2)
+    V = VectorFunctionSpace(mesh, "CG", 2)
+    Q = FunctionSpace(mesh, "CG", 1)
     W = V*Q
 
     # Define trial and test functions
@@ -94,33 +65,123 @@ def NS(N, dt, T, L, rho, mu, solver):
     psi = TestFunction(V1)
 
     # Define boundary conditions
-    bcu = []
-    bcp = []
+
+    # Fluid velocity conditions
+    class U_bc(Expression):
+        def init(self,w):
+            self.w = w
+        def eval(self,value,x):
+            #x_value, y_value = self.w.vector()[[x[0], x[1]]]
+            value[0], value[1] = self.w(x)
+            #value[0] = x_value
+            #value[1] = y_value
+        def value_shape(self):
+            return (2,)
+
+    u_bc = U_bc(degree=2)
+
+    Inlet = AutoSubDomain(lambda x, on_bnd: near(x[0], 0))
+    Outlet = AutoSubDomain(lambda x, on_bnd: near(x[0], 2))
+    Walls = Inlet = AutoSubDomain(lambda x, on_bnd: near(x[1], 0) and near(x[1], 2))
+
+    fc = FacetFunction('size_t', mesh, 0)
+    Inlet.mark(fc, 1)
+    Outlet.mark(fc, 2)
+    Walls.mark(fc, 3)
+
+    ds = Measure("ds", subdomain_data = fc)
+    n = FacetNormal(mesh)
 
     # Create functions
-    u0 = project(u_e, V, solver_type="bicgstab")
+    d_e = Expression(("sin(t)*(x[0] - 1)",  "0"), t = 0)
+    w_e = Expression(("x[0]*cos(t)", "0"), t = 0)
+    u_e = Expression(("x[0]*cos(t)", "-cos(t)"), t = 0)
+    p_e = Expression("1")
+
+    # Fluid velocity conditions
+    u_wall   = DirichletBC(V1, u_bc, fc, 3)
+    u_inlet   = DirichletBC(V1, u_e, fc, 1)
+    up_wall   = DirichletBC(W.sub(0), u_bc, fc, 3)
+    up_inlet   = DirichletBC(W.sub(0), u_e, fc, 1)
+
+    # Mesh velocity conditions
+    w_inlet   = DirichletBC(V1, w_e, fc, 1)
+    w_outlet  = DirichletBC(V1, ((0.0, 0.0)), fc, 2)
+
+    # Pressure Conditions
+    p_out = DirichletBC(W.sub(1), 0, fc, 2)
+
+    #Assemble boundary conditions
+    bcs_w = [w_inlet, w_outlet]
+    bcs_u = [u_inlet, u_wall]
+    bcs_up = [up_inlet, up_wall, p_out]
+
+    d_tilde = Function(V1)
+    d0 = project(d_e, V1)
+
+    w = TrialFunction(V1)
+    w1 = Function(V1)
+    w0 = project(w_e, V1)
+    w_1 = project(d_e, V1)
+
+    psieta = TestFunction(W)
+    psi, eta = split(psieta)
+    up1 = TrialFunction(W)
+    u, p = split(up1)
+    up0 = Function(W)
+    u0, p0 = up0.split(deepcopy = True)
+    up_sol = Function(W)
+
+    u_ = TrialFunction(V1)
+    phi = TestFunction(V1)
+    u0 = project(u_e, V)
     p0 = project(p_e, Q)
-    u1 = Function(V)
-    up1 = Function(W)
+
 
     # Define coefficients
     k = Constant(dt)
     #f = Constant((0, 0, 0))
+    mu = Constant(10)
+    rho = Constant(1)
     nu = Constant(mu/rho)
+
+    I = Identity(2)
 
     def eps(u):
         return 0.5*(grad(u) + grad(u).T)
 
-    # Advection-diffusion step (explicit coupling)
-    F1 = (1./k)*inner(u_hat - u0, psi)*dx + inner(grad(u_hat)*u0, psi)*dx + \
-         2.*nu*inner(eps(u_hat), eps(psi))*dx
-    a1 = lhs(F1)
-    L1 = rhs(F1)
+    def F_(U):
+    	return (I + grad(U))
 
-    # Projection step(implicit coupling)
-    F2 = (rho/k)*inner(u - u1, v)*dx - inner(p, div(v))*dx + inner(div(u), q)*dx
-    a2 = lhs(F2)
-    L2 = rhs(F2)
+    def J_(U):
+    	return det(F_(U))
+
+    def sigma_f(v,p):
+    	return 2*mu*eps(v) - p*Identity(2)
+
+    def sigma_f_hat(v,p,u):
+    	return J_(u)*sigma_f(v,p)*inv(F_(u)).T
+
+    #F_expo = inner(u_ - d0 - k*(3./2*w0 - 1./2*w_1), phi)*dx
+    d_ = k*w1
+
+    #Laplace of deformation d
+    F_smooth = k*(inner(grad(w), grad(psi))*dx - inner(grad(w)*n, psi)*ds)
+
+    F_tent = (rho/k)*inner(J_(d_)*(u_ - u0), phi)*dx \
+            + rho*inner(J_(d_)*inv(F_(d_))*grad(u_)*(u0 - w1), phi)*dx  \
+            + inner(2.*mu*J_(d_)*eps(u_)*inv(F_(d_)).T, eps(phi))*dx \
+            #+ inner(u_ - w1, phi)*ds(1)
+
+    F_press_upt = (rho/k)*inner(J_(d_)*(u - u_tent), psi)*dx \
+    - inner(J_(d_)*p*inv(F_(d_)).T, grad(psi))*dx \
+    + inner(div(J_(d_)*inv(F_(d_).T)*u), eta)*dx \
+    + inner(dot(u, n), eta)*ds(1) \
+    #- 1./k*inner(dot(d - d0, n), eta)*ds(1)
+    #+ dot(dot(u('-'), n('-')) - 1./k*dot(d('-') - d0('-'), n('-')), psi('-'))*dS(5)
+
+    a1 = lhs(F_tent)
+    a2 = lhs(F_press_upt)
 
     # Assemble matrices
     A1 = assemble(a1); A2 = assemble(a2)
@@ -135,17 +196,25 @@ def NS(N, dt, T, L, rho, mu, solver):
     if MPI.rank(mpi_comm_world()) == 0:
         print "Computing for N = %g, t = %g" % (N, dt)
     while t < T:
+        print "here"
         #if MPI.rank(mpi_comm_world()) == 0:
             #print "Iterating for time %f" % t
+        inlet.t = t
+
+        solve(lhs(F_smooth) == rhs(F_smooth), w1, bcs_w)
+        u_bc.init(w1)
 
         # Compute tentative velocity step
         begin("Computing tentative velocity")
+        [bc.apply(A, b) for bc in bcs_u]
         b1 = assemble(L1, tensor=b1)
-        sol.solve(A1, u1.vector(), b1)
+        solve(A1 , up_sol.vector(), b1)
+
         end()
 
         # Pressure correction
         begin("Computing pressure correction")
+        [bc.apply(A, b) for bc in bcs_up]
         b2 = assemble(L2, tensor=b2)
         #solve(A2, up1.vector(), b2, "gmres", "hypre_amg")
         #solve(lhs(F2) == rhs(F2), up1, bcu)
@@ -156,7 +225,7 @@ def NS(N, dt, T, L, rho, mu, solver):
 
         count += 1
         u0.assign(u_)
-        p0.assign(p_)
+
         t += dt
 
 

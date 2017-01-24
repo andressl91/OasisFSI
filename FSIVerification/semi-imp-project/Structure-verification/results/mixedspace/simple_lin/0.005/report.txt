@@ -1,5 +1,0 @@
-Case parameters parameters
- T = 0.3
-dt = 0.005
-Implementation = simple_lin
-        

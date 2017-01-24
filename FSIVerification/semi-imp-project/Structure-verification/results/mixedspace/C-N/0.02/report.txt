@@ -1,5 +1,0 @@
-Case parameters parameters
- T = 0.3
-dt = 0.02
-Implementation = C-N
-        
