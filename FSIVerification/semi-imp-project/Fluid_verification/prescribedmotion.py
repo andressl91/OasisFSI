@@ -47,7 +47,7 @@ if len(dt) == 0:
 def NS(N, dt, T, L, rho, mu, solver):
     tic()
 
-    mesh = RectangleMesh(Point(0,0), Point(2, 1), 20, 20, "crossed")
+    mesh = RectangleMesh(Point(0,0), Point(2, 1), N, N, "crossed")
 
     # Define function spaces (P2-P1)
     V1 = VectorFunctionSpace(mesh, "CG", 2)
@@ -55,14 +55,6 @@ def NS(N, dt, T, L, rho, mu, solver):
     Q = FunctionSpace(mesh, "CG", 1)
     W = V*Q
 
-    # Define trial and test functions
-    up = TrialFunction(W)
-    u, p = split(up)
-    vq = TestFunction(W)
-    v, q = split(vq)
-
-    u_hat = TrialFunction(V1)
-    psi = TestFunction(V1)
 
     # Define boundary conditions
 
@@ -80,9 +72,9 @@ def NS(N, dt, T, L, rho, mu, solver):
 
     u_bc = U_bc(degree=2)
 
-    Inlet = AutoSubDomain(lambda x, on_bnd: near(x[0], 0))
-    Outlet = AutoSubDomain(lambda x, on_bnd: near(x[0], 2))
-    Walls = Inlet = AutoSubDomain(lambda x, on_bnd: near(x[1], 0) and near(x[1], 2))
+    Inlet = AutoSubDomain(lambda x: "on_boundary" and near(x[0], 0))
+    Outlet = AutoSubDomain(lambda x: "on_boundary" and near(x[0], 2))
+    Walls = Inlet = AutoSubDomain(lambda x: "on_boundary" and (near(x[1], 0) or near(x[1], 1)))
 
     fc = FacetFunction('size_t', mesh, 0)
     Inlet.mark(fc, 1)
@@ -93,56 +85,65 @@ def NS(N, dt, T, L, rho, mu, solver):
     n = FacetNormal(mesh)
 
     # Create functions
-    d_e = Expression(("sin(t)*(x[0] - 1)",  "0"), t = 0)
-    w_e = Expression(("x[0]*cos(t)", "0"), t = 0)
-    u_e = Expression(("x[0]*cos(t)", "-cos(t)"), t = 0)
-    p_e = Expression("1")
+    d_e = Expression(("sin(t)*(x[0] - 2)",  "0"), t = 0)
+    w_e = Expression(("cos(t)*(x[0] - 2)", "0"), t = 0)
+    u_e = Expression(("cos(t)*(x[0] - 2)", "-cos(t)*(x[1] - 2)"), t = 0)
+    p_e = Expression("0")
 
     # Fluid velocity conditions
     u_wall   = DirichletBC(V1, u_bc, fc, 3)
     u_inlet   = DirichletBC(V1, u_e, fc, 1)
+    u_out   = DirichletBC(V1, Constant((0, 0)), fc, 2)
+
     up_wall   = DirichletBC(W.sub(0), u_bc, fc, 3)
     up_inlet   = DirichletBC(W.sub(0), u_e, fc, 1)
+    up_out = DirichletBC(W.sub(0), Constant((0, 0)), fc, 2)
 
     # Mesh velocity conditions
     w_inlet   = DirichletBC(V1, w_e, fc, 1)
     w_outlet  = DirichletBC(V1, ((0.0, 0.0)), fc, 2)
 
+    # Deformation conditions
+    d_inlet   = DirichletBC(V1, d_e, fc, 1)
+    d_outlet  = DirichletBC(V1, ((0.0, 0.0)), fc, 2)
+
     # Pressure Conditions
-    p_out = DirichletBC(W.sub(1), 0, fc, 2)
+    p_in = DirichletBC(W.sub(1), 0, fc, 1)
 
     #Assemble boundary conditions
     bcs_w = [w_inlet, w_outlet]
-    bcs_u = [u_inlet, u_wall]
-    bcs_up = [up_inlet, up_wall, p_out]
+    bcs_d = [d_inlet, d_outlet]
+    bcs_u = [u_inlet, u_wall, up_out]
+    bcs_up = [up_inlet, up_wall, p_in, up_out]
 
-    d_tilde = Function(V1)
-    d0 = project(d_e, V1)
+
+
+    psieta = TestFunction(W)
+    psi, eta = split(psieta)
+    up = TrialFunction(W)
+    u, p = split(up)
+    up0 = Function(W)
+    u0, p0 = split(up0)
+    up_sol = Function(W)
 
     w = TrialFunction(V1)
     w1 = Function(V1)
     w0 = project(w_e, V1)
-    w_1 = project(d_e, V1)
+    w_1 = project(w_e, V1)
 
-    psieta = TestFunction(W)
-    psi, eta = split(psieta)
-    up1 = TrialFunction(W)
-    u, p = split(up1)
-    up0 = Function(W)
-    u0, p0 = up0.split(deepcopy = True)
-    up_sol = Function(W)
+    d_tilde = Function(V1)
+    d0 = project(d_e, V1)
 
     u_ = TrialFunction(V1)
     phi = TestFunction(V1)
+    u_tent = Function(V1)
     u0 = project(u_e, V)
-    p0 = project(p_e, Q)
-
+    u0_tilde = project(u_e, V)
 
     # Define coefficients
     k = Constant(dt)
-    #f = Constant((0, 0, 0))
-    mu = Constant(10)
-    rho = Constant(1)
+    mu = Constant(1.0)
+    rho = Constant(1.0)
     nu = Constant(mu/rho)
 
     I = Identity(2)
@@ -162,26 +163,26 @@ def NS(N, dt, T, L, rho, mu, solver):
     def sigma_f_hat(v,p,u):
     	return J_(u)*sigma_f(v,p)*inv(F_(u)).T
 
-    #F_expo = inner(u_ - d0 - k*(3./2*w0 - 1./2*w_1), phi)*dx
-    d_ = k*w1
+    F_expo = inner(u_ - d0 - k*(3./2*w0 - 1./2*w_1), phi)*ds(1)
 
     #Laplace of deformation d
-    F_smooth = k*(inner(grad(w), grad(psi))*dx - inner(grad(w)*n, psi)*ds)
+    F_smooth = inner(w - k*(d_tilde - d0) , phi)*ds(1)\
+             + inner(grad(w), grad(phi))*dx #- inner(grad(w)*n, phi)*ds
 
-    F_tent = (rho/k)*inner(J_(d_)*(u_ - u0), phi)*dx \
-            + rho*inner(J_(d_)*inv(F_(d_))*grad(u_)*(u0 - w1), phi)*dx  \
-            + inner(2.*mu*J_(d_)*eps(u_)*inv(F_(d_)).T, eps(phi))*dx \
-            #+ inner(u_ - w1, phi)*ds(1)
+    F_tent = (rho/k)*inner(J_(d_tilde)*(u_ - u0), phi)*dx \
+            + rho*inner(J_(d_tilde)*inv(F_(d_tilde))*grad(u_)*(u0_tilde - w1), phi)*dx  \
+            + inner(2.*mu*J_(d_tilde)*eps(u_)*inv(F_(d_tilde)).T, eps(phi))*dx \
+            + inner(u_ - w1, phi)*ds(1)
 
-    F_press_upt = (rho/k)*inner(J_(d_)*(u - u_tent), psi)*dx \
-    - inner(J_(d_)*p*inv(F_(d_)).T, grad(psi))*dx \
-    + inner(div(J_(d_)*inv(F_(d_).T)*u), eta)*dx \
+    F_press_upt = (rho/k)*inner(J_(d_tilde)*(u - u_tent), psi)*dx \
+    - inner(J_(d_tilde)*p*inv(F_(d_tilde)).T, grad(psi))*dx \
+    + inner(div(J_(d_tilde)*inv(F_(d_tilde).T)*u), eta)*dx \
     + inner(dot(u, n), eta)*ds(1) \
-    #- 1./k*inner(dot(d - d0, n), eta)*ds(1)
-    #+ dot(dot(u('-'), n('-')) - 1./k*dot(d('-') - d0('-'), n('-')), psi('-'))*dS(5)
+    - 1./k*inner(dot(d_tilde - d0, n), eta)*ds(1)
+    + dot(dot(u, n) - 1./k*dot(d_tilde - d0, n), eta)*ds(1)
 
-    a1 = lhs(F_tent)
-    a2 = lhs(F_press_upt)
+    a1 = lhs(F_tent); L1 = rhs(F_tent)
+    a2 = lhs(F_press_upt); L2 = rhs(F_press_upt)
 
     # Assemble matrices
     A1 = assemble(a1); A2 = assemble(a2)
@@ -191,51 +192,69 @@ def NS(N, dt, T, L, rho, mu, solver):
     pc = PETScPreconditioner("jacobi")
     sol = PETScKrylovSolver("bicgstab", pc)
 
-    t = 0
+    t = dt
     count = 0;
     if MPI.rank(mpi_comm_world()) == 0:
         print "Computing for N = %g, t = %g" % (N, dt)
     while t < T:
-        print "here"
-        #if MPI.rank(mpi_comm_world()) == 0:
-            #print "Iterating for time %f" % t
-        inlet.t = t
+        d_e.t = t
+        u_e.t = t
+        w_e.t = t
+
+        #solve(lhs(F_dtilde) == rhs(F_dtilde), d_tilde)
+
+        A = assemble(lhs(F_expo), keep_diagonal = True)
+        A.ident_zeros()
+        b = assemble(rhs(F_expo))
+        [bc.apply(A, b) for bc in bcs_d]
+        solve(A , d_tilde.vector(), b)
 
         solve(lhs(F_smooth) == rhs(F_smooth), w1, bcs_w)
         u_bc.init(w1)
+        #d_tilde.vector()[:] = d0.vector()[:] + float(dt)*w1.vector()[:]
+
 
         # Compute tentative velocity step
         begin("Computing tentative velocity")
-        [bc.apply(A, b) for bc in bcs_u]
+        A1 = assemble(a1)
         b1 = assemble(L1, tensor=b1)
-        solve(A1 , up_sol.vector(), b1)
-
+        [bc.apply(A1, b1) for bc in bcs_u]
+        solve(A1 , u_tent.vector(), b1)
+        u0_tilde.assign(u_tent)
         end()
 
         # Pressure correction
         begin("Computing pressure correction")
-        [bc.apply(A, b) for bc in bcs_up]
+        A2 = assemble(a2)
         b2 = assemble(L2, tensor=b2)
+        [bc.apply(A2, b2) for bc in bcs_up]
         #solve(A2, up1.vector(), b2, "gmres", "hypre_amg")
         #solve(lhs(F2) == rhs(F2), up1, bcu)
-        solve(A2, up1.vector(), b2)
+        solve(A2, up_sol.vector(), b2)
         end()
 
-        u_, p_ = up1.split(True)
+        u_, p_ = up_sol.split(True)
 
         count += 1
         u0.assign(u_)
+        d0.assign(d_tilde)
+        w_1.assign(w0)
+        w0.assign(w1)
 
+        #plot(u0, mode = "displacement")
         t += dt
 
+    #interactive(True)
 
     time.append(toc())
-    p_e.t = t
-    u_e.t = t
+    u_e.t = t - dt
+    w_e.t = t - dt
 
     u_e = interpolate(u_e, V)
     u0 = interpolate(u0, V)
 
+    #w_e = interpolate(w_e, V)
+    #w0 = interpolate(w0, V)
 
     #axpy adds multiple of given vector
     uen = norm(u_e.vector())
@@ -244,18 +263,10 @@ def NS(N, dt, T, L, rho, mu, solver):
     E.append(final_error)
     #1.12288485362 ,0.994325155573, 0.998055223955, 1.00105884625
 
-    #ue_array = u_e.vector().array()
-    #u0_array = u0.vector().array()
-    #E.append(np.abs(ue_array - u0_array).max() )
-    #1.04675917577 ,0.993725964394,0.995776032497, 0.993133459716
-
     #L2_u= errornorm(u_e, u0, norm_type='l2', degree_rise=3)
-    #E.append(L2_u);
-
-    #1.05268498797, 0.994425378923,0.998542651789,1.00301762883
 
     h.append(mesh.hmin())
-    #degree = V.dim() #DOF Degrees of freedom
+
 
 
 set_log_active(False)
