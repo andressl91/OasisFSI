@@ -1,0 +1,7 @@
+
+0.005
+Lin-CN -- > CPU TIME 5.654990
+C-N -- > CPU TIME 23.979541
+A-B -- > CPU TIME 0.000005
+simple_lin -- > CPU TIME 4.904193
+
