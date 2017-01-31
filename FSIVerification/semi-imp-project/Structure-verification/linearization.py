@@ -88,14 +88,14 @@ def cn_before_ab(d_, w_, k):
 
 def cn_before_ab_higher_order(d_, w_, k):
     E = 0.5*(grad(d_["n"]).T + grad(d_["n-1"]).T + grad(d_["n"]) + grad(d_["n-1"]))  \
-        + 0.5*((grad(d_["n-1"] + k*(23./12*w_["n-1"] - 4./3*w_["n-2"] + 5/12.w_["n-3"])).T \
+        + 0.5*((grad(d_["n-1"] + k*(23./12*w_["n-1"] - 4./3*w_["n-2"] + 5/12.*w_["n-3"])).T \
                 * grad(d_["n"]).T) + (grad(d_["n-1"]).T*grad(d_["n-1"])))
 
     return 0.5*E
 
 
 # FIXME: Merge the two solver functions as only solver call is different
-def solver_linear(G, d_, w_, wd_, bc, T, dt):
+def solver_linear(G, d_, w_, wd_, bcs, T, dt):
     dis_x = []
     dis_y = []
     time = []
@@ -117,8 +117,8 @@ def solver_linear(G, d_, w_, wd_, bc, T, dt):
         #w0, d0 = wd0.split(True)
 
         # Get displacement
-        dis_x.append(d0(coord)[0])
-        dis_y.append(d0(coord)[1])
+        dis_x.append(d_["n"](coord)[0])
+        dis_y.append(d_["n"](coord)[1])
         time.append(t)
 
         t += dt
@@ -128,13 +128,14 @@ def solver_linear(G, d_, w_, wd_, bc, T, dt):
     return dis_x, dis_y, time
 
 
-def solver_nonlinear(G, d_, w_, wd_, bc, T, dt):
+def solver_nonlinear(G, d_, w_, wd_, bcs, T, dt):
     dis_x = []; dis_y = []; time = []
     solver_parameters = {"newton_solver": \
                           {"relative_tolerance": 1E-8,
                            "absolute_tolerance": 1E-8,
                            "maximum_iterations": 100,
                            "relaxation_parameter": 1.0}}
+    t = 0
     while t <= T:
         solve(G == 0, wd_["n"], bcs, solver_parameters=solver_parameters)
 
@@ -147,11 +148,12 @@ def solver_nonlinear(G, d_, w_, wd_, bc, T, dt):
         wd_["n-1"].vector().axpy(1, wd_["n"].vector())
         # Do you need to split the functions again?
         #w0, d0 = wd0.split(True)
-        #w, d = wd.split(True)
+        w, d = wd_["n"].split(True)
 
         # Get displacement
-        dis_x.append(d_["n"](coord)[0])
-        dis_y.append(d_["n"](coord)[1])
+	#from IPython import embed; embed()
+        dis_x.append(d(coord)[0])
+        dis_y.append(d(coord)[1])
         time.append(t)
 
         t += dt
@@ -161,7 +163,7 @@ def solver_nonlinear(G, d_, w_, wd_, bc, T, dt):
     return dis_x, dis_y, time
 
 
-def problem_mix(T, dt, space, E, coupling):
+def problem_mix(T, dt, E, coupling):
     # Temporal parameters
     t = 0
     k = Constant(dt)
@@ -176,8 +178,8 @@ def problem_mix(T, dt, space, E, coupling):
 
     # Functions, wd is for holding the solution
     d_ = {}; w_ = {}; wd_ = {}
-    for time = ["n", "n-1", "n-2", "n-3"]:
-        if time == "n" and implementation not in ["C-N", "C-N2"]:
+    for time in ["n", "n-1", "n-2", "n-3"]:
+        if time == "n" and E not in [None, reference]:
             tmp_wd = Function(VV)
             wd_[time] = tmp_wd
             wd = TrialFunction(VV)
@@ -214,41 +216,55 @@ def problem_mix(T, dt, space, E, coupling):
 
     # Solve
     if E in [None, reference]:
-        displacement_x, displacement_y = solver_nonlinear(G, d_, w_, wd_, bc, T, dt)
+        displacement_x, displacement_y, time = solver_nonlinear(G, d_, w_, wd_, bcs, T, dt)
     else:
-        displacement_x, displacement_y = solver_linear(G, d_, w_, wd_, bc, T, dt)
+        displacement_x, displacement_y, time = solver_linear(G, d_, w_, wd_, bcs, T, dt)
 
-    return displacement_x, displacement_y
+    return displacement_x, displacement_y, time
 
-def viz(displacement_x, displacement_y):
-    # TODO: Show implementation and dt
-    plt.plot(time, dis_y, label = implementation)
-    plt.ylabel("Displacement y")
-    plt.xlabel("Time")
-    plt.legend(loc=3)
+def viz(results, runs):
+    plt.figure()
+    for i, r in enumerate(results):
+        displacement_x = r[0]
+        displacement_y = r[1]
+        time = r[2]
+        simulation_parameters = runs[i]
+        E = simulation_parameters["E"]
+        dt = simulation_parameters["dt"]
+        space = simulation_parameters["space"]
 
-    plt.title("dt = %g, y_dir" % (dt))
-    plt.savefig("Ydef.png")
 
-    if MPI.rank(mpi_comm_world()) == 0:
-        rel_path = path.dirname(path.abspath(__file__))
-        case_path = path.join(rel_path, "results", space, E.__name__, str(dt))
-        if path.exists(case_path)
-           makedirs(case_path)
+        # TODO: Show implementation and dt
+        # TODO: Read in a reference solution for comparison
+        name = "None" if E is None else E.__name__
+        plt.plot(time, displacement_y, label=name)
+        plt.ylabel("Displacement y")
+        plt.xlabel("Time")
+        plt.legend(loc=3)
 
-        np.savetxt("./results/" + space + "/" + implementation + "/"+str(dt)+"/time.txt", time, delimiter=',')
-        np.savetxt("./results/" + space + "/" + implementation + "/"+str(dt)+"/dis_y.txt", dis_y, delimiter=',')
+        plt.title("implementation: %s, dt = %g, y_displacement" % (name, dt))
+        plt.savefig("Ydef.png")
+
+        if MPI.rank(mpi_comm_world()) == 0:
+            rel_path = path.dirname(path.abspath(__file__))
+            case_path = path.join(rel_path, "results", space, E.__name__, str(dt))
+            print case_path
+            if not path.exists(case_path):
+                makedirs(case_path)
+
+            np.savetxt(path.join(case_path, "time.txt"), time, delimiter=",")
+            np.savetxt(path.join(case_path, "dis_y.txt"), displacement_y, delimiter=',')
 
         # Name of text file coerced with +.txt
-        name = "./results/" + space + "/" + implementation + "/"+str(dt) + "/report.txt"
-
-        f = open(name, 'w')
-        f.write("""Case parameters parameters\n """)
-        f.write("""T = %(T)g\ndt = %(dt)g\nImplementation = %(implementation)s""" %vars())
-        f.close()
+        #name = "./results/" + space + "/" + implementation + "/"+str(dt) + "/report.txt"
+        # TODO: Store simulation parameters
+        #f = open(name, 'w')
+        #f.write("""Case parameters parameters\n """)
+        #f.write("""T = %(T)g\ndt = %(dt)g\nImplementation = %(implementation)s""" %vars())
+        #f.close()
 
     # FIXME: store in a consistent manner
-    #plt.show()
+    plt.show()
 
 
 def solver_parameters(common, d):
@@ -305,8 +321,8 @@ if __name__ == "__main__":
     imp = solver_parameters(common, {"coupling": "imp"})
 
     # Linear, but not linearized
-    exp = solver_parameters(common, {"E", explicit, "coupling": "exp"})
-    center = solver_parameters(common, {"E", explicit, "coupling": "center"})
+    exp = solver_parameters(common, {"E": explicit, "coupling": "exp"})
+    center = solver_parameters(common, {"E": explicit, "coupling": "center"})
 
     # Linearization
     naive_lin = solver_parameters(common, {"E": naive_linearization})
@@ -314,7 +330,7 @@ if __name__ == "__main__":
     ab_before_cn = solver_parameters(common, {"E": ab_before_cn})
     ab_before_cn_higher_order = solver_parameters(common, {"E": ab_before_cn_higher_order})
     cn_before_ab = solver_parameters(common, {"E": cn_before_ab})
-    cn_before_ab_higher_order = solver_parameters(common, {"E", cn_before_ab_higher_order})
+    cn_before_ab_higher_order = solver_parameters(common, {"E": cn_before_ab_higher_order})
 
     # Set-ups to run
     runs = [ref] #,
@@ -326,9 +342,11 @@ if __name__ == "__main__":
             #ab_before_cn_higher_order,
             #cn_before_ab,
             #cn_before_ab_higher_order]
+    results = []
     for r in runs:
         if r["space"] == "mixedspace":
-            problem_mix()
+            tmp_res = problem_mix(r["T"], r["dt"], r["E"], r["coupling"])
+            results.append(tmp_res)
         elif r["space"] == "singlespace":
             # FIXME: Not implemented 
             problem_lin()
@@ -336,3 +354,5 @@ if __name__ == "__main__":
             print "Problem type %s is not implemented, only mixedspace " \
                    + "and singlespace are valid options" % r["space"]
             sys.exit(0)
+
+    viz(results, runs)
