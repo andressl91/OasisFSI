@@ -1,349 +1,338 @@
 from dolfin import *
 import numpy as np
 import matplotlib.pyplot as plt
-import sys, os
+import sys
+from os import path, makedirs
 set_log_active(False)
 
-mesh = Mesh("von_karman_street_FSI_structure.xml")
-
-for coord in mesh.coordinates():
-    if coord[0]==0.6 and (0.199<=coord[1]<=0.2001): # to get the point [0.2,0.6] end of bar
-        print coord
-        break
-
-V = VectorFunctionSpace(mesh, "CG", 2)
-VV=V*V
-print "Dofs: ",V.dim(), "Cells:", mesh.num_cells()
-
-BarLeftSide =  AutoSubDomain(lambda x: "on_boundary" and (( (x[0] - 0.2)*(x[0] - 0.2) + (x[1] - 0.2)*(x[1] - 0.2)  < 0.0505*0.0505 )  and x[1]>=0.19 and x[1]<=0.21 and x[0]>0.2 ))
-
-boundaries = FacetFunction("size_t",mesh)
-boundaries.set_all(0)
-BarLeftSide.mark(boundaries,1)
-#plot(boundaries,interactive=True)
-
-#PARAMETERS:
-rho_s = 1.0E3
-mu_s = 0.5E6
-nu_s = 0.4
-E_1 = 1.4E6
-lamda = nu_s*2.*mu_s/(1. - 2.*nu_s)
-g = Constant((0,-2.*rho_s))
-
-beta = Constant(0.25)
-
-list_krylov_solver_methods()
-list_krylov_solver_preconditioners()
-
-def Piola(d, lamda, mu):
+# First Piola Kirchoff stress tensor
+def Piola1(d_, w_, E_func=None):
     I = Identity(2)
-    F = I + grad(d)
-    E = 0.5*((F.T*F) - I)
+    if callable(E_func):
+        E = E_func(d_, w_)
+    else:
+        F = I + grad(d_["n"])
+        E = 0.5*((F.T*F) - I)
 
-    return F(lamda*tr(E)*I + 2*mu_s*E)
+    return F*(lamda*tr(E)*I + 2*mu_s*E)
 
 #Second Piola Kirchhoff Stress tensor
-def Piola2(d_n, d_n0, lamda, mu):
+def Piola2(d_, w_, k, E_func=None):
     I = Identity(2)
-    #F = I + grad(d_n)
-    #E = 0.5*((F.T*F) - I)
-    E = 1./2* ( 0.5*(grad(d_n).T + grad(d_n0).T + grad(d_n) + grad(d_n0)) \
-    + 0.5*(grad(d_n).T*grad(d_n) + (grad(d_n0).T*grad(d_n0)) ) )
+    if callable(E_func):
+        E = E_func(d_, w_, k)
+    else:
+        F = I + grad(d_["n"])
+        E = 0.5*((F.T*F) - I)
 
     return lamda*tr(E)*I + 2*mu_s*E
 
-def Piola2_test(d_n, d_n0, lamda, mu):
-    I = Identity(2)
 
-    E = 1./2* ( 0.5*(grad(d_n).T + grad(d_n0).T + grad(d_n) + grad(d_n0)) \
-    + 0.5*(grad(d_n) + grad(d_n0)).T * 0.5*(grad(d_n) + grad(d_n0)) )
+def reference(d_, w_, k):
+    E = 0.5*(grad(d_["n"]).T + grad(d_["n-1"]).T \
+             + grad(d_["n"]) + grad(d_["n-1"])) \
+        + 0.5*(grad(d_["n"]).T * grad(d_["n"])) \
+        + 0.5*(grad(d_["n-1"]).T * grad(d_["n-1"]))
 
-    return lamda*tr(E)*I + 2*mu_s*E
-
-def simple_lin(u, u_1, lamda, mu_s):
-    I = Identity(2)
-    E = 0.5*(grad(u) + grad(u).T + grad(u_1).T*grad(u))
+    return 0.5*E
 
 
-    return lamda*tr(E)*I + 2*mu_s*E
+def naive_linearization(d_, w_, k):
+    E = grad(d_["n"]) + grad(d_["n"]).T \
+        + grad(d_["n-1"]).T*grad(d_["n"])
 
-def simple_lin_centered(d_n, d_n0, lamda, mu_s):
-    I = Identity(2)
-    E = 1./2* ( 0.5*(grad(d_n).T + grad(d_n0).T + grad(d_n) + grad(d_n0)) \
-        + 0.5*(grad(d_n) + grad(d_n0)).T * 0.5*(grad(d_n) + grad(d_n0)) )
-        #+ 0.5*(grad(d_n).T + grad(d_n_0).T) * 0.5*(grad(d_n) + grad(d_n0)) )
-        #+ 0.5*(grad(d_n1).T*grad(d_n) + grad(d_n1).T*grad(d_n1) ) )
+    return 0.5*E
 
 
-    return lamda*tr(E)*I + 2*mu_s*E
+def explicit(d_, w_, k):
+    E = grad(d_["n-1"]) + grad(d_["n-1"]).T \
+        + grad(d_["n-1"]).T*grad(d_["n-1"])
 
-def piola2_adam_double(d_n, d_n1, d_n2, lamda, mu):
-    I = Identity(2)
-    E = 1./2* ( 0.5*(grad(d_n).T + grad(d_n1).T + grad(d_n) + grad(d_n1)) \
-    + grad(3./2*d_n1 - 1./2*d_n2).T * 0.5*(grad(d_n) + grad(d_n1)) )
-    #+ grad(3./2*d_n1 - 1./2*d_n2).T * grad(3./2*d_n1 - 1./2*d_n2) )
-
-    return (lamda*tr(E)*I + 2*mu_s*E)
-
-def piola2_adam_double2(d_n, d_n0, d_n1, w0, w_1, k, lamda, mu):
-    I = Identity(2)
-    E = 1./2* ( 0.5*(grad(d_n).T + grad(d_n0).T + grad(d_n) + grad(d_n0))  \
-     + 0.5*(grad(d_n0 + k*(3./2*w0 - 1./2*w_1)).T + grad(d_n0).T) + 0.5*(grad(d_n) + grad(d_n0) ) )
-    #+  grad(3./2*d_n1 -1./2*d_n2).T * 0.5*(grad(d_n) + grad(d_n1)) )
-
-    return lamda*tr(E)*I + 2*mu_s*E
-
-def test(u, u_1, lamda, mu_s):
-    I = Identity(2)
-    E = 0.5*( grad(u) + grad(u).T + grad(u_1).T*grad(u))
-    E_1 = 0.5*( grad(u_1) + grad(u_1).T + grad(u_1).T*grad(u_1))
-    F_1 = I + grad(u_1)
-    F = I + grad(u)
-    return (lamda*tr(0.5*(E + E_1))*I + 2*mu_s*0.5*(E + E_1))
-    #return F_1*(lamda*tr(0.5*(E + E_1))*I + 2*mu_s*0.5*(E + E_1))
+    return 0.5*E
 
 
-def solver(T, dt, space, implementation, betterstart):
-    print "Solving for %s" % implementation
+def naive_ab(d_, w_, k):
+    E = 0.5*(grad(d_["n"]).T + grad(d_["n-1"]).T \
+            + grad(d_["n"]) + grad(d_["n-1"])) \
+        + 3./2 * (grad(d_["n-1"]).T*grad(d_["n-1"])) \
+        - 1./2 * (grad(d_["n-1"]).T*grad(d_["n-2"]))
 
+    return 0.5*E
+
+
+def ab_before_cn(d_, w_, k):
+    E = 0.5*(grad(d_["n"]).T + grad(d_["n-1"]).T \
+        + grad(d_["n"]) + grad(d_["n-1"])) \
+        + (3/2.*grad(d_["n-1"]).T - 0.5*grad(d_["n-2"]).T)\
+        * 0.5*(grad(d_["n"]) + grad(d_["n-1"]))
+
+    return 0.5*E
+
+
+def ab_before_cn_higher_order(d_, w_, k):
+    E = 0.5*(grad(d_["n"]).T + grad(d_["n-1"]).T \
+        + grad(d_["n"]) + grad(d_["n-1"])) \
+        + (23/12.*grad(d_["n-1"]).T - 4./3*grad(d_["n-2"]).T + 5/12.*grad(d_["n-3"]).T) \
+        * 0.5*(grad(d_["n"]) + grad(d_["n-1"]))
+
+    return 0.5*E
+
+
+def cn_before_ab(d_, w_, k):
+    E = 0.5*(grad(d_["n"]).T + grad(d_["n-1"]).T + grad(d_["n"]) + grad(d_["n-1"]))  \
+        + 0.5*((grad(d_["n-1"] + k*(3./2*w_["n-1"] - 1./2*w_["n-2"])).T * grad(d_["n"]).T) \
+                + (grad(d_["n-1"]).T*grad(d_["n-1"])))
+
+    return 0.5*E
+
+
+def cn_before_ab_higher_order(d_, w_, k):
+    E = 0.5*(grad(d_["n"]).T + grad(d_["n-1"]).T + grad(d_["n"]) + grad(d_["n-1"]))  \
+        + 0.5*((grad(d_["n-1"] + k*(23./12*w_["n-1"] - 4./3*w_["n-2"] + 5/12.w_["n-3"])).T \
+                * grad(d_["n"]).T) + (grad(d_["n-1"]).T*grad(d_["n-1"])))
+
+    return 0.5*E
+
+
+# FIXME: Merge the two solver functions as only solver call is different
+def solver_linear(G, d_, w_, wd_, bc, T, dt):
+    dis_x = []
+    dis_y = []
+    time = []
+
+    a = lhs(G); L = rhs(G)
+    while t <= T:
+        # FIXME: Change to assemble seperatly and try different solver methods
+        # (convex problem as long as we do not have bulking)
+        solve(a == L, wd_["n"], bcs)
+
+        # Update solution
+        wd_["n-3"].vector().zero()
+        wd_["n-3"].vector().axpy(1, wd_["n-2"].vector())
+        wd_["n-2"].vector().zero()
+        wd_["n-2"].vector().axpy(1, wd_["n-1"].vector())
+        wd_["n-1"].vector().zero()
+        wd_["n-1"].vector().axpy(1, wd_["n"].vector())
+        # FIXME: Do you need to split again?
+        #w0, d0 = wd0.split(True)
+
+        # Get displacement
+        dis_x.append(d0(coord)[0])
+        dis_y.append(d0(coord)[1])
+        time.append(t)
+
+        t += dt
+        if MPI.rank(mpi_comm_world()) == 0:
+            print "Time: ",t
+
+    return dis_x, dis_y, time
+
+
+def solver_nonlinear(G, d_, w_, wd_, bc, T, dt):
+    dis_x = []; dis_y = []; time = []
+    solver_parameters = {"newton_solver": \
+                          {"relative_tolerance": 1E-8,
+                           "absolute_tolerance": 1E-8,
+                           "maximum_iterations": 100,
+                           "relaxation_parameter": 1.0}}
+    while t <= T:
+        solve(G == 0, wd_["n"], bcs, solver_parameters=solver_parameters)
+
+        # Update solution
+        wd_["n-3"].vector().zero()
+        wd_["n-3"].vector().axpy(1, wd_["n-2"].vector())
+        wd_["n-2"].vector().zero()
+        wd_["n-2"].vector().axpy(1, wd_["n-1"].vector())
+        wd_["n-1"].vector().zero()
+        wd_["n-1"].vector().axpy(1, wd_["n"].vector())
+        # Do you need to split the functions again?
+        #w0, d0 = wd0.split(True)
+        #w, d = wd.split(True)
+
+        # Get displacement
+        dis_x.append(d_["n"](coord)[0])
+        dis_y.append(d_["n"](coord)[1])
+        time.append(t)
+
+        t += dt
+        if MPI.rank(mpi_comm_world()) == 0:
+            print "Time: ",t #,"dis_x: ", d(coord)[0], "dis_y: ", d(coord)[1]
+
+    return dis_x, dis_y, time
+
+
+def problem_mix(T, dt, space, E, coupling):
+    # Temporal parameters
     t = 0
     k = Constant(dt)
-    dis_x = []; dis_y = []; time = []
-    plt.figure(1)
 
-    if space == "mixedspace":
-    #Split problem to two 1.order differential equations
-        psi, phi = TestFunctions(VV)
-        bc1 = DirichletBC(VV.sub(0), ((0, 0)), boundaries, 1)
-        bc2 = DirichletBC(VV.sub(1), ((0, 0)), boundaries, 1)
-        bcs = [bc1, bc2]
-        wd = Function(VV)
-        w, d = split(wd)
-        wd0 = Function(VV)
-        w0, d0 = split(wd0)
-        wd_1 = Function(VV)
-        w_1, d_1 = split(wd_1)
+    # Split problem to two 1.order differential equations
+    psi, phi = TestFunctions(VV)
 
-        if betterstart == True:
-            G = rho_s/k*inner(w - w0, psi)*dx + inner(Piola2(d, d0, lamda, mu_s), grad(psi))*dx \
-            - inner(g, psi)*dx + dot(d - d0,phi)*dx - k*dot(0.5*(w + w0),phi)*dx
+    # BCs
+    bc1 = DirichletBC(VV.sub(0), ((0, 0)), boundaries, 1)
+    bc2 = DirichletBC(VV.sub(1), ((0, 0)), boundaries, 1)
+    bcs = [bc1, bc2]
 
-            while t < 2*dt:
-                print "HERE"
-                solve(G == 0, wd, bcs, solver_parameters={"newton_solver": \
-                {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
-
-                wd_1.assign(wd0)
-                wd0.assign(wd)
-                w0, d0 = wd0.split(True)
-
-                dis_x.append(d0(coord)[0])
-                dis_y.append(d0(coord)[1])
-                time.append(t)
-                t += dt
-
-                if MPI.rank(mpi_comm_world()) == 0:
-                    print "Time: ",t #,"dis_x: ", d(coord)[0], "dis_y: ", d(coord)[1]
-
-        if implementation == "test":
+    # Functions, wd is for holding the solution
+    d_ = {}; w_ = {}; wd_ = {}
+    for time = ["n", "n-1", "n-2", "n-3"]:
+        if time == "n" and implementation not in ["C-N", "C-N2"]:
+            tmp_wd = Function(VV)
+            wd_[time] = tmp_wd
             wd = TrialFunction(VV)
             w, d = split(wd)
-
-            G = rho_s/k*inner(w - w0, psi)*dx +inner(test(d, d0, lamda, mu_s), grad(psi))*dx \
-            - inner(g, psi)*dx + dot(d - d0 - k*0.5*(w - w0), phi)*dx
-
-        if implementation =="A-B":
-            wd = TrialFunction(VV)
-            w, d = split(wd)
-            G = rho_s/k*inner(w - w0, psi)*dx + inner(piola2_adam_double(d, d0, d_1, lamda, mu_s), grad(psi) )*dx \
-            - inner(g, psi)*dx \
-            + 1./k*inner(d - d0, phi)*dx - dot(0.5*(w + w0),phi)*dx# i#
-
-        if implementation =="A-B2":
-            wd = TrialFunction(VV)
-            w, d = split(wd)
-            G = rho_s/k*inner(w - w0, psi)*dx + inner(piola2_adam_double2(d, d0, d_1, w0, w_1, k, lamda, mu_s), grad(psi) )*dx \
-            - inner(g, psi)*dx \
-            + 1./k*inner(d - d0, phi)*dx - dot(0.5*(w + w0),phi)*dx# i#
-
-        if implementation == "simple_lin":
-            wd = TrialFunction(VV)
-            w, d = split(wd)
-
-            G = rho_s/k*inner(w - w0, psi)*dx +inner(simple_lin_centered(d, d0, lamda, mu_s), grad(psi))*dx \
-            - inner(g, psi)*dx \
-            + 1./k*inner(d - d0, phi)*dx - dot(0.5*(w + w0),phi)*dx
-
-        if implementation == "Piccard":
-            # Define variational problem for Picard iteration
-            wd = TrialFunction(VV)
-            w, d = split(wd)
-            wd_k = Function(VV)
-            w_k, d_k = wd_k.split(VV)
-            #G = rho_s/k*inner(w - w0, psi)*dx +inner(test2(d, d_k, d0, lamda, mu_s), grad(psi))*dx \
-            #- inner(g, psi)*dx + dot(d - d0 - k*0.5*(w - w0), phi)*dx
-            #org
-            G = rho_s/k*inner(w - w0, psi)*dx +inner(simple_lin(d, d_k, lamda, mu_s), grad(psi))*dx \
-            - inner(g, psi)*dx + dot(d - d0 - k*w, phi)*dx
-
-        if implementation =="C-N":
-            #G = rho_s/k*inner(w - w0, psi)*dx + 0.5*inner(Piola2(d, d0, lamda, mu_s) + Piola2(d0, lamda, mu_s), grad(psi))*dx \
-            G = rho_s/k*inner(w - w0, psi)*dx + inner(Piola2(d, d0, lamda, mu_s), grad(psi))*dx \
-            - inner(g, psi)*dx + dot(d - d0, phi)*dx - k*dot(0.5*(w + w0), phi)*dx
-
-        if implementation =="C-N2":
-            G = rho_s/k*inner(w - w0, psi)*dx + inner(Piola2_test(d, d0, lamda, mu_s), grad(psi))*dx \
-            - inner(g, psi)*dx + dot(d - d0, phi)*dx - k*dot(0.5*(w + w0), phi)*dx
-
-
-
-
-    #dis_file = File("results/x_direction.pvd")
-        if implementation == ("C-N" or "C-N2"):
-            tic()
-            print "HERE"
-            while t <= T:
-                solve(G == 0, wd, bcs, solver_parameters={"newton_solver": \
-                {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
-
-                wd_1.assign(wd0)
-                wd0.assign(wd)
-                w0, d0 = wd0.split(True)
-                w, d = wd.split(True)
-
-                dis_x.append(d0(coord)[0])
-                dis_y.append(d0(coord)[1])
-                time.append(t)
-
-                t += dt
-                if MPI.rank(mpi_comm_world()) == 0:
-                    print "Time: ",t #,"dis_x: ", d(coord)[0], "dis_y: ", d(coord)[1]
-            comp_time.append(toc())
-
-        if implementation == "Piccard":
-            print "Here piccard"
-            tic()
-            # Picard iterations
-            a = lhs(G); L = rhs(G)
-            #A = assemble(a);
-            b = None
-            wd_sol = Function(VV)
-            maxiter = 10       # max no of iterations allowed
-            tol = 1.0E-7        # tolerance
-
-            while t <= T:
-                eps = 1.0           # error measure ||u-u_k||
-                iter = 0            # iteration counter
-                #b = assemble(L, tensor=b)
-                while eps > tol and iter < maxiter:
-                    iter += 1
-                    solve(a == L, wd_sol, bcs)
-                    #A = assemble(a)
-                    #[bc.apply(A, b) for bc in bcs]
-                    #solve(A, wd_sol.vector(), b)
-                    #diff = d_sol.vector().array() - d_k.vector().array()
-                    #eps = np.linalg.norm(diff, ord=np.Inf)
-                    w_, d_ = wd_sol.split(True)
-                    w_k, d_k = wd_k.split(True)
-                    eps = errornorm(d_, d_k,degree_rise=3)
-                    #eps = errornorm(wd_sol, wd_k,degree_rise=3)
-                    print 'iter=%d: norm=%g' % (iter, eps)
-                    wd_k.assign(wd_sol)   # update for next iteration
-
-
-                wd_1.assign(wd0)
-                wd0.assign(wd_sol)
-                w0, d0 = wd0.split(True)
-
-                dis_x.append(d0(coord)[0])
-                dis_y.append(d0(coord)[1])
-                time.append(t)
-
-                t += dt
-                if MPI.rank(mpi_comm_world()) == 0:
-                    print "Time: ",t #,"dis_x: ", d(coord)[0], "dis_y: ", d(coord)[1]
-            comp_time.append(toc())
-
-
         else:
-            print "HERE!!! , else imp %s " % implementation
-            a = lhs(G); L = rhs(G)
-            #A = assemble(a); b = None
-            wd_sol = Function(VV)
-            tic()
-            while t <= T:
-                #b = assemble(L, tensor=b)
-                #[bc.apply(A, b) for bc in bcs]
-                #solve(A, wd_sol.vector(), b)
-                solve(a == L, wd_sol, bcs)
+            wd = Function(VV)
+            wd_[time] = wd
+            w, d = split(wd)
 
-                wd_1.assign(wd0)
-                wd0.assign(wd_sol)
-                w0, d0 = wd0.split(True)
+        d_[time] = d
+        w_[time] = w
 
-                #print 'norm=%e' % ( eps)
-                dis_x.append(d0(coord)[0])
-                dis_y.append(d0(coord)[1])
-                time.append(t)
+    # Time derivative
+    if coupling == "center":
+        G = rho_s/(2*k) * inner(w_["n"] - w_["n-2"], psi)*dx
+    else:
+        G = rho_s/k * inner(w_["n"] - w_["n-1"], psi)*dx
 
-                t += dt
-                if MPI.rank(mpi_comm_world()) == 0:
-                    print "Time: ",t #,"dis_x: ", d(coord)[0], "dis_y: ", d(coord)[1]
-            comp_time.append(toc())
+    # Stress tensor
+    G += inner(Piola2(d_, w_, k, E_func=E), grad(psi))*dx
 
+    # d-w coupling
+    if coupling == "CN":
+        G += inner(d_["n"] - d_["n-1"] - k*0.5*(w_["n"] - w_["n-1"]), phi)*dx
+    elif coupling == "imp":
+        G += inner(d_["n"] - d_["n-1"] - k*w_["n"], phi)*dx
+    elif coupling == "exp":
+        G += inner(d_["n"] - d_["n-1"] - k*w_["n-1"], phi)*dx
+    elif coupling == "center":
+        G += innter(d_["n"] - d_["n-2"] - 2*k*w["n-1"], phi)*dx
+    else:
+        print "The coupling %s is not implemented, 'CN', 'imp', and 'exp' are the only valid choices."
+        sys.exit(0)
 
-        plt.plot(time, dis_y, label = implementation)
-        plt.ylabel("Displacement y")
-        plt.xlabel("Time")
-        plt.legend(loc=3)
+    # Solve
+    if E in [None, reference]:
+        displacement_x, displacement_y = solver_nonlinear(G, d_, w_, wd_, bc, T, dt)
+    else:
+        displacement_x, displacement_y = solver_linear(G, d_, w_, wd_, bc, T, dt)
 
+    return displacement_x, displacement_y
+
+def viz(displacement_x, displacement_y):
+    # TODO: Show implementation and dt
+    plt.plot(time, dis_y, label = implementation)
+    plt.ylabel("Displacement y")
+    plt.xlabel("Time")
+    plt.legend(loc=3)
 
     plt.title("dt = %g, y_dir" % (dt))
     plt.savefig("Ydef.png")
 
-    #if MPI.rank(mpi_comm_world()) == 0:
-    #    if os.path.exists("./results/" + space + "/" + implementation + "/"+str(dt)) == False:
-    #       os.makedirs("./results/" + space + "/" + implementation + "/"+str(dt))
+    if MPI.rank(mpi_comm_world()) == 0:
+        rel_path = path.dirname(path.abspath(__file__))
+        case_path = path.join(rel_path, "results", space, E.__name__, str(dt))
+        if path.exists(case_path)
+           makedirs(case_path)
 
-    #    np.savetxt("./results/" + space + "/" + implementation + "/"+str(dt)+"/time.txt", time, delimiter=',')
-    #    np.savetxt("./results/" + space + "/" + implementation + "/"+str(dt)+"/dis_y.txt", dis_y, delimiter=',')
+        np.savetxt("./results/" + space + "/" + implementation + "/"+str(dt)+"/time.txt", time, delimiter=',')
+        np.savetxt("./results/" + space + "/" + implementation + "/"+str(dt)+"/dis_y.txt", dis_y, delimiter=',')
 
-    #    name = "./results/" + space + "/" + implementation + "/"+str(dt) + "/report.txt"  # Name of text file coerced with +.txt
-    #    f = open(name, 'w')
-    #    f.write("""Case parameters parameters\n """)
-    #    f.write("""T = %(T)g\ndt = %(dt)g\nImplementation = %(implementation)s
-    #    """ %vars())
-    #    f.close()
+        # Name of text file coerced with +.txt
+        name = "./results/" + space + "/" + implementation + "/"+str(dt) + "/report.txt"
 
-    #plt.show()
+        f = open(name, 'w')
+        f.write("""Case parameters parameters\n """)
+        f.write("""T = %(T)g\ndt = %(dt)g\nImplementation = %(implementation)s""" %vars())
+        f.close()
 
-comp_time = []
-runs = []
-
-T3 = {"space": "mixedspace", "implementation": "test", "T": 0.5, "dt": 0.005, "betterstart": False}; runs.append(T3)
-
-PI3 = {"space": "mixedspace", "implementation": "Piccard", "T": 1.0, "dt": 0.002, "betterstart": False}; runs.append(PI3)
-
-SI2 = {"space": "mixedspace", "implementation": "simple_lin", "T": 0.27, "dt": 0.001, "betterstart": False}; runs.append(SI2)
-
-AB1 = {"space": "mixedspace", "implementation": "A-B", "T": 0.23, "dt": 0.001, "betterstart": False}; runs.append(AB1)
-AB2 = {"space": "mixedspace", "implementation": "A-B2", "T": 0.015, "dt": 5E-5, "betterstart": False}; runs.append(AB2)
-#CN2 = {"space": "mixedspace", "implementation": "C-N2", "T": 1.0, "dt": 0.005, "betterstart": False}; runs.append(CN2)
-#CN2 = {"space": "mixedspace", "implementation": "C-N", "T": 0.015, "dt": 5E-5, "betterstart": False}; runs.append(CN2)
-
-
-for r in runs:
-    print r["implementation"], r["betterstart"]
-    solver(r["T"], r["dt"], r["space"], r["implementation"], r["betterstart"])
-
-for i in range(len(runs)):
-    print "%s -- > CPU TIME %f" % (runs[i]["implementation"], comp_time[i])
-
+    # FIXME: store in a consistent manner
     #plt.show()
 
 
-#plt.figure(1)
-#plt.title("implementation %s, x-dir" % (implementation))
-#plt.plot(time,dis_x,);title; plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
-#plt.savefig("run_x_imp%s.jpg" % (implementation))
-#plt.show()
+def solver_parameters(common, d):
+    tmp = common.copy()
+    tmp.update(d)
+    return tmp
+
+
+if __name__ == "__main__":
+    # Set ut problem
+    mesh = Mesh("von_karman_street_FSI_structure.xml")
+
+    # Get the point [0.2,0.6] at the end of bar
+    for coord in mesh.coordinates():
+        if coord[0]==0.6 and (0.2 - DOLFIN_EPS <= coord[1] <= 0.2 + DOLFIN_EPS):
+            print coord
+            break
+
+    V = VectorFunctionSpace(mesh, "CG", 2)
+    VV=V*V
+
+    BarLeftSide = AutoSubDomain(lambda x: "on_boundary" and \
+                                (((x[0] - 0.2) * (x[0] - 0.2) +
+                                 (x[1] - 0.2) * (x[1] - 0.2) < 0.0505*0.0505 )
+                                 and x[1] >= 0.19 \
+                                 and x[1] <= 0.21 \
+                                 and x[0] > 0.2)
+                               )
+
+    boundaries = FacetFunction("size_t",mesh)
+    boundaries.set_all(0)
+    BarLeftSide.mark(boundaries,1)
+
+    # Parameters:
+    rho_s = 1.0E3
+    mu_s = 0.5E6
+    nu_s = 0.4
+    E_1 = 1.4E6
+    lamda = nu_s*2.*mu_s/(1. - 2.*nu_s)
+    g = Constant((0,-2.*rho_s))
+    beta = Constant(0.25)
+
+    # Set up different numerical schemes
+    common = {"space": "mixedspace",
+              "E": None,         # Full implicte, not energy conservative
+              "T": 0.3,          # End time
+              "dt": 0.001,       # Time step
+              "coupling": "CN", # Coupling between d and w
+              "init": False      # Solve "exact" three first timesteps
+             }
+
+    # Nonlinear "reference" simulations
+    ref = solver_parameters(common, {"E": reference})
+    imp = solver_parameters(common, {"coupling": "imp"})
+
+    # Linear, but not linearized
+    exp = solver_parameters(common, {"E", explicit, "coupling": "exp"})
+    center = solver_parameters(common, {"E", explicit, "coupling": "center"})
+
+    # Linearization
+    naive_lin = solver_parameters(common, {"E": naive_linearization})
+    naive_ab = solver_parameters(common, {"E": naive_ab})
+    ab_before_cn = solver_parameters(common, {"E": ab_before_cn})
+    ab_before_cn_higher_order = solver_parameters(common, {"E": ab_before_cn_higher_order})
+    cn_before_ab = solver_parameters(common, {"E": cn_before_ab})
+    cn_before_ab_higher_order = solver_parameters(common, {"E", cn_before_ab_higher_order})
+
+    # Set-ups to run
+    runs = [ref] #,
+            #imp,
+            #exp,
+            #naive_lin,
+            #naive_ab,
+            #ab_before_cn,
+            #ab_before_cn_higher_order,
+            #cn_before_ab,
+            #cn_before_ab_higher_order]
+    for r in runs:
+        if r["space"] == "mixedspace":
+            problem_mix()
+        elif r["space"] == "singlespace":
+            # FIXME: Not implemented 
+            problem_lin()
+        else:
+            print "Problem type %s is not implemented, only mixedspace " \
+                   + "and singlespace are valid options" % r["space"]
+            sys.exit(0)
