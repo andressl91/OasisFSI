@@ -1,13 +1,14 @@
 from solvers import Newton_manual
 from dolfin import *
 from Utils.argpar import *
-from Fluid_solver.projection import *
+#from Fluid_solver.projection import *
 parameters['allow_extrapolation']=True
 
 args = parse()
 v_deg = args.v_deg
 p_deg = args.p_deg
 d_deg = args.d_deg
+dt = args.dt
 
 mesh = Mesh("fluid_new.xml")
 #plot(mesh, interactive=True)
@@ -52,9 +53,7 @@ dx = Measure("dx", subdomain_data = domains)
 dx_f = dx(1, subdomain_data = domains)
 dx_s = dx(2, subdomain_data = domains)
 
-dt = 0.1
-mu = 1
-rho = 1
+
 k = Constant(dt)
 
 #Fluid properties
@@ -63,13 +62,11 @@ mu_f    = Constant(1.0)
 nu = Constant(mu_f/rho_f)
 
 #Structure properties
-rho_s = 1.0E3
-mu_s = 2.0E6
-nu_s = 0.4
+rho_s = Constant(1.0E3)
+mu_s = Constant(0.5E6)
+nu_s = Constant(0.4)
 E_1 = 1.4E6
-lamda_s = nu_s*2*mu_s/(1-2*nu_s)
-g = Constant((0,-2*rho_s))
-
+lamda_s = nu_s*2*mu_s/(1 - 2*nu_s)
 
 ############## Define FunctionSpaces ##################
 
@@ -90,7 +87,8 @@ up = TrialFunction(V)
 u, p = split(up)
 
 up0 = Function(V)
-u0, p0 = up0.split(deepcopy = True)
+u0, p0 = split(up0)
+#u0, p0 = up0.split(deepcopy = True)
 
 up_sol = Function(V)
 
@@ -102,15 +100,19 @@ v, d = split(vd)
 vd0 = Function(W)
 # Make a deep copy to create two new Functions u and p (not subfunctions of W)
 #Must be done in solve as well to redo step 0
+#v0, d0 = split(vd0) #
+
 v0, d0 = vd0.split(deepcopy=True) #
 
 vd1 = Function(W)
+#v_1, d_1 = split(vd1)
 v_1, d_1 = vd1.split(deepcopy=True)
 
 ############## Define BCS ##################
 #BOUNDARY CONDITIONS
 
-Um = 2.0
+Um = 0.2
+D = 0.1
 H = 0.41
 L = 2.5
 # "
@@ -159,6 +161,7 @@ d_wall    = DirichletBC(W.sub(1), ((0, 0)), boundaries, 2)
 d_out     = DirichletBC(W.sub(1), ((0, 0)), boundaries, 4)
 d_circ    = DirichletBC(W.sub(1), ((0, 0)), boundaries, 6)
 d_barwall = DirichletBC(W.sub(1), ((0, 0)), boundaries, 7)
+#bcs_vd = [d_barwall, v_barwall]
 
 bcs_vd = [v_inlet, v_wall, v_circ, v_barwall, \
        d_inlet, d_wall, d_out, d_circ, d_barwall, \
@@ -177,34 +180,23 @@ bcs_d_tilde = [d_inlet_t, d_wall_t, d_out_t, d_circ_t, d_barwall_t]
 ############## Step 0: Extrapolation of the fluid-structure interface
 
 d_tilde = Function(U) #Solution vector of F_expo
-F_expo = inner(u_ - d0 - k*(3./2*d0 - 1./2*d_1 ), phi)*dx
+#F_expo = inner(u_ - d0 - k*(3./2*v0 - 1./2*v_1 ), phi)*dx_s
+#org
+F_expo = inner(u_ - d0 - k*(3./2*v0 - 1./2*v_1), phi)*dx
 
 ############## Step 1: Definition of new domain
 
 w_next = Function(U)   #Solution w_n+1 of F_smooth
-d_move = Function(V1)  #d_move used in ALE.move method
+d_move = Function(U)   #Def new domain of Lambda_f
 
-F_smooth = inner(w - 1./k*(d_tilde -  d0), phi)*dx_s + inner(grad(u_), grad(phi))*dx_f
+F_smooth = inner(w - 1./k*(d_tilde - d0), phi)*dx_s\
+         + inner(grad(w), grad(phi))*dx_f
 
 ############## Step 2: ALE-advection-diffusion step (explicit coupling)
-u0_tilde = Function(U) # Same as u_tilde_n
-u_tent = Function(U)   # Tentative velocity: solution of F_tent
-
-F_tent = (rho_f/k)*inner(u_ - u0, phi)*dx_f + rho_f*inner(grad(u_)*(u0_tilde - w_next), phi)*dx_f + \
-     2.*nu*inner(eps(u_), eps(phi))*dx_f #+ inner(u_('-') - w('-'), phi('-'))*dS(5)
-
-############## Step 3: Projection Step (implicit coupling) ITERATIVE PART
-
-############## Step 3.1: Projection
-
-# Pressure update
-F_press_upt = (rho/k)*inner(u - u_tent, psi)*dx - inner(p, div(psi))*dx + inner(div(u), eta)*dx
-#+ dot(dot(u, n), q)*dx# - 1./k*dot(dot(d_tilde - d0, n), phi)*dS(5)
-#+ inner(u('-')*n('-') - 1./k*(d_tilde('-') - d0('-')*n('-')), phi('-'))*dS(5)
-
-
-############## Step 3.2: Calculate Solid
 I = Identity(2)
+def eps(u):
+    return 0.5*(grad(u) + grad(u).T)
+
 def F_(U):
     return I + grad(U)
 
@@ -220,73 +212,186 @@ def J_(U):
 def P1(U):
 	return F_(U)*S(U)
 
+def sigma_f(v,p):
+	return 2*mu_f*sym(grad(v)) - p*Identity(2)
+
+def sigma_f_hat(v,p,u):
+	return J_(u)*sigma_f(v,p)*inv(F_(u)).T
+
+u0_tilde = Function(U) # Same as u_tilde_n
+u_tent = Function(U)   # Tentative velocity: solution of F_tent
+#u_last = Function(U)
+
+F_tent = (rho_f/k)*inner(J_(d_tilde)*(u_ - u0), phi)*dx_f \
+        + rho_f*inner(J_(d_tilde)*inv(F_(d_tilde))*grad(u_)*(u0_tilde - w_next), phi)*dx_f  \
+        + inner(2.*mu_f*J_(d_tilde)*eps(u_)*inv(F_(d_tilde)).T, eps(phi))*dx_f \
+        + inner(u_('-') - w('-'), phi('-'))*dS(5)
+
+        #proposed in winterschoolfsi
+        #+ inner( 2.*mu_f*J_(d_move)*(grad(u_)*inv(F_(d_move)) + inv(F_(d_move)).T*grad(u_).T )*inv(F_()).T, eps(phi) )*dx_f \
+
+############## Step 3: Projection Step (implicit coupling) ITERATIVE PART
+
+############## Step 3.1: Projection
 col_0 = W.sub(0).dofmap().collapse(mesh)[1].values()
-vd0.vector()[col_0] = v0.vector()
+vd.vector()[col_0] = w_next.vector()
 col_1 = W.sub(1).dofmap().collapse(mesh)[1].values()
-vd0.vector()[col_1] = d0.vector()
-
-#F_structure = rho_s/k*inner(v - v0, phi)*dx_s + inner(P1(d), grad(phi))*dx_s
-Solid_v = rho_s/k*inner(v - v0, alfa)*dx_s + inner(0.5*(P1(d) + P1(d0)), grad(alfa))*dx_s
-
-# Setting w = u on the structure using (d-d0)/k = w
-Solid_d = 1.0/k*inner(d - d0, beta)*dx_s - inner(v + v0, beta)*dx_s
-
-#while dt < T:
-
-#Step 0:
-solve(lhs(F_expo) == rhs(F_expo), d_tilde, bcs_d_tilde)
-#Do i need black magic here ???
-print "STEP 0: Extrapolation Solved"
-
-#Step 1:
-solve(lhs(F_smooth) == rhs(F_smooth), w_next, bcs_d_tilde)
-print "STEP 1: Definition New Domain Solved"
-"""
-w_1 = interpolate(w_next, V1)
-w_1.vector()[:] *= float(k)
-d_move.vector()[:] += w_1.vector()[:]
-ALE.move(mesh, d_move)
-mesh.bounding_box_tree().build(mesh)
-"""
-#Step 2:
-A = assemble(lhs(F_tent), keep_diagonal = True);
-A.ident_zeros();
-b = assemble(rhs(F_tent))
-
-[bc.apply(A, b) for bc in bcs_u_t]
-solve(A , u_tent.vector(), b)
-print "STEP 2: Tentative Velocity Solved"
-
-#Step 3:
-
-#Step 3.1:
-A = assemble(lhs(F_press_upt), keep_diagonal = True)
-A.ident_zeros();
-b = assemble(rhs(F_press_upt))
-[bc.apply(A, b) for bc in bcs_p]
-solve(A , up_sol.vector(), b)
-print "Step 3.1: Pressure update solved"
-#solve(lhs(F_vel_upt) == rhs(F_vel_upt), u_vel, bcs_u)
+vd.vector()[col_1] = d_tilde.vector()
 
 
-print "STEP 3 Solved"
-G = Solid_v + Solid_d
+# Pressure update
+F_press_upt = (rho_f/k)*inner(J_(d)*(u - u_tent), psi)*dx_f \
+- inner(J_(d)*p*inv(F_(d)).T, grad(psi))*dx_f \
++ inner(div(J_(d)*inv(F_(d).T)*u), eta)*dx_f \
++ inner(dot(u('-'),n('-')), eta('-'))*dS(5) \
+- 1./k*inner(dot(d('-') - d0('-'), n('-')), eta('-'))*dS(5)
+#+ dot(dot(u('-'), n('-')) - 1./k*dot(d('-') - d0('-'), n('-')), psi('-'))*dS(5)
+
+
+############## Step 3.2: Calculate Solid
+
+u_s, p_s = split(up_sol)
+#u_s, p_s = up_sol.split(True)
+delta = Constant(1.0E10)
+Solid_v = rho_s/k*inner(v - v0, alfa)*dx_s + 0.5*inner(P1(d) + P1(d0), eps(alfa))*dx_s
+Solid_d = 1.0/k*inner(d - d0, beta)*dx_s - 0.5*inner(v + v0, beta)*dx_s
+#Solid_d = delta*(1.0/k*inner(d - d0, beta)*dx_s - 0.5*inner(v + v0, beta)*dx_s)
+Solid_dynamic = inner(P1(d('+'))*n('+'), beta('+'))*dS(5) \
+              - inner(sigma_f_hat(u_s('+'), p_s('+'), d('+'))*n('+'), beta('+'))*dS(5)
+
+#Newtonsolver
+G = Solid_v + Solid_d + Solid_dynamic
 
 #Reset counters
 d_up = TrialFunction(W)
 J = derivative(G, vd, d_up)
 vd_res = Function(W)
 
+iteration = 0
+
 #Solver parameters
-atol, rtol = 1e-6, 1e-6             # abs/rel tolerances
+atol, rtol = 1e-7, 1e-7             # abs/rel tolerances
 lmbda = 1.0                         # relaxation parameter
 residual   = 1                      # residual (To initiate)
 rel_res    = residual               # relative residual
 max_it    = 15                      # max iterations
-Iter = 0                            # Iteration counter
+Iter = 0
 
-Newton_manual(G, vd, bcs_vd, J, atol, rtol, max_it, lmbda, vd_res)
-#count += 1
-#u0.assign(u1)
-#p0.assign(p1)
-#t += dt
+#Step 3
+
+t = 0
+T = 15
+
+up_last = Function(V)
+u_last, p_last = up_last.split(True)
+u_last.assign(u_tent)
+
+vd_last = Function(W)
+vd_last.assign(vd)
+v_last, d_last = vd_last.split(True)
+
+Re = Um*D/nu
+print "SOLVING FOR Re = %f" % Re #0.1 Cylinder diameter
+
+while t < T:
+
+    if t < 2:
+        inlet.t = t;
+    if t >= 2:
+        inlet.t = 2;
+
+    #Step 0:
+    #A = assemble(lhs(F_expo), keep_diagonal = True);
+    #A.ident_zeros();
+    #b = assemble(rhs(F_expo))
+    #[bc.apply(A, b) for bc in bcs_d_tilde]
+    #solve(A , d_tilde.vector(), b)
+    #Org
+    solve(lhs(F_expo) == rhs(F_expo), d_tilde, bcs_d_tilde)
+
+    #Do i need black magic here ???
+    print "STEP 0: Extrapolation Solved"
+
+    #Step 1:
+    solve(lhs(F_smooth) == rhs(F_smooth), w_next, bcs_d_tilde)
+    #Project solution to Function vd, to be used as guess for
+    #eta_n+1 in step 3.1
+
+    print "STEP 1: Definition New Domain Solved"
+    d_move.vector()[:] = d0.vector()[:] + float(k)*w_next.vector()[:]
+
+    col_0 = W.sub(0).dofmap().collapse(mesh)[1].values()
+    vd.vector()[col_0] = w_next.vector()
+
+    #Initial guess for d_n+1  step 3.1
+    col_1 = W.sub(1).dofmap().collapse(mesh)[1].values()
+    vd.vector()[col_1] = d_tilde.vector()
+
+    #Step 2:
+    A = assemble(lhs(F_tent), keep_diagonal = True);
+    A.ident_zeros();
+    b = assemble(rhs(F_tent))
+
+    [bc.apply(A, b) for bc in bcs_u_t]
+    solve(A , u_tent.vector(), b)
+    u0_tilde.assign(u_tent)
+    print "STEP 2: Tentative Velocity Solved"
+
+    eps_f = 1
+    eps_s = 1
+    iteration = 0
+
+    #Step 3:
+    while eps_f > 10E-5 and eps_s > 10E-5 and iteration < 10:
+        print "Iteration %d" % iteration
+        #Step 3.1:
+        A = assemble(lhs(F_press_upt), keep_diagonal = True)
+        A.ident_zeros();
+        b = assemble(rhs(F_press_upt))
+        [bc.apply(A, b) for bc in bcs_u]
+        [bc.apply(A, b) for bc in bcs_p]
+        solve(A , up_sol.vector(), b)
+
+        u_s, p_s = up_sol.split(True)
+        eps_f = errornorm(u_s, u_last, norm_type="l2", degree_rise=2)
+        #eps_f = errornorm(p_s, p_last, norm_type="l2", degree_rise=2)
+
+        vd = Newton_manual(G, vd, bcs_vd, J, atol, rtol, max_it, lmbda, vd_res)
+        v, d = vd.split(True)
+        eps_s = errornorm(d, d_last, norm_type="l2", degree_rise=2)
+
+        u_last.assign(u_s)
+        #p_last.assign(p_s)
+        d_last.assign(d)
+
+        print "eps_f %.3e: eps_s = %.3e:  iteration = %d " % (eps_f, eps_s, iteration)
+        iteration += 1
+
+
+
+    up0.assign(up_sol)
+    vd1.assign(vd0)
+    vd0.assign(vd)
+
+    v0, d0 = vd0.split(True)
+    u0, p0 = up0.split(True)
+    #u_last.assign(u0)
+    Dr = -assemble((sigma_f_hat(u_s, p_s , d)*n)[0]*ds(6))
+    Li = -assemble((sigma_f_hat(u_s, p_s , d)*n)[1]*ds(6))
+    Dr += -assemble((sigma_f_hat(u_s('-'), p_s('-'), d('-'))*n('-'))[0]*dS(5))
+    Li += -assemble((sigma_f_hat(u_s('-'), p_s('-'), d('-'))*n('-'))[1]*dS(5))
+    #Drag.append(Dr)
+    #Lift.append(Li)
+
+    dsx = d0(coord)[0]
+    dsy = d0(coord)[1]
+    #dis_x.append(dsx)
+    #dis_y.append(dsy)
+
+    if MPI.rank(mpi_comm_world()) == 0:
+        print "t = %.4f " %(t)
+        print 'Drag/Lift : %g %g' %(Dr,Li)
+        print "dis_x/dis_y : %.3e %.3e "%(dsx,dsy)
+
+    print "STEP 3 Solved"
+    t += dt

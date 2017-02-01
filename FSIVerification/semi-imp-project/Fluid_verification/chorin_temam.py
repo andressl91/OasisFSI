@@ -68,7 +68,7 @@ def NS(N, dt, T, L, rho, mu, solver):
                 y[0] = x[0]
                 y[1] = x[1] - 2.0
 
-    constrained_domain = PeriodicDomain()
+    #constrained_domain = PeriodicDomain()
     test = PeriodicDomain()
 
     nu = Constant(mu/rho)

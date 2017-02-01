@@ -1,8 +1,8 @@
 from fenics import NonlinearVariationalProblem, NonlinearVariationalSolver, assemble, solve, \
 norm, MPI, mpi_comm_world, PETScPreconditioner, PETScKrylovSolver
 
-def Newton_manual(F, udp, bcs, J, atol, rtol, max_it, lmbda\
-                 , udp_res):
+def Newton_manual(F, vd, bcs, J, atol, rtol, max_it, lmbda\
+                 , vd_res):
     #Reset counters
     Iter      = 0
     residual   = 1
@@ -12,15 +12,15 @@ def Newton_manual(F, udp, bcs, J, atol, rtol, max_it, lmbda\
         A.ident_zeros()
         b = assemble(-F)
 
-        [bc.apply(A, b, udp.vector()) for bc in bcs]
+        [bc.apply(A, b, vd.vector()) for bc in bcs]
 
-        #solve(A, udp_res.vector(), b, "superlu_dist")
-        #solve(A, udp_res.vector(), b, "mumps")
-        solve(A, udp_res.vector(), b)
+        #solve(A, vd_res.vector(), b, "superlu_dist")
+        #solve(A, vd_res.vector(), b, "mumps")
+        solve(A, vd_res.vector(), b)
 
-        udp.vector().axpy(1., udp_res.vector())
-        [bc.apply(udp.vector()) for bc in bcs]
-        rel_res = norm(udp_res, 'l2')
+        vd.vector().axpy(1., vd_res.vector())
+        [bc.apply(vd.vector()) for bc in bcs]
+        rel_res = norm(vd_res, 'l2')
         residual = b.norm('l2')
 
         if MPI.rank(mpi_comm_world()) == 0:
@@ -33,4 +33,4 @@ def Newton_manual(F, udp, bcs, J, atol, rtol, max_it, lmbda\
     rel_res    = residual
     Iter = 0
 
-    return udp
+    return vd
