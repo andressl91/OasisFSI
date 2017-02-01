@@ -27,3 +27,5 @@ def sigma_s(u):
 
 def sigma_f_hat(v,p,u):
 	return J_(u)*sigma_f(v,p)*inv(F_(u)).T
+def sigma_f_new(u,p,d):
+	return -p*I + mu_f*(grad(u)*inv(F_(d)) + inv(F_(d)).T*grad(u).T)

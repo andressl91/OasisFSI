@@ -127,6 +127,11 @@ def sigma_s(u):
 
 def sigma_f_hat(v,p,u):
 	return J_(u)*sigma_f(v,p)*inv(F_(u)).T
+def epsilon(u):
+    return 0.5*(grad(u) + grad(u).T)
+def sigma_f_new(u,p,d):
+	return -p*I + mu_f*(grad(u)*inv(F_(d)) + inv(F_(d)).T*grad(u).T)
+
 
 inlet = inlet()
 #Fluid velocity conditions
@@ -172,10 +177,48 @@ delta = 1.0E10
 h =  mesh_.hmin()
 
 # Fluid variational form
-F_fluid = (rho_f/k)*inner(J_(d)*(u - u0), phi)*dx_f \
-        + rho_f*inner(J_(d)*inv(F_(d))*grad(u)*(u - ((d-d0)/k)), phi)*dx_f \
-        + inner(sigma_f_hat(u,p,d), grad(phi))*dx_f \
-        - inner(div(J_(d)*inv(F_(d).T)*u), gamma)*dx_f
+"""F_fluid = (rho_f/k)*inner(J_(d)*(u - u0), phi)*dx_f \
+        + rho_f*inner(J_(d)*grad(u)*inv(F_(d))*(u - ((d-d0)/k)), phi)*dx_f \
+        - inner(div(J_(d)*inv(F_(d)).T*u), gamma)*dx_f\
+        + inner(sigma_f_hat(u,p,d), grad(phi))*dx_f """
+F_fluid = (rho_f/k)*inner(J_(d)*(u - u0), phi)*dx_f
+F_fluid += rho_f*inner(J_(d)*grad(u)*inv(F_(d))*(u - ((d-d0)/k)), phi)*dx_f
+F_fluid -= inner(div(J_(d)*inv(F_(d))*u), gamma)*dx_f
+#F_fluid += inner(J_(d)*2*mu_f*epsilon(u)*inv(F_(d))*inv(F_(d)).T ,epsilon(phi) )*dx_f
+#F_fluid -= inner(J_(d)*p*I*inv(F_(d)).T, grad(phi))*dx_f
+
+#F_fluid = (rho_f/k)*inner(J_(d)*(u - u0), phi)*dx_f
+#F_fluid += rho_f*inner(J_(d)*grad(u)*inv(F_(d))*(u - ((d-d0)/k)), phi)*dx_f
+#F_fluid -= inner(div(J_(d)*inv(F_(d))*u), gamma)*dx_f
+F_fluid += inner(J_(d)*sigma_f_new(u,p,d)*inv(F_(d)).T, grad(phi))*dx_f
+"""
+Smallest mesh
+P2-P2-P1
+Drag/Lift : 14.1729 0.755813
+dis_x/dis_y : 2.27103e-05 0.00079941
+
+P1-P1-P1
+Drag/Lift : 14.169 0.755912
+dis_x/dis_y : 2.18848e-05 0.000833867
+"""
+"""
+Tirsdag
+Implicit structure
+P1-P1-P1:
+Drag/Lift : 14.4956 0.777343
+dis_x/dis_y : 2.34985e-05 0.000778271
+P2-P2-P1:
+Drag/Lift : 14.1725 0.77916
+dis_x/dis_y : 2.24553e-05 0.000894245
+
+Med sigma_new:
+P2-P2-P1
+Drag/Lift : 14.1733 0.756172
+dis_x/dis_y : 2.27418e-05 0.000799314
+
+"""
+
+
 
 """F_fluid = (rho_f/k)*inner(J_(0.5*(d+d1))*(u - u0), phi)*dx_f \
         + rho_f*inner(J_(0.5*(d+d1))*inv(F_(0.5*(d+d1)))*grad(0.5*(u+u0))*(0.5*(u+u0) - ((d-d1)/k)), phi)*dx_f \
@@ -183,15 +226,20 @@ F_fluid = (rho_f/k)*inner(J_(d)*(u - u0), phi)*dx_f \
         - inner(div(J_(0.5*(d+d1))*inv(F_(0.5*(d+d1)).T)*0.5*(u+u0)), gamma)*dx_f"""
 
 if v_deg == 1:
-    F_fluid += - beta*h*h*inner(J_(d)*inv(F_(d).T)*grad(p),grad(gamma))*dx_f
+    #F_fluid += - beta*h*h*inner(J_(d)*inv(F_(d).T)*grad(p),grad(gamma))*dx_f
+    F_fluid -= beta*h*h*inner(J_(d)*inv(F_(d).T)*grad(p), grad(gamma))*dx_f
+
     print "v_deg",v_deg
 
 # Structure var form
-F_structure = (rho_s/k)*inner(u-u0,phi)*dx_s + inner(P1(d),grad(phi))*dx_s
+F_structure = (rho_s/k)*inner(u-u0,phi)*dx_s + inner(P1(0.5*(d+d0)),grad(phi))*dx_s
 #F_structure = (rho_s/(k))*inner((u-u0),phi)*dx_s + inner(0.5*(P1(d)+P1(d1)),grad(phi))*dx_s
 
+#F_fluid += inner(J_(d("-"))*sigma_f_new(u("-"),p("-"),d("-"))*inv(F_(d("-"))).T*n("-"),phi("-"))*dS(5)
+#F_fluid -= inner(P1(d("-"))*n("-"),phi("-"))*dS(5)
+
 # Setting w = u on the structure using (d-d0)/k = w
-F_w = delta*((1.0/k)*inner(d-d0,psi)*dx_s - inner(u,psi)*dx_s)
+F_w = delta*((1.0/k)*inner(d-d0,psi)*dx_s - inner(0.5*(u+u0),psi)*dx_s)
 #F_w = delta*((1.0/k)*inner(d-d1,psi)*dx_s - inner(0.5*(u+u0),psi)*dx_s)
 
 # laplace
@@ -219,9 +267,9 @@ dis_y = []
 Drag = []
 Lift = []
 counter = 0
-#time_list.append(0)
 t = dt
 
+timeme = []
 while t <= T:
     print "Time t = %.5f" % t
     time_list.append(t)
@@ -232,8 +280,10 @@ while t <= T:
 
     #Reset counters
     atol = 1e-6;rtol = 1e-6; max_it = 100; lmbda = 1.0;
-
+    timeN = time()
     udp = Newton_manual(F, udp, bcs, atol, rtol, max_it, lmbda,udp_res,VVQ)
+    timeme.append(time()-timeN)
+    print "Newton time: %.2f" %(time()-timeN)
 
     u,d,p = udp.split(True)
 
@@ -266,6 +316,7 @@ while t <= T:
     p0.assign(p)
     t += dt
     counter +=1
+print "average time: ", np.mean(timeme)
 print "script time: ", time()-time0
 plt.plot(time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
 plt.savefig("new_results_CN_structure_2/FSI-" +str(FSI) +"/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
