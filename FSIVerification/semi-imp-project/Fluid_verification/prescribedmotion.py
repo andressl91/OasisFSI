@@ -55,67 +55,11 @@ def NS(N, dt, T, L, rho, mu, solver):
     Q = FunctionSpace(mesh, "CG", 1)
     W = V*Q
 
-
-    # Define boundary conditions
-
-    # Fluid velocity conditions
-    class U_bc(Expression):
-        def init(self,w):
-            self.w = w
-        def eval(self,value,x):
-            #x_value, y_value = self.w.vector()[[x[0], x[1]]]
-            value[0], value[1] = self.w(x)
-            #value[0] = x_value
-            #value[1] = y_value
-        def value_shape(self):
-            return (2,)
-
-    u_bc = U_bc(degree=2)
-
-    Inlet = AutoSubDomain(lambda x: "on_boundary" and near(x[0], 0))
-    Outlet = AutoSubDomain(lambda x: "on_boundary" and near(x[0], 2))
-    Walls = Inlet = AutoSubDomain(lambda x: "on_boundary" and (near(x[1], 0) or near(x[1], 1)))
-
-    fc = FacetFunction('size_t', mesh, 0)
-    Inlet.mark(fc, 1)
-    Outlet.mark(fc, 2)
-    Walls.mark(fc, 3)
-
-    ds = Measure("ds", subdomain_data = fc)
-    n = FacetNormal(mesh)
-
     # Create functions
     d_e = Expression(("sin(t)*(x[0] - 2)",  "0"), t = 0)
     w_e = Expression(("cos(t)*(x[0] - 2)", "0"), t = 0)
     u_e = Expression(("cos(t)*(x[0] - 2)", "-cos(t)*(x[1] - 2)"), t = 0)
     p_e = Expression("0")
-
-    # Fluid velocity conditions
-    u_wall   = DirichletBC(V1, u_bc, fc, 3)
-    u_inlet   = DirichletBC(V1, u_e, fc, 1)
-    u_out   = DirichletBC(V1, Constant((0, 0)), fc, 2)
-
-    up_wall   = DirichletBC(W.sub(0), u_bc, fc, 3)
-    up_inlet   = DirichletBC(W.sub(0), u_e, fc, 1)
-    up_out = DirichletBC(W.sub(0), Constant((0, 0)), fc, 2)
-
-    # Mesh velocity conditions
-    w_inlet   = DirichletBC(V1, w_e, fc, 1)
-    w_outlet  = DirichletBC(V1, ((0.0, 0.0)), fc, 2)
-
-    # Deformation conditions
-    d_inlet   = DirichletBC(V1, d_e, fc, 1)
-    d_outlet  = DirichletBC(V1, ((0.0, 0.0)), fc, 2)
-
-    # Pressure Conditions
-    p_in = DirichletBC(W.sub(1), 0, fc, 1)
-
-    #Assemble boundary conditions
-    bcs_w = [w_inlet, w_outlet]
-    bcs_d = [d_inlet, d_outlet]
-    bcs_u = [u_inlet, u_wall, up_out]
-    bcs_up = [up_inlet, up_wall, p_in, up_out]
-
 
 
     psieta = TestFunction(W)
@@ -146,6 +90,83 @@ def NS(N, dt, T, L, rho, mu, solver):
     rho = Constant(1.0)
     nu = Constant(mu/rho)
 
+    # Define boundary conditions
+
+    # Fluid velocity conditions
+    class U_bc(Expression):
+        def __init__(self, w):
+            self.w = w
+        def update(self, w):
+            self.w = w
+        def eval(self,value,x):
+            #x_value, y_value = self.w.vector()[[x[0], x[1]]]
+            value[0], value[1] = self.w(x)
+            #value[0] = x_value
+            #value[1] = y_value
+        def value_shape(self):
+            return (2,)
+
+    u_bc = U_bc(w1)
+
+    class W_bc(Expression):
+        def __init__(self, d_tilde, d0, k):
+            self.d_tilde = d_tilde
+            self.d0 = d0
+            self.k = k
+        def eval(self,value,x):
+            #x_value, y_value = self.w.vector()[[x[0], x[1]]]
+            value[0], value[1] = 1./self.k*(self.d_tilde(x) - self.d0(x))
+            #value[0] = x_value
+            #value[1] = y_value
+        def value_shape(self):
+            return (2,)
+
+    w_bc = W_bc(d_tilde, d0, k)
+
+
+    Inlet = AutoSubDomain(lambda x: "on_boundary" and near(x[0], 0))
+    Outlet = AutoSubDomain(lambda x: "on_boundary" and near(x[0], 2))
+    Walls = Inlet = AutoSubDomain(lambda x: "on_boundary" and (near(x[1], 0) or near(x[1], 1)))
+
+    fc = FacetFunction('size_t', mesh, 0)
+    Inlet.mark(fc, 1)
+    Outlet.mark(fc, 2)
+    Walls.mark(fc, 3)
+
+    ds = Measure("ds", subdomain_data = fc)
+    n = FacetNormal(mesh)
+
+
+    # Fluid velocity conditions
+    u_wall   = DirichletBC(V1, u_bc, fc, 3)
+    u_inlet   = DirichletBC(V1, u_e, fc, 1)
+    u_out   = DirichletBC(V1, Constant((0, 0)), fc, 2)
+
+    up_wall   = DirichletBC(W.sub(0), u_bc, fc, 3)
+    up_inlet   = DirichletBC(W.sub(0), u_e, fc, 1)
+    up_out = DirichletBC(W.sub(0), Constant((0, 0)), fc, 2)
+
+    # Mesh velocity conditions
+    w_inlet   = DirichletBC(V1, w_e, fc, 1)
+    w_wall   = DirichletBC(V1, u_bc, fc, 3)
+    w_outlet  = DirichletBC(V1, ((0.0, 0.0)), fc, 2)
+
+    # Deformation conditions
+    d_inlet   = DirichletBC(V1, d_e, fc, 1)
+    d_outlet  = DirichletBC(V1, ((0.0, 0.0)), fc, 2)
+
+    # Pressure Conditions
+    p_in = DirichletBC(W.sub(1), 0, fc, 1)
+
+    #Assemble boundary conditions
+    bcs_w = [w_inlet, w_outlet]
+    bcs_d = [d_inlet, d_outlet]
+    bcs_u = [u_inlet, u_wall, up_out]
+    bcs_up = [up_inlet, up_wall, p_in, up_out]
+
+
+
+
     I = Identity(2)
 
     def eps(u):
@@ -163,11 +184,17 @@ def NS(N, dt, T, L, rho, mu, solver):
     def sigma_f_hat(v,p,u):
     	return J_(u)*sigma_f(v,p)*inv(F_(u)).T
 
-    F_expo = inner(u_ - d0 - k*(3./2*w0 - 1./2*w_1), phi)*ds(1)
+    d_tilde = Function(V) #Solution vector of F_expo
+    d_tilde.vector()[:] = d0.vector()[:] + float(k)*(3./2*w0.vector()[:] - 1./2*w_1.vector()[:])
+
+    ############## Step 1: Definition of new domain
+
+    w_next = Function(V)   #Solution w_n+1 of F_smooth
+    d_move = Function(V)   #Def new domain of Lambda_f
 
     #Laplace of deformation d
-    F_smooth = inner(w - k*(d_tilde - d0) , phi)*ds(1)\
-             + inner(grad(w), grad(phi))*dx #- inner(grad(w)*n, phi)*ds
+    F_smooth = inner(grad(w), grad(phi))*dx
+             #- inner(grad(w)*n, phi)*ds
 
     F_tent = (rho/k)*inner(J_(d_tilde)*(u_ - u0), phi)*dx \
             + rho*inner(J_(d_tilde)*inv(F_(d_tilde))*grad(u_)*(u0_tilde - w1), phi)*dx  \
@@ -201,17 +228,13 @@ def NS(N, dt, T, L, rho, mu, solver):
         u_e.t = t
         w_e.t = t
 
-        #solve(lhs(F_dtilde) == rhs(F_dtilde), d_tilde)
+        #Step 0
+        d_tilde.vector()[:] = d0.vector()[:] + float(k)*(3./2*w0.vector()[:] - 1./2*w_1.vector()[:])
 
-        A = assemble(lhs(F_expo), keep_diagonal = True)
-        A.ident_zeros()
-        b = assemble(rhs(F_expo))
-        [bc.apply(A, b) for bc in bcs_d]
-        solve(A , d_tilde.vector(), b)
-
+        #Step 1
         solve(lhs(F_smooth) == rhs(F_smooth), w1, bcs_w)
-        u_bc.init(w1)
-        #d_tilde.vector()[:] = d0.vector()[:] + float(dt)*w1.vector()[:]
+        u_bc.update(w1)
+        d_tilde.vector()[:] = d0.vector()[:] + float(dt)*w1.vector()[:]
 
 
         # Compute tentative velocity step

@@ -52,77 +52,17 @@ vd1 = Function(W)
 #v_1, d_1 = split(vd1)
 v_1, d_1 = vd1.split(deepcopy=True)
 
-############## Define BCS ##################
-
-
-#Fluid velocity conditions
-u_inlet  = DirichletBC(V.sub(0), inlet, boundaries, 3)
-u_wall   = DirichletBC(V.sub(0), ((0.0, 0.0)), boundaries, 2)
-u_circ   = DirichletBC(V.sub(0), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
-u_bar    = DirichletBC(V.sub(0), ((0.0, 0.0)), boundaries, 5) #No slip on geometry in fluid
-
-bcs_u = [u_inlet, u_wall, u_circ, u_bar]
-
-u_inlet_t  = DirichletBC(U, inlet, boundaries, 3)
-u_wall_t   = DirichletBC(U, ((0.0, 0.0)), boundaries, 2)
-u_circ_t   = DirichletBC(U, ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
-u_bar_t    = DirichletBC(U, ((0.0, 0.0)), boundaries, 5) #No slip on geometry in fluid
-
-bcs_u_t = [u_inlet_t, u_wall_t, u_circ_t, u_bar_t]
-
-#Pressure Conditions
-p_out = DirichletBC(V.sub(1), 0, boundaries, 4)
-
-bcs_p = [p_out]
-
-#Mesh velocity conditions
-w_wall    = DirichletBC(U, ((0.0, 0.0)), boundaries, 2)
-w_inlet   = DirichletBC(U, ((0.0, 0.0)), boundaries, 3)
-w_outlet  = DirichletBC(U, ((0.0, 0.0)), boundaries, 4)
-w_circle  = DirichletBC(U, ((0.0, 0.0)), boundaries, 6)
-#w_barwall = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 7)
-#w_bar     = DirichletBC(VVQ.sub(1), ((0.0, 0.0)), boundaries, 5)
-
-bcs_w = [w_wall, w_inlet, w_outlet, w_circle]
-
-# Deformation and velocity conditions
-v_wall    = DirichletBC(W.sub(0), ((0.0, 0.0)), boundaries, 2)
-v_inlet   = DirichletBC(W.sub(0), ((0.0, 0.0)), boundaries, 3)
-v_outlet  = DirichletBC(W.sub(0), ((0.0, 0.0)), boundaries, 4)
-v_circ    = DirichletBC(W.sub(0), ((0.0, 0.0)), boundaries, 6)
-v_barwall = DirichletBC(W.sub(0), ((0.0, 0.0)), boundaries, 7)
-
-d_inlet   = DirichletBC(W.sub(1), ((0, 0)), boundaries, 3)
-d_wall    = DirichletBC(W.sub(1), ((0, 0)), boundaries, 2)
-d_out     = DirichletBC(W.sub(1), ((0, 0)), boundaries, 4)
-d_circ    = DirichletBC(W.sub(1), ((0, 0)), boundaries, 6)
-d_barwall = DirichletBC(W.sub(1), ((0, 0)), boundaries, 7)
-#bcs_vd = [d_barwall, v_barwall]
-
-bcs_vd = [v_inlet, v_wall, v_circ, v_barwall, \
-       d_inlet, d_wall, d_out, d_circ, d_barwall, \
-       p_out]
-
-# Deformation conditions TILDE
-d_inlet_t   = DirichletBC(U, ((0, 0)), boundaries, 3)
-d_wall_t    = DirichletBC(U, ((0, 0)), boundaries, 2)
-d_out_t     = DirichletBC(U, ((0, 0)), boundaries, 4)
-d_circ_t    = DirichletBC(U, ((0, 0)), boundaries, 6)
-d_barwall_t = DirichletBC(U, ((0, 0)), boundaries, 7)
-
-bcs_d_tilde = [d_inlet_t, d_wall_t, d_out_t, d_circ_t, d_barwall_t]
-
 ############## Step 0: Extrapolation of the fluid-structure interface
 
 d_tilde = Function(U) #Solution vector of F_expo
-F_expo = step0(u_, d0, v0, v_1, k, phi, dx)
+#d_tilde = step0(d_tilde, d0, v0, v_1, k)
 
 
 ############## Step 1: Definition of new domain
 
 w_next = Function(U)   #Solution w_n+1 of F_smooth
 d_move = Function(U)   #Def new domain of Lambda_f
-F_smooth = step1(w, d_tilde, d0, k, phi, dx_s, dx_f)
+#F_smooth = step1(w, k, phi, dx_f)
 
 
 ############## Step 2: ALE-advection-diffusion step (explicit coupling)
@@ -150,6 +90,75 @@ F_press_upt = step3_1(d, d0, u, u_tent, p, psi, eta, n, dx_f, rho_f, k, dS)
 u_s, p_s = split(up_sol)
 #u_s, p_s = up_sol.split(True)
 F_s = step3_2(v, v0, d, d0, u_s, p_s, k, mu_f, mu_s, rho_s, lamda_s, n, dx_s, alfa, beta, dS)
+
+
+############## Define BCS ##################
+
+class U_bc(Expression):
+    def __init__(self, d_tilde, d0, k):
+        self.d_tilde = d_tilde
+        self.d0 = d0
+        self.k = k
+    def eval(self,value,x):
+        #x_value, y_value = self.w.vector()[[x[0], x[1]]]
+        value[0], value[1] = 1./self.k*(self.d_tilde(x) - self.d0(x))
+        #value[0] = x_value
+        #value[1] = y_value
+    def value_shape(self):
+        return (2,)
+
+
+#Fluid velocity conditions
+u_inlet  = DirichletBC(V.sub(0), inlet, boundaries, 3)
+u_wall   = DirichletBC(V.sub(0), ((0.0, 0.0)), boundaries, 2)
+u_circ   = DirichletBC(V.sub(0), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
+u_bar    = DirichletBC(V.sub(0), ((0.0, 0.0)), boundaries, 5) #No slip on geometry in fluid
+
+bcs_u = [u_inlet, u_wall, u_circ, u_bar]
+
+u_inlet_t  = DirichletBC(U, inlet, boundaries, 3)
+u_wall_t   = DirichletBC(U, ((0.0, 0.0)), boundaries, 2)
+u_circ_t   = DirichletBC(U, ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
+u_bar_t    = DirichletBC(U, ((0.0, 0.0)), boundaries, 5) #No slip on geometry in fluid
+
+bcs_u_t = [u_inlet_t, u_wall_t, u_circ_t, u_bar_t]
+
+#Pressure Conditions
+p_out = DirichletBC(V.sub(1), 0, boundaries, 4)
+
+bcs_p = [p_out]
+
+
+
+# Deformation and velocity conditions
+v_wall    = DirichletBC(W.sub(0), ((0.0, 0.0)), boundaries, 2)
+v_inlet   = DirichletBC(W.sub(0), ((0.0, 0.0)), boundaries, 3)
+v_outlet  = DirichletBC(W.sub(0), ((0.0, 0.0)), boundaries, 4)
+v_circ    = DirichletBC(W.sub(0), ((0.0, 0.0)), boundaries, 6)
+v_barwall = DirichletBC(W.sub(0), ((0.0, 0.0)), boundaries, 7)
+
+d_inlet   = DirichletBC(W.sub(1), ((0, 0)), boundaries, 3)
+d_wall    = DirichletBC(W.sub(1), ((0, 0)), boundaries, 2)
+d_out     = DirichletBC(W.sub(1), ((0, 0)), boundaries, 4)
+d_circ    = DirichletBC(W.sub(1), ((0, 0)), boundaries, 6)
+d_barwall = DirichletBC(W.sub(1), ((0, 0)), boundaries, 7)
+#bcs_vd = [d_barwall, v_barwall]
+
+bcs_vd = [v_inlet, v_wall, v_circ, v_barwall, \
+       d_inlet, d_wall, d_out, d_circ, d_barwall, \
+       p_out]
+
+w_bc_bar = U_bc(d_tilde, d_tilde, k)
+# Deformation conditions TILDE
+w_inlet   = DirichletBC(U, ((0, 0)), boundaries, 3)
+w_wall    = DirichletBC(U, ((0, 0)), boundaries, 2)
+w_out     = DirichletBC(U, ((0, 0)), boundaries, 4)
+w_circ    = DirichletBC(U, ((0, 0)), boundaries, 6)
+w_barwall = DirichletBC(U, ((0, 0)), boundaries, 7)
+w_bar     = DirichletBC(U, w_bc_bar, boundaries, 5)
+
+bcs_w = [w_inlet, w_wall, w_out, w_circ, w_barwall, w_bar]
+
 
 #Reset counters
 d_up = TrialFunction(W)
@@ -190,19 +199,21 @@ while t < T:
         inlet.t = 2;
 
     #Step 0:
-    #A = assemble(lhs(F_expo), keep_diagonal = True);
-    #A.ident_zeros();
-    #b = assemble(rhs(F_expo))
-    #[bc.apply(A, b) for bc in bcs_d_tilde]
-    #solve(A , d_tilde.vector(), b)
-    #Org
-    solve(lhs(F_expo) == rhs(F_expo), d_tilde, bcs_d_tilde)
+    d_tilde = step0(d_tilde, d0, v0, v_1, k)
 
-    #Do i need black magic here ???
     print "STEP 0: Extrapolation Solved"
 
     #Step 1:
-    solve(lhs(F_smooth) == rhs(F_smooth), w_next, bcs_d_tilde)
+
+    #w_vector()[:] = d0.vector()[:] + float(k)*w_next.vector()[:]
+
+    F_smooth = step1(w, k, phi, dx_f, dx_s)
+    A = assemble(lhs(F_smooth), keep_diagonal = True)
+    A.ident_zeros()
+    b = assemble(rhs(F_smooth))
+    [bc.apply(A, b) for bc in bcs_w]
+    solve(A, w_next.vector(), b)
+    #solve(lhs(F_smooth) == rhs(F_smooth), w_next, bcs_w)
     #Project solution to Function vd, to be used as guess for
     #eta_n+1 in step 3.1
 

@@ -233,7 +233,6 @@ def viz(results, runs):
         dt = simulation_parameters["dt"]
         space = simulation_parameters["space"]
 
-
         # TODO: Show implementation and dt
         # TODO: Read in a reference solution for comparison
         name = "None" if E is None else E.__name__
@@ -348,7 +347,7 @@ if __name__ == "__main__":
             tmp_res = problem_mix(r["T"], r["dt"], r["E"], r["coupling"])
             results.append(tmp_res)
         elif r["space"] == "singlespace":
-            # FIXME: Not implemented 
+            # FIXME: Not implemented
             problem_lin()
         else:
             print "Problem type %s is not implemented, only mixedspace " \

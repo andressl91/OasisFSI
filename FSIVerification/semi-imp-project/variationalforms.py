@@ -3,8 +3,7 @@ from dolfin import *
 #sa = 2
 
 I = Identity(2)
-def eps(u):
-    return 0.5*(grad(u) + grad(u).T)
+
 
 def F_(U):
     return I + grad(U)
@@ -18,6 +17,12 @@ def E(U):
 def J_(U):
 	return det(F_(U))
 
+def eps(u):
+    return 0.5*(grad(u) + grad(u).T)
+
+def eps_map(U):
+    return 0.5*(grad(U)*inv(F_(U)) + inv(F_(U)).T*grad(U).T)
+
 def P1(U, mu_s, lamda_s):
 	return F_(U)*S(U, mu_s, lamda_s)
 
@@ -27,23 +32,23 @@ def sigma_f(v, p, mu_f):
 def sigma_f_hat(v, p, u, mu_f):
 	return J_(u)*sigma_f(v, p, mu_f)*inv(F_(u)).T
 
-def step0(u_, d0, v0, v_1, k ,phi, dx):
-    F_expo = inner(u_ - d0 - k*(3./2*v0 - 1./2*v_1), phi)*dx
-    return F_expo
+def step0(d_tilde, d0, v0, v_1, k):
+    d_tilde.vector()[:] = d0.vector()[:] \
+    + float(k)*(3./2*v0.vector()[:] - 1./2*v_1.vector()[:])
+    return d_tilde
 
-def step1(w, d_tilde, d0, k, phi, dx_s, dx_f):
-    F_smooth = inner(w - 1./k*(d_tilde - d0), phi)*dx_s\
-             + inner(grad(w), grad(phi))*dx_f
-
+def step1(w, k, phi, dx_f, dx_s):
+    F_smooth = inner(grad(w), grad(phi))*dx_f + inner(Constant((0.0, 0.0)), phi)*dx_s
     return F_smooth
 
 def step2(d_, w_next, u_, u0, u0_tilde, phi, dx_f, mu_f, rho_f, k):
     F_tent = (rho_f/k)*inner(J_(d_)*(u_ - u0), phi)*dx_f \
             + rho_f*inner(J_(d_)*inv(F_(d_))*grad(u_)*(u0_tilde - w_next), phi)*dx_f  \
-            + inner(2.*mu_f*J_(d_)*eps(u_)*inv(F_(d_)).T, eps(phi))*dx_f \
+            + inner(2.*mu_f*J_(d_)*eps(u_)*inv(F_(d_)).T, eps(phi))*dx_f 
             + inner(u_('-') - w_next('-'), phi('-'))*dS(5)
             #proposed in winterschoolfsi
-            #+ inner( 2.*mu_f*J_(d_move)*(grad(u_)*inv(F_(d_move)) + inv(F_(d_move)).T*grad(u_).T )*inv(F_()).T, eps(phi) )*dx_f \
+            #\
+            ##+ inner( 2.*mu_f*J_(d_move)*(grad(u_)*inv(F_(d_move)) + inv(F_(d_move)).T*grad(u_).T )*inv(F_()).T, eps(phi) )*dx_f \
 
     return F_tent
 
