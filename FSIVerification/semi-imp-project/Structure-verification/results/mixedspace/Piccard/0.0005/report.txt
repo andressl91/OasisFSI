@@ -1,5 +1,0 @@
-Case parameters parameters
- T = 1
-dt = 0.0005
-Implementation = Piccard
-        
