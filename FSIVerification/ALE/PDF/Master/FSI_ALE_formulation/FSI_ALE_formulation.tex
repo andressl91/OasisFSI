@@ -5,10 +5,15 @@ The ALE formulation stands for Arbitrary Lagrangian Eulerian. This entails formu
 Since the domain is moving with the structure movements, we will need to state the fluid in a little different.        
 
 \subsection*{Notation}
-u - Velocity in fluid and structure. \\
-w - Velocity in the domain. It is the velocity of the mesh in the calculations. This will also be the velocity in structure when defined in the lagrangian formulation. \\
-d - Displacement of the solid. The time derivative of the displacement will be the domain velocity. \\
-p - Pressure in the fluid. 
+$u$ - Velocity in fluid and structure. \\
+$w$- Velocity in the domain. It is the velocity of the mesh in the calculations. This will also be the velocity in structure when defined in the lagrangian formulation. \\
+$d$ - Displacement of the solid. The time derivative of the displacement will be the domain velocity. \\
+$p$ - Pressure in the fluid. \\
+$\hat{\mathcal{S}}$ - Solid reference domain  \\
+$\mathcal{S}$ - Solid current domain  \\
+$ \hat{\mathcal{F}}$ - Fluid reference domain \\
+$ \mathcal{F} $ - Fluid reference domain \\
+
 
 \section*{Full FSI problem}
 Find $u \in \mathcal{F} , p \in \mathcal{F} \text{  and  } d \in \mathcal{S} \text{  such that}:$ 
@@ -30,12 +35,12 @@ We will formulate the equations in the Eulerian, Lagrangian and the ALE descript
 
 \subsection*{Solid}
 We express the solid balance laws in the Lagrangian formulation from the initial configuration
-$$\rho_s \frac{\partial^2 d}{\partial t^2} = \nabla \cdot (J \sigma_s F^{-T}) \hspace{4mm}in\hspace{4mm} \mathcal{\hat{S}} $$
+$$\rho_s \frac{\partial^2 d}{\partial t^2} = \nabla \cdot (J \sigma_s F^{-T}) \hspace{4mm}in\hspace{4mm} \hat{\mathcal{S}} $$
 
 \section*{Fluid}
 The fluid equations are denoted from the initial configuration:
-$$ \rho_f J \big( \frac{\partial u}{\partial t} + ((\nabla u)F^{-1}(u-\frac{\partial d}{\partial t})\big) = \nabla \cdot (J\sigma_f F^{-T} )\hspace{4mm} on \hspace{2mm} \mathcal{\hat{F}}$$
-$$ \nabla \cdot (J u F^{-T}) = 0 \hspace{4mm} on \hspace{2mm} \mathcal{\hat{F}}$$
+$$ \rho_f J \big( \frac{\partial u}{\partial t} + ((\nabla u)F^{-1}(u-\frac{\partial d}{\partial t})\big) = \nabla \cdot (J\sigma_f F^{-T} )\hspace{4mm} on \hspace{2mm} \hat{\mathcal{F}}$$
+$$ \nabla \cdot (J u F^{-T}) = 0 \hspace{4mm} on \hspace{2mm} \hat{\mathcal{F}}$$
 As we see the only difference from the usual N-S equations, is that in the convection term we have $u-\frac{\partial d}{\partial t} $ which is needed since the not only are the fluid particles moving but the domain, here denoted with $\frac{\partial d}{\partial t}$ as the domain velocity, is also moving. So $u-\frac{\partial d}{\partial t}$ will be the actual fluid velocity. 
 
 \subsection*{Harmonic extension}
@@ -47,38 +52,39 @@ This equation is chosen for its good regularity and smoothing properties.
 It is also possible to chose an harmonic extension with stiffening, which can give better control of the deformed meshes. This in practice behaves like a transport problem, transporting the deformation into the fluid domain. Another possibility is extension by pseudo-elasticity which defines the extension operator by means of the Navier-Lame equation. And lastly we can chose a biharmonic extension, that is of fourth order character, and thus will have a high computational cost. For now I will stick with the harmonic extension and maybe look at these in the future. [Godboka.]
 
 \subsection*{Coupled Fluid Structure Interface conditions}
+This section is based on 
 We introduce a global domain $\Omega \in \mathcal{S} \cup \mathcal{F} $ that is made up of the fluid and the structure and the interface. We define a global velocity function $u$ that is the fluid velocity in the fluid domain and the structure velocity in the structure domain. This can be done due to the interface condition making the velocity field continuous over the entire domain. Then the interface will be $ \Gamma \in \mathcal{S} \cap \mathcal{F}  $  
 We need to define conditions that couple that motions of the fluid and structure together. These consist of:
 \begin{itemize}
-\item Kinematic condition: $u_f = u_s  \hspace{4mm} on \Gamma$. The fluid and structure velocities need to be equal on the boundary. 
-\item Dynamic condition: $  \sigma_f n_f = \sigma_s n_s \hspace{4mm} on  \hspace{2mm}\Gamma^0 (interface)   $. This equals the stress from the fluid and structure 
-\item Geometrical 
+\item Kinematic condition: $u_f = u_s  \hspace{4mm} on \Gamma$. The fluid and structure velocities need to be equal on the boundary. \\
+We later realize this later by setting  $u- \frac{\partial d}{\partial t}  = 0  $ on the solid domain to strongly imply that the velocity on the solid is the derivative of the deformation.  
+\item Dynamic condition: $  \sigma_f n_f = \sigma_s n_s \hspace{4mm} on  \hspace{2mm}\Gamma   $. \\
+	This relates to Newtons third law of action and reaction. The forces on the interface area, here written as the normal stresses are balanced on the interface. These will be written in a Lagrangian formulation: \\
+	$J\sigma_f F^{-T} n_f = F\Sigma n_s \hspace{4mm} on  \hspace{2mm}\Gamma $. \\
+	This condition is often added to structure problem, since it is most often in FSI problem the fluid exerting force that cause deformation.
+\item Geometrical condition: This condition says that the fluid and structure domains do not overlap, but rather that elements connect so the functions needing to transfer force are continouos across the entire domain.
 \end{itemize}
 
 
 
+\subsection*{Boundary conditions}
+We usually have a Dirichlet condition on rigid walls.
+$$  u(x,y,t) = 0   \text{  on  } \Gamma^D $$
 
 
 
-$$  u(x,y,t=0) = u_0   $$
-
-In the place where the fluid and structure domains meet, i.e the interface. We set a dynamic condition saying that the normal stresses of the solid and fluid are equal:
-$$  \sigma_f n_f = \sigma_s n_s \hspace{4mm} on  \hspace{2mm}\Gamma^0 (interface)   $$
-These will be written in the Lagrangian formulation:
-$$  J\sigma_f F^{-T} n_f = \sigma_s  n_s \hspace{4mm} on  \hspace{2mm}\Gamma^0 (interface)   $$
 
 
 
-We  set $u- \frac{\partial d}{\partial t}  = 0  $ on the solid domain to strongly imply that the velocity on the solid is the derivative of the deformation.  
 
 \section*{FSI Problem in reference domain}
-Find $u \in \mathcal{F} , p \in \mathcal{F} \text{  and  } d \in \mathcal{S} \text{  such that}:$ 
+Find $u \in \hat{\mathcal{F}} , p \in \hat{\mathcal{F}} \text{  and  } d \in \hat{\mathcal{S}} \text{  such that}:$ 
 \begin{align}
-\rho_f J \frac{\partial u}{\partial t} + (\nabla u)F^{-1}(u-\frac{\partial d}{\partial t})  + \nabla \cdot( J\sigma_f F^{-T})  &= 0 \text{  on  } \mathcal{\hat{F} } \\
-\nabla \cdot (J u F^{-T})\big) &= 0 \text{  on  } \mathcal{\hat{F}}   \\
-\rho_s \frac{\partial u}{\partial t} + \nabla \cdot F S_s,&=0  \text{  on  } \mathcal{\hat{S}}\\
-\nabla^2 d &= 0  \text{  on  } \mathcal{\hat{F}}\\
-u- \frac{\partial d}{\partial t}  &= 0  \text{  on  } \mathcal{\hat{S}}\\
+\rho_f J \frac{\partial u}{\partial t} + (\nabla u)F^{-1}(u-\frac{\partial d}{\partial t})  + \nabla \cdot( J\sigma_f F^{-T})  &= 0 \text{  on  } \hat{\mathcal{F}} \\
+\nabla \cdot (J u F^{-T})\big) &= 0 \text{  on  } \hat{\mathcal{F}}   \\
+\rho_s \frac{\partial u}{\partial t} + \nabla \cdot F S_s,&=0  \text{  on  } \hat{\mathcal{S}}\\
+\nabla^2 d &= 0  \text{  on  } \hat{\mathcal{F}}\\
+u- \frac{\partial d}{\partial t}  &= 0  \text{  on  } \hat{\mathcal{S}}\\
 J\sigma_f F^{-T} n_f &= \sigma_s  n_s \text{  on  } \Gamma
 \end{align}
 

@@ -1,0 +1,17 @@
+\begin{thebibliography}{1}
+
+\bibitem{Fernandez2013}
+Miguel~A. Fern{\'{a}}ndez, Jimmy Mullaert, and Marina Vidrascu.
+\newblock {Explicit robin-neumann schemes for the coupling of incompressible
+  fluids with thin-walled structures}.
+\newblock {\em Computer Methods in Applied Mechanics and Engineering},
+  267:566--593, 2013.
+
+\bibitem{Fernandez2015}
+Miguel~A. Fern{\'{a}}ndez, Jimmy Mullaert, and Marina Vidrascu.
+\newblock {Generalized Robin-Neumann explicit coupling schemes for
+  incompressible fluid-structure interaction: Stability analysis and numerics}.
+\newblock {\em International Journal for Numerical Methods in Engineering},
+  101(3):199--229, 2015.
+
+\end{thebibliography}

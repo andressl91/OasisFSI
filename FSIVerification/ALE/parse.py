@@ -17,5 +17,5 @@ def parse():
     group.add_argument("-dt",          type=float, help="Time step                     --> Default=0.5", default=0.5)
     group.add_argument("-step",          type=float, help="savestep                     --> Default=1", default=1)
     group.add_argument("-r", "--refiner", action="count", help="Mesh-refiner using built-in FEniCS method refine(Mesh)")
-    group.add_argument("-beta",          type=float, help="AC factor                     --> Default=0.5", default=0.5)
+    group.add_argument("-beta",          type=float, help="AC factor                     --> Default=0.5", default=0.01)
     return parser.parse_args()
