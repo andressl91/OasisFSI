@@ -1,12 +1,12 @@
 
 
-\section*{Fluid Structure Interaction Problem formulation in ALE coordinates}
+\section*{Fluid Structure Interaction Problem in ALE}
 The ALE formulation stands for Arbitrary Lagrangian Eulerian. This entails formulating the fluid equations in an Eulerian and the solid in a Lagrangian framework. This is as previously stated a very nice approach as it describes both fluid velocity and displacement in known configurations. The ALE method can be solved by moving the mesh for each time step following the structure body movements, and calculating on a "new" mesh every time. This approach gives advantages as we can explicitly represent the fluid-structure interface, but problems arise when there are large deformations in the solid giving large deformations to the fluid domain. We will therefore approach the ALE from a reference frame. That is we solve the equation on a initial, stress free domain, and use a series of mappings to account for the movements of the domain. From a technical point of view, both formulations are equivalent. But the ease of computing on fixed mesh does so that we chose fixed approach. \newline
 Since the domain is moving with the structure movements, we will need to state the fluid in a little different.        
 
 \subsection*{Notation}
 $u$ - Velocity in fluid and structure. \\
-$w$- Velocity in the domain. It is the velocity of the mesh in the calculations. This will also be the velocity in structure when defined in the lagrangian formulation. \\
+$w$- Velocity in the domain. It is the velocity of the mesh in the calculations. This will also be the velocity in structure when defined in the Lagrangian formulation. \\
 $d$ - Displacement of the solid. The time derivative of the displacement will be the domain velocity. \\
 $p$ - Pressure in the fluid. \\
 $\hat{\mathcal{S}}$ - Solid reference domain  \\
@@ -14,21 +14,15 @@ $\mathcal{S}$ - Solid current domain  \\
 $ \hat{\mathcal{F}}$ - Fluid reference domain \\
 $ \mathcal{F} $ - Fluid reference domain \\
 
+Before we can state the full FSI problem we need to define the mappings to be used when computing from a reference frame.
+\subsection*{Mapping}
+Let $\hat{\mathcal{V}}$ be a reference volume and $\mathcal{V}(t)$ be the current time volume using [Godboka]. Then using the determinant of the deformation gradient $F = I+\nabla d $,  $J = det(F)$ we define a mapping between the volumes
 
-\section*{Full FSI problem}
-Find $u \in \mathcal{F} , p \in \mathcal{F} \text{  and  } d \in \mathcal{S} \text{  such that}:$ 
-\begin{align}
-\rho_f  \frac{\partial u}{\partial t} + (\nabla u)(u-\frac{\partial d}{\partial t})  + \nabla \cdot \sigma_f  &= 0 \text{  on  } \mathcal{F } \\
-\nabla \cdot u  &= 0 \text{  on  } \mathcal{F}   \\
-\nabla^2 d &= 0  \text{  on  } \mathcal{F}\\
-\rho_s \frac{\partial u}{\partial t} + \nabla \cdot \sigma_s &=0  \text{  on  } \mathcal{ S }\\
-u- \frac{\partial d}{\partial t}  &= 0  \text{  on  } \mathcal{ S }\\
-\sigma_f  n_f &= \sigma_s  n_s \text{  on  } \Gamma
-\end{align}
+$$  \int_{\mathcal{V}(t)} 1  dx = \int_{\hat{\mathcal{V}}} J dx  $$
 
+The gradients acting on a vector $ \bold{u} $ will also be mapped between current and reference configurations
 
-
-
+$$  \int_{\mathcal{V}(t)} \nabla \bold{u}   dx = \int_{\hat{\mathcal{V}}} J  \bold{u}F^{-1} dx  $$
 
 \section*{Balance laws}
 We will formulate the equations in the Eulerian, Lagrangian and the ALE description.
@@ -38,10 +32,24 @@ We express the solid balance laws in the Lagrangian formulation from the initial
 $$\rho_s \frac{\partial^2 d}{\partial t^2} = \nabla \cdot (J \sigma_s F^{-T}) \hspace{4mm}in\hspace{4mm} \hat{\mathcal{S}} $$
 
 \section*{Fluid}
-The fluid equations are denoted from the initial configuration:
-$$ \rho_f J \big( \frac{\partial u}{\partial t} + ((\nabla u)F^{-1}(u-\frac{\partial d}{\partial t})\big) = \nabla \cdot (J\sigma_f F^{-T} )\hspace{4mm} on \hspace{2mm} \hat{\mathcal{F}}$$
-$$ \nabla \cdot (J u F^{-T}) = 0 \hspace{4mm} on \hspace{2mm} \hat{\mathcal{F}}$$
-As we see the only difference from the usual N-S equations, is that in the convection term we have $u-\frac{\partial d}{\partial t} $ which is needed since the not only are the fluid particles moving but the domain, here denoted with $\frac{\partial d}{\partial t}$ as the domain velocity, is also moving. So $u-\frac{\partial d}{\partial t}$ will be the actual fluid velocity. 
+The fluid domain is moving, and therefore we need to redefine the velocity in the convective term in N-S to account for the moving domain 
+
+$$u \cdot \nabla u \rightarrow (u-\frac{\partial d_f}{\partial t}) \cdot \nabla u  $$ 
+where $d_f$ is the deformation in the fluid domain. Now the actual fluid velocity will be $u-\frac{\partial d}{\partial t}$ 
+
+
+
+The fluid particles are now moving on a moving domain $\nabla u (u-\frac{\partial d}{\partial t})$. So $u-\frac{\partial d}{\partial t}$ will be the actual fluid velocity.
+
+The fluid equations are denoted from the initial configuration again following [godboka] using the forementioned mappings
+\begin{align}
+\int_{\mathcal{V}(t)} \rho_f \frac{\partial u}{\partial t} dx & = \int_{\hat{\mathcal{V}}}  \rho_f J \frac{\partial u}{\partial t} dx \\
+\int_{\mathcal{V}(t)} \nabla u (u-\frac{\partial d}{\partial t}) dx  &= \int_{\hat{\mathcal{V}}} ((\nabla u)F^{-1}(u-\frac{\partial d}{\partial t}) dx  \\
+\int_{\mathcal{V}(t)} \nabla \cdot u dx  &=\int_{\hat{\mathcal{V}}}  \nabla \cdot (J F^{-1} u  ) dx \\
+\int_{\mathcal{V}(t)} \nabla \cdot \sigma_f dx &= \int_{\hat{\mathcal{V}}} \nabla \cdot( J F^{-1} \hat{\sigma_f} )     dx \\
+\hat{\sigma_f} &= -pI + \mu ( \nabla u F^{-1} + F^{-T} u^{T}  ) 
+\end{align}
+ 
 
 \subsection*{Harmonic extension}
 To bind together the computation of fluid and structure domain, we need a harmonic extension to the boundary values. The solid deformation $d$ is extended from the interface into the fluid domain and is done to help deal with big deformations in fluid domain. These big deformations can then cause several challenges to the ALE mapping. 
@@ -65,22 +73,10 @@ We later realize this later by setting  $u- \frac{\partial d}{\partial t}  = 0  
 \item Geometrical condition: This condition says that the fluid and structure domains do not overlap, but rather that elements connect so the functions needing to transfer force are continouos across the entire domain.
 \end{itemize}
 
-
-
-\subsection*{Boundary conditions}
-We usually have a Dirichlet condition on rigid walls.
-$$  u(x,y,t) = 0   \text{  on  } \Gamma^D $$
-
-
-
-
-
-
-
-\section*{FSI Problem in reference domain}
+\section*{ Full FSI Problem in reference domain}
 Find $u \in \hat{\mathcal{F}} , p \in \hat{\mathcal{F}} \text{  and  } d \in \hat{\mathcal{S}} \text{  such that}:$ 
 \begin{align}
-\rho_f J \frac{\partial u}{\partial t} + (\nabla u)F^{-1}(u-\frac{\partial d}{\partial t})  + \nabla \cdot( J\sigma_f F^{-T})  &= 0 \text{  on  } \hat{\mathcal{F}} \\
+\rho_f J \frac{\partial u}{\partial t} + (\nabla u)F^{-1}(u-\frac{\partial d}{\partial t})  + \nabla \cdot( J \hat{\sigma_f} F^{-T})  &= 0 \text{  on  } \hat{\mathcal{F}} \\
 \nabla \cdot (J u F^{-T})\big) &= 0 \text{  on  } \hat{\mathcal{F}}   \\
 \rho_s \frac{\partial u}{\partial t} + \nabla \cdot F S_s,&=0  \text{  on  } \hat{\mathcal{S}}\\
 \nabla^2 d &= 0  \text{  on  } \hat{\mathcal{F}}\\
@@ -90,7 +86,7 @@ J\sigma_f F^{-T} n_f &= \sigma_s  n_s \text{  on  } \Gamma
 
 
 
-\section*{Finite Element FSI in ALE}
+\section*{Finite Element method FSI in ALE}
 \subsection*{Variational formulation}
 \subsection*{Reference domain}
 We use 3 testfunctions, $\phi, \psi, \gamma$. As mentioned before we use a global velocity function $u$ for both the solid and fluid.

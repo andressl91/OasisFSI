@@ -25,7 +25,7 @@ The general r-order extrapolation $x^*$ is defined:
 
 
 \subsection*{Boundary interface operator}
-Using the notation of [ Generalized robin-neumann explicit coupling scheme ]
+Using the notation of \cite{Fernandez2015}
 We denote $(.,.)_{\mathcal{S},h}$ as the lumped mass approximation of the inner product $(.,.)_{\mathcal{S}}$. We will consider a solid and fluid sided discrete lifting operator $ \mathcal{L}_h^s: \Lambda_{\Sigma, h} \rightarrow \mathcal{S} $ , lifting values from the interface into the solid domain. If $ \xi_h, \lambda_h \in \Lambda_{\Sigma, h}  $ then $\mathcal{L}_h^s |_\Sigma = \mathcal{L}_h^f |_\Sigma = \xi_h  $. We use this to define the boundary operator: $ B_h =(\mathcal{L}_h^s)^* \mathcal{L}_h^s  $, mapping from interface to interface $ B_h : \Lambda_{\Sigma, h} \rightarrow \Lambda_{\Sigma, h}  $.  Where stars stands for the adjoint operator of $ \mathcal{L}_h^s $. We can then write:
 $$   ( B_h \xi_h , \lambda_h )_\Sigma = (\mathcal{L}_h^s \xi_h ,\mathcal{L}_h^s \lambda_h)_{\mathcal{S},h} $$
 

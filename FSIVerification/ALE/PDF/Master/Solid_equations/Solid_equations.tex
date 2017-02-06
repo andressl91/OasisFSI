@@ -1,34 +1,36 @@
 \chapter*{Solid Equations}
-The solid equations stated here will be in a Lagrangian description. This description fits a solid problem very nicely as the material particles are fixed with grid points. This we will see later is a very nice property when tracking the solid domain. The displacement vector will be the quantity describing the motion of solid.
+The solid equation is most commonly described and solved in a Lagrangian description. This description fits a solid problem as the material particles are fixed with grid points. This we will see later is an important property when tracking the solid domain. The displacement vector will be the quantity describing the motion of solid.
 \section*{Reference domain}
 \subsection*{Mapping and identites}
-To be able to state the solid equation in a Lagrangian reference configuration, we need to look at some mappings and identities:
+We will start by providing a short introduction to Lagrangian physics for the sake of completness.
 \begin{center}
 \includegraphics[scale=0.4]{continuum_mapping.png}
 \end{center}
-We define $ \hat{\mathcal{S}}$ as the initial stress free configuration of a given body. $\mathcal{S}$ as the reference and $\mathcal{S}(t)$ as the current configuration.
-We need to define a smooth mapping that maps from the reference configuration to the current configuration:
+We define $ \hat{\mathcal{S}}$ as the initial stress free configuration of a given body. $\mathcal{S}$ as the reference and $\mathcal{S}(t)$ as the current configuration respectively.
+We need to define a smooth mapping from the reference configuration to the current configuration:
 $$  \chi^s(t) : \hat{\mathcal{S}} \rightarrow \mathcal{S}(t)     $$ 
 
-The solid mapping is set as $\chi^s(\textbf{X},t) = \textbf{X}  + d^s(\textbf{X} ,t)$
-hence giving:
+Following the notation of \cite{Holzapfel2000},where $\textbf{X}$ denote a material point in the reference domain and $\chi^s$ denotes the mapping from the reference configuration. 
+$d^s(\textbf{X},t)$ denotes the displacement field and w(\textbf{X},t) is the domain velocity. we set the mapping
+$$\chi^s(\textbf{X},t) = \textbf{X}  + d^s(\textbf{X} ,t)$$
+where $d^s(\textbf{X} ,t)$ represents displacement field
 $$  d^s(\textbf{X},t) = \chi^s(\textbf{X},t) -\textbf{X}   $$
+
 $$  w(\textbf{X},t) = \frac{\partial \chi^s(\textbf{X},t)}{\partial t}   $$
 
-where $\textbf{X}$ denote a material point in the reference domain and $\chi^s$ denotes the mapping from the reference configuration. 
-$d^s(\textbf{X},t)$ denotes the displacement field and w(\textbf{X},t) is the domain velocity.
 
+
+Next we will need a function that describes the rate of deformation in the solid.
 \subsection*{Deformation gradient}
-
 If $d(\textbf{X},t)$ is differentiable deformation field in a given body. We define the deformation gradient as:  
 $$F = \frac{\partial \chi}{\partial \textbf{X}} = I + \nabla d(\textbf{X},t)$$ 
 which denotes relative change of position under deformation in a Lagrangian frame of reference. The similar Eulerian viewpoint is defined as the inverse deformation gradient 
 $$ \hat{F} = I - \nabla  d(\textbf{X},t)$$
 $J$ is det(F).
-In continuum mechanics relative change of location of particles is called strain and this is the fundamental quality that causes stress in a material. [godboka]. We say that stress is the internal forces between neighboring particles. E denotes the Green-Lagrangian strain tensor $ E = F^TF - I$. This measures the squared length change under deformation.
+In continuum mechanics relative change of location of particles is called strain and this is the fundamental quality that causes stress in a material. [Godboka]. We say that stress is the internal forces between neighboring particles. E denotes the Green-Lagrangian strain tensor $ E = F^TF - I$. This measures the squared length change under deformation.
 
 \subsection*{Solid equation}
-From the principles of conservation of mass and momentum, we get the solid equation stated in the Lagrangian reference system (Following the notation and theory from Richter, "Godboka"):
+From the principles of conservation of mass and momentum, we get the solid equation stated in the Lagrangian reference system (Following the notation and theory from [Godboka]:
 \begin{equation}
 \rho_s J \frac{\partial d^2}{\partial t^2} = \nabla \cdot ( F \Sigma ) + J\rho_s f 
 \end{equation}
