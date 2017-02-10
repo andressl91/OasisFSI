@@ -11,8 +11,8 @@ def solver(N, dt, T):
     mesh = UnitSquareMesh(N, N)
     x = SpatialCoordinate(mesh)
 
-    V = VectorFunctionSpace(mesh, "CG", 3)
-    Q = FunctionSpace(mesh, "CG", 2)
+    V = VectorFunctionSpace(mesh, "CG", 2)
+    Q = FunctionSpace(mesh, "CG", 1)
     W = V*Q
 
     up = Function(W)
@@ -34,12 +34,13 @@ def solver(N, dt, T):
     u_e = Expression(("x[1]*cos(x[1])*sin(t)",
                     "-x[0]*sin(x[0])*sin(t)"
                      ), t = dt)
-    p_e = Expression("2")
-    t = variable(dt)
+    p_e = Expression("2*sin(x[0])*cos(x[1])*sin(t)", t = dt)
+    t = Constant(dt)
+
     #t_eval = dt
     u_x = x[1]*cos(x[1])*sin(t)
     u_y = -x[0]*sin(x[0])*sin(t)
-    p_c = 2
+    p_c = 2*sin(x[0])*cos(x[1])*sin(t)
     u_vec = as_vector([u_x, u_y])
 
     # Create right hand side f
@@ -57,18 +58,8 @@ def solver(N, dt, T):
     while t_step <= T:
         u_e.t = t_step
         p_e.t = t_step
-        t = variable(t_step)
-        #t_eval = t_step
-        """
-        u_x = x[1]*cos(x[1])*sin(t)
-        u_y = -x[0]*sin(x[0])*sin(t)
-        p_c = 2
-        u_vec = as_vector([u_x, u_y])
-        f = rho*diff(u_vec, t) + rho*grad(u_vec)*u_vec - div(sigma_f(p_c, u_vec, mu))
-        F = rho/k*inner(u - u0, v)*dx + rho*inner(grad(u)*u, v)*dx \
-           + inner(sigma_f(p, u, mu), eps(v))*dx \
-           - inner(f, v)*dx + inner(div(u), q)*dx
-        """
+        t.assign(t_step)
+
         J = derivative(F, up, phi)
         solve(F == 0, up, bcs, J = J)
         up0.assign(up)
@@ -76,25 +67,74 @@ def solver(N, dt, T):
 
     u_, p_ = up.split(True)
     u_e.t = t_step - dt
-    L2 = errornorm(u_e, u_, norm_type="l2", degree_rise = 3)
-    E.append(L2)
+    p_e.t = t_step - dt
+    L2_u = errornorm(u_e, u_, norm_type="l2", degree_rise = 2)
+    L2_p = errornorm(p_e, p_, norm_type="l2", degree_rise = 2)
+    E_u.append(L2_u)
+    E_p.append(L2_p)
     h.append(mesh.hmin())
 
 
-N = [30]
-dt = [0.005]
-
-T = 0.01
-E = []; h = []
+N = [4, 8, 12, 16]
+dt = [0.00005]
+T = 0.005
+E_u = [];  E_p = []; h = []
 for n in N:
     for t in dt:
         print "Solving for t = %g, N = %d" % (t, n)
         solver(n, t, T)
 
-for i in E:
-    print "Errornorm", i
+print "Checking Convergence in Space P2-P1"
 
-for i in range(len(E) - 1):
-    #r = np.log(E[i+1]/E[i]) / np.log(dt[i+1]/dt[i])
-    r = np.log(E[i+1]/E[i]) / np.log(h[i+1]/h[i])
-    print "Convergence", r
+for i in E_u:
+    print "Errornorm Velocity L2", i
+
+print
+
+for i in range(len(E_u) - 1):
+    r_u = np.log(E_u[i+1]/E_u[i]) / np.log(h[i+1]/h[i])
+    print "Convergence Velocity", r_u
+
+print
+
+for i in E_p:
+    print "Errornorm Pressure L2", i
+
+print
+
+for i in range(len(E_p) - 1):
+    r_p = np.log(E_p[i+1]/E_p[i]) / np.log(h[i+1]/h[i])
+
+    print "Convergence Pressure", r_u
+
+print "Checking Convergence in time"
+
+N = [64]
+dt = [0.05, 0.04, 0.02, 0.01]
+T = 0.4
+E_u = [];  E_p = []; h = []
+for n in N:
+    for t in dt:
+        print "Solving for t = %g, N = %d" % (t, n)
+        solver(n, t, T)
+
+for i in E_u:
+    print "Errornorm Velocity L2", i
+
+print
+
+for i in range(len(E_u) - 1):
+    r_u = np.log(E_u[i+1]/E_u[i]) / np.log(dt[i+1]/dt[i])
+    print "Convergence Velocity", r_u
+
+print
+
+for i in E_p:
+    print "Errornorm Pressure L2", i
+
+print
+
+for i in range(len(E_p) - 1):
+    r_p = np.log(E_p[i+1]/E_p[i]) / np.log(dt[i+1]/dt[i])
+
+    print "Convergence Pressure", r_u
