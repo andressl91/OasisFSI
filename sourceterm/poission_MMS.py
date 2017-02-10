@@ -4,10 +4,11 @@ from math import log
 
 error = []
 h = []
-N_list = [3, 5, 10, 15]
+N_list = [2, 4, 8, 16, 32, 64, 128]
 for N in N_list:
     # Mesh and spatial coordinates
-    mesh = UnitCubeMesh(N, N, N)
+    #mesh = UnitCubeMesh(N, N, N)
+    mesh = UnitSquareMesh(N,N)
     x = SpatialCoordinate(mesh)
 
     # Function space
@@ -19,15 +20,20 @@ for N in N_list:
     u_sol = Function(W)
 
     # Define exact solution
-    u_e = Expression((
+    """u_e = Expression((
                     "sin(pow(x[0], 4))",            # x-direction
                     "cos(pow(x[1], 4))",            # y-direction
                     "cos(pow(x[2], 4))*sin(x[2])"   # z-direction
+                     ), degree=4)"""
+    u_e = Expression((
+                    "sin(pow(x[0], 2))",            # x-direction
+                    "cos(pow(x[1], 2))",            # y-direction
                      ), degree=4)
-    u_x = sin(x[0]**4)
-    u_y = cos(x[1]**4)
-    u_z = cos(x[2]**4)*sin(x[2])
-    u_vec = as_vector([u_x, u_y, u_z])
+    u_x = sin(x[0]**2)
+    u_y = cos(x[1]**2)
+    #u_z = cos(x[2]**4)*sin(x[2])
+    #u_vec = as_vector([u_x, u_y, u_z])
+    u_vec = as_vector([u_x, u_y])
 
     # Create right hand side f
     f = div(grad(u_vec))
@@ -44,4 +50,5 @@ for N in N_list:
 
 print "Convergence rate:"
 for i in range(len(N_list) - 1):
+    print "N: %d , error: %.4g " %(N_list[i+1], error[i+1])
     print log(error[i] / error[i+1]) / log(h[i] / h[i+1])
