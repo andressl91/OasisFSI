@@ -42,8 +42,8 @@ Pr = 0.4
 H = 0.41
 L = 2.5
 
-U_in = 0.2
-mu_s = 0.5E6
+U_in = 2.0
+mu_s = 2.0E6
 rho_s = 1.0E3
 lamda_s= 2*mu_s*Pr/(1-2.*Pr)
 
@@ -56,9 +56,9 @@ F,udp, udp_res,d0 , d1 ,u0 , p0 = monolithic_form(VVQ,V1,V2,Q,dx_f,dx_s,mesh,v_d
 t = 0.0
 time_list = []
 
-u_file = XDMFFile(mpi_comm_world(), "FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.xdmf")
-d_file = XDMFFile(mpi_comm_world(), "FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/d.xdmf")
-p_file = XDMFFile(mpi_comm_world(), "FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/pressure.xdmf")
+u_file = XDMFFile(mpi_comm_world(), "FSI_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.xdmf")
+d_file = XDMFFile(mpi_comm_world(), "FSI_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/d.xdmf")
+p_file = XDMFFile(mpi_comm_world(), "FSI_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/pressure.xdmf")
 
 for tmp_t in [u_file, d_file, p_file]:
     tmp_t.parameters["flush_output"] = True
@@ -139,14 +139,14 @@ while t <= T:
 print "average time: ", np.mean(timeme)
 print "script time: ", time()-time0
 plt.plot(time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
-plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
+plt.savefig("FSI_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
 #plt.show()
 plt.plot(time_list,dis_y);plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
-plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_y.png")
+plt.savefig("FSI_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_y.png")
 #plt.show()
 plt.plot(time_list,Drag);plt.ylabel("Drag");plt.xlabel("Time");plt.grid();
-plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/drag.png")
+plt.savefig("FSI_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/drag.png")
 #plt.show()
 plt.plot(time_list,Lift);plt.ylabel("Lift");plt.xlabel("Time");plt.grid();
-plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/lift.png")
+plt.savefig("FSI_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/lift.png")
 #plt.show()
