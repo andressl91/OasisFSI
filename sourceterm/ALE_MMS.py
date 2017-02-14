@@ -8,7 +8,7 @@ def parse():
     parser = argparse.ArgumentParser(description="MMS of ALE\n",\
      formatter_class=RawTextHelpFormatter, \
       epilog="############################################################################\n"
-      "Example --> python ALE_MMS.py -var_form 0\n"
+      "Example --> python ALE_MMS.py -source_term 0 -var_form 1\n"
       "############################################################################")
     group = parser.add_argument_group('Parameters')
     group.add_argument("-var_form",  type=int, help="Which form to use  --> Default=0, no mapping", default=0)
@@ -136,13 +136,13 @@ def solver(N, dt, T):
         solve(F_fluid == 0, up, bcs,J=J,solver_parameters={"newton_solver": \
         {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":20,"relaxation_parameter":1.0}})
         up0.assign(up)
+
         if var_form == 0 :
             w.vector()[:] *= float(k)
             ALE.move(mesh,w)
             mesh.bounding_box_tree().build(mesh)
+
         u_, p_ = up.split(True)
-        #plot(u_)
-        #d0.assign(d)
 
         L2_u.append(errornorm(u_e, u_, norm_type="l2", degree_rise = 2))
         L2_p.append(errornorm(p_e, p_, norm_type="l2", degree_rise = 2))
@@ -193,9 +193,9 @@ for i in range(len(E_p) - 1):
 """
 print "Checking Convergence in time"
 
-N = [32]
-dt = [0.05, 0.04, 0.02, 0.01]
-T = 0.4
+N = [16]
+dt = [0.005, 0.004, 0.002, 0.001]
+T = 0.04
 E_u = [];  E_p = []; h = []
 for n in N:
     for t in dt:
@@ -221,5 +221,4 @@ print
 for i in range(len(E_p) - 1):
     r_p = np.log(E_p[i+1]/E_p[i]) / np.log(dt[i+1]/dt[i])
 
-    print "Convergence Pressure", r_u
-"""
+    print "Convergence Pressure", r_u"""
