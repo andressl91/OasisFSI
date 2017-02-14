@@ -1,7 +1,7 @@
 from dolfin import *
 from mapping import *
 
-def monolithic_form(VVQ,V1,V2,Q,dx_f,dx_s,mesh,v_deg,beta,n,lamda_s,mu_s,rho_f ,mu_f ,rho_s ):
+def monolithic_form(VVQ,V1,V2,Q,dx_f,dx_s,mesh,v_deg,beta,n,lamda_s,mu_s,rho_f ,mu_f ,rho_s,dt):
 
     phi, psi, gamma = TestFunctions(VVQ)
 
@@ -15,7 +15,6 @@ def monolithic_form(VVQ,V1,V2,Q,dx_f,dx_s,mesh,v_deg,beta,n,lamda_s,mu_s,rho_f ,
     u0 = Function(V1)
     p0 = Function(Q)
 
-    dt = 0.5
     k = Constant(dt)
 
     I = Identity(2)
@@ -24,12 +23,18 @@ def monolithic_form(VVQ,V1,V2,Q,dx_f,dx_s,mesh,v_deg,beta,n,lamda_s,mu_s,rho_f ,
     h =  mesh.hmin()
 
     # Fluid variational form
-
+    """
     F_fluid = (rho_f/k)*inner(J_(d)*(u - u0), phi)*dx_f
     F_fluid += rho_f*inner(J_(d)*grad(u)*inv(F_(d))*(u - ((d-d0)/k)), phi)*dx_f
     #F_fluid += rho_f*inner(J_(d)*inv(F_(d))*dot((u - ((d-d0)/k)),grad(u)), phi)*dx_f
     F_fluid -= inner(div(J_(d)*inv(F_(d))*u), gamma)*dx_f
     F_fluid += inner(J_(d)*sigma_f_new(u,p,d,mu_f)*inv(F_(d)).T, grad(phi))*dx_f
+    """
+    F_fluid = (rho_f/k)*inner(J_(d)*(u - u0), phi)*dx
+    F_fluid += rho_f*inner(J_(d)*grad(u)*inv(F_(d))*(u - ((d-d0)/k)), phi)*dx
+    F_fluid -= inner(div(J_(d)*inv(F_(d))*u), gamma)*dx
+    F_fluid += inner(J_(d)*sigma_f_new(u,p,d,mu_f)*inv(F_(d)).T, grad(phi))*dx
+    
 
 
     if v_deg == 1:
