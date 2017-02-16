@@ -51,7 +51,7 @@ lamda_s= 2*mu_s*Pr/(1-2.*Pr)
 bcs,dx_f,dx_s,ds,dS,n,inlet,coord,boundaries = Hron_Turek_bcs(VVQ,mesh,U_in,H)
 
 # Getting var-form from general monolithic solver.
-F,udp, udp_res,d0 , d1 ,u0 , p0 = monolithic_form(VVQ,V1,V2,Q,dx_f,dx_s,mesh,v_deg,beta,n,lamda_s,mu_s,rho_f ,mu_f ,rho_s)
+F,udp, udp_res,d0 , d1 ,u0 , p0 = monolithic_form(VVQ,V1,V2,Q,dx_f,dx_s,mesh,v_deg,beta,n,lamda_s,mu_s,rho_f ,mu_f ,rho_s,dt)
 
 t = 0.0
 time_list = []
@@ -77,7 +77,7 @@ timeme = []
 
 """
 ref: 14.295 0.7638
-     0.0227 0.8209 
+     0.0227 0.8209
 P2-P2-P1:
 Drag/Lift : 14.1735 0.762091
 dis_x/dis_y : 2.27409e-05 0.000799326
@@ -130,7 +130,6 @@ while t <= T:
             print 'Drag/Lift : %g %g' %(Dr,Li)
 
             print "dis_x/dis_y : %g %g "%(dsx,dsy)
-            print "dis_x/dis_y : {:.3e}".format(float(input))
     u0.assign(u)
     d1.assign(d0)
     d0.assign(d)
