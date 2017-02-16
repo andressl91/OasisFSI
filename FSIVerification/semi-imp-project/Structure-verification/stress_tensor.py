@@ -1,5 +1,7 @@
+from fenics import Identity, grad, tr
+
 # First Piola Kirchoff stress tensor
-def Piola1(d_, w_, E_func=None):
+def Piola1(d_, w_, lambda_, mu_s, E_func=None):
     I = Identity(2)
     if callable(E_func):
         E = E_func(d_, w_)
@@ -7,10 +9,10 @@ def Piola1(d_, w_, E_func=None):
         F = I + grad(d_["n"])
         E = 0.5*((F.T*F) - I)
 
-    return F*(lamda*tr(E)*I + 2*mu_s*E)
+    return F*(lambda_*tr(E)*I + 2*mu_s*E)
 
 #Second Piola Kirchhoff Stress tensor
-def Piola2(d_, w_, k, E_func=None):
+def Piola2(d_, w_, k, lambda_, mu_s, E_func=None):
     I = Identity(2)
     if callable(E_func):
         E = E_func(d_, w_, k)
@@ -18,7 +20,7 @@ def Piola2(d_, w_, k, E_func=None):
         F = I + grad(d_["n"])
         E = 0.5*((F.T*F) - I)
 
-    return lamda*tr(E)*I + 2*mu_s*E
+    return lambda_*tr(E)*I + 2*mu_s*E
 
 
 def reference(d_, w_, k):

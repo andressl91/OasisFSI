@@ -1,3 +1,0 @@
-- Move problem setup (under __name__ == "__main__") to a separate file
-- Move solver to a seperate file
-- Crate to programs Solid_mixed.py and Solid_singel.py that is similar to NSfracStep.py

@@ -56,6 +56,3 @@ def viz(results, runs):
 
     # FIXME: store in a consistent manner
     plt.savefig("test.png")
-    plt.show()
-
-

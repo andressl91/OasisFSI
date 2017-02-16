@@ -1,8 +1,11 @@
-def problem_mix(T, dt, E, coupling, VV, **Sold_namespace):
-    # Function space
-    V = VectorFunctionSpace(mesh, "CG", 2)
-    VV=V*V
+from fenics import Constant, DirichletBC, Function, TrialFunction, split, \
+                    inner, dx, grad, TestFunctions
+import sys
 
+from stress_tensor import *
+from solvers import *
+
+def problem_mix(T, dt, E, coupling, VV, boundaries, rho_s, lambda_, mu_s, f, **Solid_namespace):
     # Temporal parameters
     t = 0
     k = Constant(dt)
@@ -38,10 +41,10 @@ def problem_mix(T, dt, E, coupling, VV, **Sold_namespace):
         G = rho_s/k * inner(w_["n"] - w_["n-1"], psi)*dx
 
     # Stress tensor
-    G += inner(Piola2(d_, w_, k, E_func=E), grad(psi))*dx
+    G += inner(Piola2(d_, w_, k, lambda_, mu_s, E_func=E), grad(psi))*dx
 
-    # Gravity
-    G -= inner(g, psi)*dx
+    # External forces, like gravity
+    G -= inner(f, psi)*dx
 
     # d-w coupling
     if coupling == "CN":
@@ -58,8 +61,8 @@ def problem_mix(T, dt, E, coupling, VV, **Sold_namespace):
 
     # Solve
     if E in [None, reference]:
-        displacement_x, displacement_y, time = solver_nonlinear(G, d_, w_, wd_, bcs, T, dt)
+        solver_nonlinear(G, d_, w_, wd_, bcs, T, dt, **Solid_namespace)
     else:
-        displacement_x, displacement_y, time = solver_linear(G, d_, w_, wd_, bcs, T, dt)
+        solver_linear(G, d_, w_, wd_, bcs, T, dt, **Solid_namespace)
 
-    return displacement_x, displacement_y, time
+# TODO: Implement a version with only d
