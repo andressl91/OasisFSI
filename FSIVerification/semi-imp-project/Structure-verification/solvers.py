@@ -20,7 +20,7 @@ def solver_linear(G, d_, w_, wd_, bcs, T, dt, action=None, **namespace):
     d_solver.prec = d_prec
 
     # Solver loop
-    while t <= T:
+    while t < (T - tstep*DOLFIN_EPS):
         t += dt
 
         # Assemble

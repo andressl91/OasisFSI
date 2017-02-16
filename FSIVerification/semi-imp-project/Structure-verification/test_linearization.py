@@ -58,7 +58,7 @@ def action(wd_, t):
 # TODO: Add options to chose solver and change solver parameters
 common = {"space": "mixedspace",
           "E": None,         # Full implicte, not energy conservative
-          "T": 0.01,          # End time
+          "T": 1.2,          # End time
           "dt": 0.001,       # Time step
           "coupling": "CN", # Coupling between d and w
           "init": False      # Solve "exact" three first timesteps
@@ -82,8 +82,8 @@ cn_before_ab_higher_order = solver_parameters(common, {"E": cn_before_ab_higher_
 
 # Solution set-ups to simulate
 runs = [ref,
-        imp,
-        exp] #,
+        imp] #,
+        #exp] #,
         #naive_lin,
         #naive_ab,
         #ab_before_cn,
@@ -129,7 +129,7 @@ for r in runs:
 
     # Store results
     if MPI.rank(mpi_comm_world()) == 0:
-        results.append((displacement[:,0], displacement[:,1], np.array(time)))
+        results.append((displacement[0,:], displacement[1,:], np.array(time)))
         if not path.exists(r["case_path"]):
             makedirs(r["case_path"])
         results[-1][0].dump(path.join(r["case_path"], "dis_x.np"))
