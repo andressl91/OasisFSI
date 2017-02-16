@@ -3,6 +3,7 @@ from fenics import AutoSubDomain, DOLFIN_EPS, FunctionSpace, Mesh, \
                     VectorFunctionSpace, MPI, mpi_comm_world
 import sys
 import numpy as np
+import time as timer
 from fenicstools import Probes
 
 # Local import 
@@ -57,7 +58,7 @@ def action(wd_, t):
 # TODO: Add options to chose solver and change solver parameters
 common = {"space": "mixedspace",
           "E": None,         # Full implicte, not energy conservative
-          "T": 0.1,          # End time
+          "T": 0.01,          # End time
           "dt": 0.001,       # Time step
           "coupling": "CN", # Coupling between d and w
           "init": False      # Solve "exact" three first timesteps
@@ -80,9 +81,9 @@ cn_before_ab = solver_parameters(common, {"E": cn_before_ab})
 cn_before_ab_higher_order = solver_parameters(common, {"E": cn_before_ab_higher_order})
 
 # Solution set-ups to simulate
-runs = [imp] #, ref] #,
-        #imp] #,
-        #exp] #,
+runs = [ref,
+        imp,
+        exp] #,
         #naive_lin,
         #naive_ab,
         #ab_before_cn,
@@ -97,9 +98,9 @@ for r in runs:
     # simulation set-up, if so load previous simulation results
     if path.exists(r["case_path"]):
         tmp_case_path = r["case_path"]
-        f = open(path.join(tmp_case_path, "param.dat", 'w'))
-        tmp_param = cPicle.load(f)
-
+        file_ = open(path.join(tmp_case_path, "param.dat"), "r")
+        tmp_param = cPickle.load(file_)
+        file_.close()
         # Only simulations that have been simulated for T=10 is considered
         # as "finished"
         if tmp_param["T"] == 10:
@@ -111,6 +112,7 @@ for r in runs:
 
     # Start simulation
     vars().update(r)
+    t0 = timer.time()
     if r["space"] == "mixedspace":
         problem_mix(**vars())
     elif r["space"] == "singlespace":
@@ -119,19 +121,22 @@ for r in runs:
         print ("Problem type %s is not implemented, only mixedspace "
                 + "and singlespace are valid options") % r["space"]
         sys.exit(0)
+    r["number_of_cores"] = MPI.max(mpi_comm_world(), MPI.rank(mpi_comm_world())) + 1
+    r["solution_time"] = MPI.sum(mpi_comm_world(), timer.time() - t0) / (r["number_of_cores"])
 
     displacement = probe.array()
-    results.append((displacement[:,0], displacement[:,1], np.array(time)))
     probe.clear()
 
     # Store results
     if MPI.rank(mpi_comm_world()) == 0:
-        makedirs(r["case_path"])
+        results.append((displacement[:,0], displacement[:,1], np.array(time)))
+        if not path.exists(r["case_path"]):
+            makedirs(r["case_path"])
         results[-1][0].dump(path.join(r["case_path"], "dis_x.np"))
         results[-1][1].dump(path.join(r["case_path"], "dis_y.np"))
         results[-1][2].dump(path.join(r["case_path"], "time.np"))
-        f = open(path.join(r["case_path"], "param.dat"), "w")
-        cPickle.dump(r, f)
-        f.close()
+        file_ = open(path.join(r["case_path"], "param.dat"), "w")
+        cPickle.dump(r, file_)
+        file_.close()
 
 #viz(results, runs)

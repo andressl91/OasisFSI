@@ -15,10 +15,9 @@ def solver_linear(G, d_, w_, wd_, bcs, T, dt, action=None, **namespace):
     b = assemble(L)
     t = 0
 
-    u_prec = PETScPreconditioner("hypre_euclid")
-    u_sol = PETScKrylovSolver("gmres", u_prec)
-    u_sol.prec = u_prec
-    u_sol.parameters.update(krylov_solvers)
+    d_prec = PETScPreconditioner("default")
+    d_solver = PETScKrylovSolver("gmres", d_prec)
+    d_solver.prec = d_prec
 
     # Solver loop
     while t <= T:
@@ -32,7 +31,7 @@ def solver_linear(G, d_, w_, wd_, bcs, T, dt, action=None, **namespace):
         for bc in bcs: bc.apply(A, b)
 
         # Solve
-        soler_solid.solve(A, wd_["n"].vector(), b)
+        d_solver.solve(A, wd_["n"].vector(), b)
 
         # Update solution
         times = ["n-3", "n-2", "n-1", "n"]
