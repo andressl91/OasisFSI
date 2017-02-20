@@ -4,6 +4,8 @@ import sys
 import cPickle
 import matplotlib.pyplot as plt
 
+from fenics import MPI, mpi_comm_world
+
 rel_path = path.dirname(path.abspath(__file__))
 
 def solver_parameters(common, d):
@@ -19,6 +21,7 @@ def solver_parameters(common, d):
 
 
 def viz(results, runs):
+    if MPI.rank(mpi_comm_world()) != 0: pass
     # TODO: Get minimum time of all to plot over consistent
     plt.figure()
     for i, r in enumerate(results):
@@ -56,6 +59,3 @@ def viz(results, runs):
 
     # FIXME: store in a consistent manner
     plt.savefig("test.png")
-    plt.show()
-
-

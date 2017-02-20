@@ -10,7 +10,7 @@ implementation = sys.argv[1]
 print implementation
 
 mesh = Mesh("von_karman_street_FSI_structure.xml")
-
+mesh = refine(mesh)
 for coord in mesh.coordinates():
     if coord[0]==0.6 and (0.199<=coord[1]<=0.2001): # to get the point [0.2,0.6] end of bar
         print coord
@@ -28,16 +28,21 @@ boundaries.set_all(0)
 BarLeftSide.mark(boundaries,1)
 #plot(boundaries,interactive=True)
 
-#PARAMETERS:
-rho_s = 1.0E3
-mu_s = 0.5E6
-nu_s = 0.4
-E_1 = 1.4E6
-lamda = nu_s*2*mu_s/(1-2*nu_s)
+# SOLID PARAMETERS
+CSM = int(sys.argv[3])
+Pr = 0.4
+mu_s = [0.5, 2.0, 0.5][CSM-1]*1e6
+rho_s = [1.0, 1.0, 1.0][CSM-1]*1e3
+lamda_s = 2*mu_s*Pr/(1-2.*Pr)
+
 g = Constant((0,-2*rho_s))
 dt = float(sys.argv[2])
 k = Constant(dt)
 beta = Constant(0.25)
+print "mu: %.f , rho: %.f" %(mu_s, rho_s)
+
+
+
 
 #Hookes
 def sigma_structure(d):
@@ -70,7 +75,11 @@ def s_s_n_l(d):
     F = I + grad(d)
     E = 0.5*((F.T*F)-I)
     #J = det(F)
-    return F*(lamda*tr(E)*I + 2*mu_s*E)
+    return F*(lamda_s*tr(E)*I + 2*mu_s*E)
+
+
+
+
 
 
 #Variational form with single space, just solving displacement
@@ -81,9 +90,10 @@ if implementation =="1":
     d = Function(V)
     d0 = Function(V)
     d1 = Function(V)
-
-    G =rho_s*((1./k**2)*inner(d - 2*d0 + d1,psi))*dx \
-    + inner(0.5*(s_s_n_l(d)+s_s_n_l(d1)),grad(psi))*dx - inner(g,psi)*dx
+    diff = (1./k)*(d-d0)
+    G =rho_s*((1./k**2)*inner(d - 2*d0 + d1,psi))*dx  \
+    +inner(0.5*(s_s_n_l(d)+s_s_n_l(d1)),grad(psi))*dx - inner(g,psi)*dx
+    #+rho_s*inner(dot(grad(diff),diff),psi)*dx \
 
 #Variational form with double spaces
 elif implementation =="2":
@@ -95,8 +105,12 @@ elif implementation =="2":
     w,d = split(wd)
     w0d0 = Function(VV)
     w0,d0 = split(w0d0)
-
-    G =rho_s*((1./k)*inner(w-w0,psi))*dx + rho_s*inner(dot(grad(0.5*(w+w0)),0.5*(w+w0)),psi)*dx + inner(0.5*(s_s_n_l(d)+s_s_n_l(d0)),grad(psi))*dx \
+    """G =rho_s*((1./k)*inner(w-w0,psi))*dx  + rho_s*inner(dot(grad(w),w),psi)*dx \
+    + inner(s_s_n_l(d),grad(psi))*dx \
+    - inner(g,psi)*dx - dot(d-d0,phi)*dx + k*dot(w,phi)*dx"""
+    G =rho_s*((1./k)*inner(w-w0,psi))*dx\
+    +rho_s*inner(dot(grad(0.5*(w+w0)),0.5*(w+w0)),psi)*dx \
+    + inner(0.5*(s_s_n_l(d)+s_s_n_l(d0)),grad(psi))*dx \
     - inner(g,psi)*dx - dot(d-d0,phi)*dx + k*dot(0.5*(w+w0),phi)*dx
 
 #Solving for displacement velocity and updating for displacement.
@@ -161,20 +175,22 @@ elif implementation == "5":
 
 dis_x = []
 dis_y = []
-
-T = 10
+time_list = []
+T = 4
 t = 0
-time = np.linspace(0,T,(T/dt)+1)
-print "time len",len(time)
+#time = np.linspace(0,T,(T/dt)+1)
 dis_file = File("results/x_direction.pvd")
+
 
 
 from time import sleep
 while t < T:
-    print "Time: ",t
+    print "Time: ", t
+    time_list.append(t)
+
     if implementation == "1":
-        #solve(G == 0, d, bcs, solver_parameters={"newton_solver": \
-        #{"relative_tolerance": 1E-9,"absolute_tolerance":1E-9,"maximum_iterations":100,"relaxation_parameter":1.0}})
+        solve(G == 0, d, bcs, solver_parameters={"newton_solver": \
+        {"relative_tolerance": 1E-9,"absolute_tolerance":1E-9,"maximum_iterations":100,"relaxation_parameter":1.0}})
         solver="Newton2"
         if solver == "Newton2":
             dw = TrialFunction(V)
@@ -225,23 +241,18 @@ while t < T:
         dis_x.append(d(coord)[0])
         dis_y.append(d(coord)[1])
 
+
     elif implementation == "2":
         solve(G == 0, wd, bcs, solver_parameters={"newton_solver": \
         {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
         w0d0.assign(wd)
         w0,d0 = w0d0.split(True)
         w,d = wd.split(True)
-        #plot(d,mode="displacement")
-        #w0.assign(w)
-        #w.vector()[:] *= float(k)
-        #d0.vector()[:] += w.vector()[:]
-        #plot(d,mode="displacement")
 
-        #ALE.move(mesh,w)
-        #mesh.bounding_box_tree().build(mesh)
-        #plot(mesh)
         dis_x.append(d(coord)[0])
         dis_y.append(d(coord)[1])
+        print "x: ", d(coord)[0]
+        print "y: ", d(coord)[1]
 
 
     elif implementation == "3":
@@ -292,7 +303,7 @@ while t < T:
         dis_y.append(d0(coord)[1])
     t += dt
 
-print len(dis_x), len(time)
+print len(dis_x), len(time_list)
 if implementation == "1":
     title = plt.title("Single space solving d")
 elif implementation == "2":
@@ -304,12 +315,12 @@ elif implementation == "4":
 elif implementation == "5":
     title = plt.title("Eulerian MixedFunctionSpace")
 plt.figure(1)
-plt.title("Eulerian Mixed, schewed Crank-Nic")
-plt.plot(time,dis_x,);title; plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
-plt.savefig("run_x.jpg")
-#plt.show()
+#plt.title("Eulerian Mixed, schewed Crank-Nic")
+plt.plot(time_list,dis_x,);title; plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
+#plt.savefig("run_x.jpg")
+plt.show()
 plt.figure(2)
-plt.title("Eulerian Mixed, schewed Crank-Nic")
-plt.plot(time,dis_y);title;plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
-plt.savefig("run_y.jpg")
-#plt.show()
+#plt.title("Eulerian Mixed, schewed Crank-Nic")
+plt.plot(time_list,dis_y);title;plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
+#plt.savefig("run_y.jpg")
+plt.show()

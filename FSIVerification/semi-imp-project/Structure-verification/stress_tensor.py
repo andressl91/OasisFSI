@@ -1,5 +1,7 @@
+from fenics import Identity, grad, tr
+
 # First Piola Kirchoff stress tensor
-def Piola1(d_, w_, E_func=None):
+def Piola1(d_, w_, lambda_, mu_s, E_func=None):
     I = Identity(2)
     if callable(E_func):
         E = E_func(d_, w_)
@@ -7,10 +9,10 @@ def Piola1(d_, w_, E_func=None):
         F = I + grad(d_["n"])
         E = 0.5*((F.T*F) - I)
 
-    return F*(lamda*tr(E)*I + 2*mu_s*E)
+    return F*(lambda_*tr(E)*I + 2*mu_s*E)
 
 #Second Piola Kirchhoff Stress tensor
-def Piola2(d_, w_, k, E_func=None):
+def Piola2(d_, w_, k, lambda_, mu_s, E_func=None):
     I = Identity(2)
     if callable(E_func):
         E = E_func(d_, w_, k)
@@ -18,9 +20,12 @@ def Piola2(d_, w_, k, E_func=None):
         F = I + grad(d_["n"])
         E = 0.5*((F.T*F) - I)
 
-    return lamda*tr(E)*I + 2*mu_s*E
+    return lambda_*tr(E)*I + 2*mu_s*E
 
-
+# TODO: Check if different if:
+#       F1 = I + grad(d_["n"])
+#       F2 = I + grad(d_["n-1"])
+#       0.5*(0.5*(F1.T*F1 - I) + 0.5*(F2.T*F2 - I))
 def reference(d_, w_, k):
     E = 0.5*(grad(d_["n"]).T + grad(d_["n-1"]).T \
              + grad(d_["n"]) + grad(d_["n-1"])) \
@@ -29,14 +34,17 @@ def reference(d_, w_, k):
 
     return 0.5*E
 
-
+# TODO: Check if different if:
+#       ?
 def naive_linearization(d_, w_, k):
     E = grad(d_["n"]) + grad(d_["n"]).T \
         + grad(d_["n-1"]).T*grad(d_["n"])
 
     return 0.5*E
 
-
+# TODO: Check if different if:
+#       F = I + grad(d_["n-1"])
+#       E = F.T*F - I
 def explicit(d_, w_, k):
     E = grad(d_["n-1"]) + grad(d_["n-1"]).T \
         + grad(d_["n-1"]).T*grad(d_["n-1"])

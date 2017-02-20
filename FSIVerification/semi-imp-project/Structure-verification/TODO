@@ -1,3 +1,9 @@
-- Move problem setup (under __name__ == "__main__") to a separate file
-- Move solver to a seperate file
-- Crate to programs Solid_mixed.py and Solid_singel.py that is similar to NSfracStep.py
+- Create a seperate problem file, and run with command line arguments from the solver file..?
+- Move BCs to problem file from weak form
+- Implement single space weak form
+- Optimize the non-linear solver
+- Generalize solver type and parameters in order to find most efficient solution strategy
+
+- Convex problem? Preconditioner, 8 iterations for the linear solve in the nonlinear solver, might not holde
+  for a larger problem?
+- Ask Joakim for the initial work of creating a block preconditioner

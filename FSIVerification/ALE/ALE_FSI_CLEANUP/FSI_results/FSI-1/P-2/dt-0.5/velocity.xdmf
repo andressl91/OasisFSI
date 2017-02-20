@@ -3,7 +3,7 @@
   <Domain>
     <Grid Name="TimeSeries" GridType="Collection" CollectionType="Temporal">
       <Time TimeType="List">
-        <DataItem Format="XML" Dimensions="40"> 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39</DataItem>
+        <DataItem Format="XML" Dimensions="32"> 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31</DataItem>
       </Time>
       <Grid Name="grid_1" GridType="Uniform">
         <Topology NumberOfElements="2698" TopologyType="Triangle">
@@ -355,94 +355,6 @@
         </Geometry>
         <Attribute Name="f_40-0" AttributeType="Vector" Center="Node">
           <DataItem Format="HDF" Dimensions="1419 3">velocity.h5_000031:/VisualisationVector/31</DataItem>
-        </Attribute>
-      </Grid>
-      <Grid Name="grid_33" GridType="Uniform">
-        <Topology NumberOfElements="2698" TopologyType="Triangle">
-          <DataItem Format="HDF" Dimensions="2698 3">velocity.h5_000000:/Mesh/0/topology</DataItem>
-        </Topology>
-        <Geometry GeometryType="XY">
-          <DataItem Format="HDF" Dimensions="1419 2">velocity.h5_000000:/Mesh/0/coordinates</DataItem>
-        </Geometry>
-        <Attribute Name="f_40-0" AttributeType="Vector" Center="Node">
-          <DataItem Format="HDF" Dimensions="1419 3">velocity.h5_000032:/VisualisationVector/32</DataItem>
-        </Attribute>
-      </Grid>
-      <Grid Name="grid_34" GridType="Uniform">
-        <Topology NumberOfElements="2698" TopologyType="Triangle">
-          <DataItem Format="HDF" Dimensions="2698 3">velocity.h5_000000:/Mesh/0/topology</DataItem>
-        </Topology>
-        <Geometry GeometryType="XY">
-          <DataItem Format="HDF" Dimensions="1419 2">velocity.h5_000000:/Mesh/0/coordinates</DataItem>
-        </Geometry>
-        <Attribute Name="f_40-0" AttributeType="Vector" Center="Node">
-          <DataItem Format="HDF" Dimensions="1419 3">velocity.h5_000033:/VisualisationVector/33</DataItem>
-        </Attribute>
-      </Grid>
-      <Grid Name="grid_35" GridType="Uniform">
-        <Topology NumberOfElements="2698" TopologyType="Triangle">
-          <DataItem Format="HDF" Dimensions="2698 3">velocity.h5_000000:/Mesh/0/topology</DataItem>
-        </Topology>
-        <Geometry GeometryType="XY">
-          <DataItem Format="HDF" Dimensions="1419 2">velocity.h5_000000:/Mesh/0/coordinates</DataItem>
-        </Geometry>
-        <Attribute Name="f_40-0" AttributeType="Vector" Center="Node">
-          <DataItem Format="HDF" Dimensions="1419 3">velocity.h5_000034:/VisualisationVector/34</DataItem>
-        </Attribute>
-      </Grid>
-      <Grid Name="grid_36" GridType="Uniform">
-        <Topology NumberOfElements="2698" TopologyType="Triangle">
-          <DataItem Format="HDF" Dimensions="2698 3">velocity.h5_000000:/Mesh/0/topology</DataItem>
-        </Topology>
-        <Geometry GeometryType="XY">
-          <DataItem Format="HDF" Dimensions="1419 2">velocity.h5_000000:/Mesh/0/coordinates</DataItem>
-        </Geometry>
-        <Attribute Name="f_40-0" AttributeType="Vector" Center="Node">
-          <DataItem Format="HDF" Dimensions="1419 3">velocity.h5_000035:/VisualisationVector/35</DataItem>
-        </Attribute>
-      </Grid>
-      <Grid Name="grid_37" GridType="Uniform">
-        <Topology NumberOfElements="2698" TopologyType="Triangle">
-          <DataItem Format="HDF" Dimensions="2698 3">velocity.h5_000000:/Mesh/0/topology</DataItem>
-        </Topology>
-        <Geometry GeometryType="XY">
-          <DataItem Format="HDF" Dimensions="1419 2">velocity.h5_000000:/Mesh/0/coordinates</DataItem>
-        </Geometry>
-        <Attribute Name="f_40-0" AttributeType="Vector" Center="Node">
-          <DataItem Format="HDF" Dimensions="1419 3">velocity.h5_000036:/VisualisationVector/36</DataItem>
-        </Attribute>
-      </Grid>
-      <Grid Name="grid_38" GridType="Uniform">
-        <Topology NumberOfElements="2698" TopologyType="Triangle">
-          <DataItem Format="HDF" Dimensions="2698 3">velocity.h5_000000:/Mesh/0/topology</DataItem>
-        </Topology>
-        <Geometry GeometryType="XY">
-          <DataItem Format="HDF" Dimensions="1419 2">velocity.h5_000000:/Mesh/0/coordinates</DataItem>
-        </Geometry>
-        <Attribute Name="f_40-0" AttributeType="Vector" Center="Node">
-          <DataItem Format="HDF" Dimensions="1419 3">velocity.h5_000037:/VisualisationVector/37</DataItem>
-        </Attribute>
-      </Grid>
-      <Grid Name="grid_39" GridType="Uniform">
-        <Topology NumberOfElements="2698" TopologyType="Triangle">
-          <DataItem Format="HDF" Dimensions="2698 3">velocity.h5_000000:/Mesh/0/topology</DataItem>
-        </Topology>
-        <Geometry GeometryType="XY">
-          <DataItem Format="HDF" Dimensions="1419 2">velocity.h5_000000:/Mesh/0/coordinates</DataItem>
-        </Geometry>
-        <Attribute Name="f_40-0" AttributeType="Vector" Center="Node">
-          <DataItem Format="HDF" Dimensions="1419 3">velocity.h5_000038:/VisualisationVector/38</DataItem>
-        </Attribute>
-      </Grid>
-      <Grid Name="grid_40" GridType="Uniform">
-        <Topology NumberOfElements="2698" TopologyType="Triangle">
-          <DataItem Format="HDF" Dimensions="2698 3">velocity.h5_000000:/Mesh/0/topology</DataItem>
-        </Topology>
-        <Geometry GeometryType="XY">
-          <DataItem Format="HDF" Dimensions="1419 2">velocity.h5_000000:/Mesh/0/coordinates</DataItem>
-        </Geometry>
-        <Attribute Name="f_40-0" AttributeType="Vector" Center="Node">
-          <DataItem Format="HDF" Dimensions="1419 3">velocity.h5_000039:/VisualisationVector/39</DataItem>
         </Attribute>
       </Grid>
     </Grid>

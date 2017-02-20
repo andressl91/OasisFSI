@@ -158,7 +158,7 @@ def solver(N, dt, T):
 
 
 
-N = [4, 6, 8,10]
+N = [12,14,16,18,22]
 dt = [0.000001]
 T = 0.0001
 E_u = [];  E_p = []; h = []
@@ -188,7 +188,7 @@ print
 for i in range(len(E_p) - 1):
     r_p = np.log(E_p[i+1]/E_p[i]) / np.log(h[i+1]/h[i])
 
-    print "Convergence Pressure", r_u
+    print "Convergence Pressure", r_p
 
 """
 print "Checking Convergence in time"
