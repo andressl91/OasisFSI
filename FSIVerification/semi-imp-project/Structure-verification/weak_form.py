@@ -5,18 +5,14 @@ import sys
 from stress_tensor import *
 from solvers import *
 
-def problem_mix(T, dt, E, coupling, VV, boundaries, rho_s, lambda_, mu_s, f, **Solid_namespace):
+def problem_mix(T, dt, E, coupling, VV, boundaries, rho_s, lambda_, mu_s, f,
+                bcs, **Solid_namespace):
     # Temporal parameters
     t = 0
     k = Constant(dt)
 
     # Split problem to two 1.order differential equations
     psi, phi = TestFunctions(VV)
-
-    # BCs
-    bc1 = DirichletBC(VV.sub(0), ((0, 0)), boundaries, 1)
-    bc2 = DirichletBC(VV.sub(1), ((0, 0)), boundaries, 1)
-    bcs = [bc1, bc2]
 
     # Functions, wd is for holding the solution
     d_ = {}; w_ = {}; wd_ = {}
@@ -44,7 +40,7 @@ def problem_mix(T, dt, E, coupling, VV, boundaries, rho_s, lambda_, mu_s, f, **S
     G += inner(Piola2(d_, w_, k, lambda_, mu_s, E_func=E), grad(psi))*dx
 
     # External forces, like gravity
-    G -= inner(f, psi)*dx
+    G -= rho_s*inner(f, psi)*dx
 
     # d-w coupling
     if coupling == "CN":

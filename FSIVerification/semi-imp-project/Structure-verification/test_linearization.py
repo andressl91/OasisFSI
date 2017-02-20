@@ -12,10 +12,10 @@ from common import *
 from weak_form import *
 
 # Set output from FEniCS
-set_log_active(False)
+#set_log_active(False)
 
 # Set ut problem
-mesh = Mesh(path.join(rel_path, "mesh", "von_karman_street_FSI_structure.xml"))
+mesh = Mesh(path.join(rel_path, "mesh", "von_karman_street_FSI_structure_refine2.xml"))
 
 # Function space
 V = VectorFunctionSpace(mesh, "CG", 2)
@@ -39,13 +39,18 @@ boundaries = FacetFunction("size_t",mesh)
 boundaries.set_all(0)
 BarLeftSide.mark(boundaries,1)
 
+# BCs
+bc1 = DirichletBC(VV.sub(0), ((0, 0)), boundaries, 1)
+bc2 = DirichletBC(VV.sub(1), ((0, 0)), boundaries, 1)
+bcs = [bc1, bc2]
+
 # Parameters:
-rho_s = 1.0E3
-mu_s = 0.5E6
+rho_s = 1.0e3
+mu_s = 0.5e6
 nu_s = 0.4
-E_1 = 1.4E6
+E_1 = 1.4e6
 lambda_ = nu_s*2.*mu_s/(1. - 2.*nu_s)
-f = Constant((0, -2.*rho_s))
+f = Constant((0, -2.))
 beta = Constant(0.25)
 
 probe = Probes(coord, V)
@@ -58,8 +63,8 @@ def action(wd_, t):
 # TODO: Add options to chose solver and change solver parameters
 common = {"space": "mixedspace",
           "E": None,         # Full implicte, not energy conservative
-          "T": 1.2,          # End time
-          "dt": 0.001,       # Time step
+          "T": 10,          # End time
+          "dt": 0.011,       # Time step
           "coupling": "CN", # Coupling between d and w
           "init": False      # Solve "exact" three first timesteps
           }
@@ -81,8 +86,9 @@ cn_before_ab = solver_parameters(common, {"E": cn_before_ab})
 cn_before_ab_higher_order = solver_parameters(common, {"E": cn_before_ab_higher_order})
 
 # Solution set-ups to simulate
-runs = [ref,
-        imp] #,
+runs = [imp] #, imp]
+        #ref] #,
+        #imp] #,
         #exp] #,
         #naive_lin,
         #naive_ab,
@@ -94,6 +100,7 @@ runs = [ref,
 results = []
 for r in runs:
     time = []
+    load = False
     # Check if a full simulation has been performed for this
     # simulation set-up, if so load previous simulation results
     if path.exists(r["case_path"]):
@@ -101,9 +108,13 @@ for r in runs:
         file_ = open(path.join(tmp_case_path, "param.dat"), "r")
         tmp_param = cPickle.load(file_)
         file_.close()
+        tmp_time = np.load(path.join(tmp_case_path, "time.np"))
+
         # Only simulations that have been simulated for T=10 is considered
         # as "finished"
-        if tmp_param["T"] == 10:
+        if tmp_param["T"] == 10 and tmp_time[-1] >= 10 - 1e-12:
+            print "Load solution from", r["name"]
+            load = True
             tmp_dis_x = np.load(path.join(tmp_case_path, "dis_x.np"))
             tmp_dis_y = np.load(path.join(tmp_case_path, "dis_y.np"))
             tmp_time = np.load(path.join(tmp_case_path, "time.np"))
@@ -113,14 +124,20 @@ for r in runs:
     # Start simulation
     vars().update(r)
     t0 = timer.time()
-    if r["space"] == "mixedspace":
-        problem_mix(**vars())
-    elif r["space"] == "singlespace":
-        problem_single()
-    else:
-        print ("Problem type %s is not implemented, only mixedspace "
-                + "and singlespace are valid options") % r["space"]
-        sys.exit(0)
+    try:
+        if r["space"] == "mixedspace":
+            problem_mix(**vars())
+        elif r["space"] == "singlespace":
+            problem_single()
+        else:
+            print ("Problem type %s is not implemented, only mixedspace "
+                    + "and singlespace are valid options") % r["space"]
+            sys.exit(0)
+    except Exception as e:
+        print "Problems for solver", r["name"]
+        print "Unexpected error:", sys.exc_info()[0]
+        print e
+        print "Move on the the next solver"
     r["number_of_cores"] = MPI.max(mpi_comm_world(), MPI.rank(mpi_comm_world())) + 1
     r["solution_time"] = MPI.sum(mpi_comm_world(), timer.time() - t0) / (r["number_of_cores"])
 
@@ -128,7 +145,7 @@ for r in runs:
     probe.clear()
 
     # Store results
-    if MPI.rank(mpi_comm_world()) == 0:
+    if MPI.rank(mpi_comm_world()) == 0 and not load:
         results.append((displacement[0,:], displacement[1,:], np.array(time)))
         if not path.exists(r["case_path"]):
             makedirs(r["case_path"])

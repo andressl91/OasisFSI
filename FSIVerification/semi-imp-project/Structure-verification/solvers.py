@@ -1,5 +1,6 @@
 from fenics import assemble, lhs, rhs, solve, PETScPreconditioner, \
-                    PETScKrylovSolver, solve, MPI, mpi_comm_world
+                    PETScKrylovSolver, solve, MPI, mpi_comm_world, \
+                    DOLFIN_EPS
 
 """
 Solvers
@@ -20,7 +21,7 @@ def solver_linear(G, d_, w_, wd_, bcs, T, dt, action=None, **namespace):
     d_solver.prec = d_prec
 
     # Solver loop
-    while t < (T - tstep*DOLFIN_EPS):
+    while t < (T - dt*DOLFIN_EPS):
         t += dt
 
         # Assemble
@@ -53,9 +54,11 @@ def solver_nonlinear(G, d_, w_, wd_, bcs, T, dt, action=None, **namespace):
                           {"relative_tolerance": 1E-8,
                            "absolute_tolerance": 1E-8,
                            "maximum_iterations": 100,
-                           "relaxation_parameter": 1.0}}
+                           #"krylov_solver": {"monitor_convergence": True},
+                           #"linear_solver": {"monitor_convergence": True},
+                           "relaxation_parameter": 0.9}}
     t = 0
-    while t <= T:
+    while t < (T - dt*DOLFIN_EPS):
         solve(G == 0, wd_["n"], bcs, solver_parameters=solver_parameters)
 
         # Update solution
