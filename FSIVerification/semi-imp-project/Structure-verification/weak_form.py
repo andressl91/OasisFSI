@@ -1,3 +1,4 @@
+
 def problem_mix(T, dt, E, coupling, VV, **Sold_namespace):
     # Function space
     V = VectorFunctionSpace(mesh, "CG", 2)

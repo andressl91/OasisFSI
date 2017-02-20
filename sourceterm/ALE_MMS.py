@@ -50,7 +50,7 @@ def solver(N, dt, T):
     up = Function(W)
     u, p = split(up)
 
-    phi,gamma = TestFunctions(W)
+    phi, gamma = TestFunctions(W)
 
     up0 = Function(W)
     u0, p0 = split(up0)
@@ -64,10 +64,10 @@ def solver(N, dt, T):
     mu_f = 10
     rho_f = 1
 
-    u_e = Expression(("sin(x[1])*cos(t)","sin(x[0])*cos(t)"), t = dt)
-    p_e = Expression("2*sin(t)", t = dt)
-    w_e = Expression(("sin(x[1])*cos(t)","sin(x[0])*cos(t)"), t = dt)
-    d_e = Expression(("sin(x[1])*sin(t)","sin(x[0])*sin(t)"), t = dt)
+    u_e = Expression(("sin(x[1])*cos(t)","sin(x[0])*cos(t)"), t = 0)
+    p_e = Expression("2*sin(t)", t = 0)
+    w_e = Expression(("sin(x[1])*cos(t)","sin(x[0])*cos(t)"), t = 0)
+    d_e = Expression(("sin(x[1])*sin(t)","sin(x[0])*sin(t)"), t = 0)
 
     w = interpolate(w_e,V)
     d = interpolate(d_e,V)

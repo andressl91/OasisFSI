@@ -57,5 +57,3 @@ def solver_nonlinear(G, d_, w_, wd_, bcs, T, dt):
             print "Time: ",t #,"dis_x: ", d(coord)[0], "dis_y: ", d(coord)[1]
 
     return dis_x, dis_y, time
-
-
