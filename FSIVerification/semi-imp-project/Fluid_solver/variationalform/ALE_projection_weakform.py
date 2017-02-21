@@ -23,7 +23,7 @@ def ALE_projection_scheme(N, v_deg, p_deg, T, dt, rho, mu, **problem_namespace):
                       "sin(x[0])*sin(t)"
                      ), degree = 4, t = 0)
 
-    p_e = Expression("sin(x[0])*sin(t)", degree = 4, t = 0)
+    p_e = Expression("sin(x[1])*sin(t)", degree = 4, t = 0)
 
     # Define function spaces (P2-P1)
     V = VectorFunctionSpace(mesh, "CG", v_deg)

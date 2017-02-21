@@ -43,13 +43,13 @@ if __name__ == "__main__":
         #Start simulation
 
 
-    convergence(E_u, E_p, h)
+    convergence(E_u, E_p, h, [runs[0]["dt"] ])
 
     ######## Convergence Time ########
 
     #Error storing for Convergence rate
     E_u = []; E_p = []; h = []
-    """
+
     dt_list = [0.0005/(2**i) for i in range(3)]
     runs = [solver_parameters(common, {"N": 32, "dt": i, "T": 0.002} ) for i in dt_list]
 
@@ -64,5 +64,4 @@ if __name__ == "__main__":
         h.append(results[2])
         #Start simulation
 
-    convergence(E_u, E_p, dt_list)
-    """
+    convergence(E_u, E_p, [runs[0]["N"] ], dt_list )
