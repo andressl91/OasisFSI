@@ -34,8 +34,6 @@ def monolithic_form(VVQ,V1,V2,Q,dx_f,dx_s,mesh,v_deg,beta,n,lamda_s,mu_s,rho_f ,
     F_fluid += rho_f*inner(J_(d)*grad(u)*inv(F_(d))*(u - ((d-d0)/k)), phi)*dx
     F_fluid -= inner(div(J_(d)*inv(F_(d))*u), gamma)*dx
     F_fluid += inner(J_(d)*sigma_f_new(u,p,d,mu_f)*inv(F_(d)).T, grad(phi))*dx
-    
-
 
     if v_deg == 1:
         F_fluid -= beta*h*h*inner(J_(d)*inv(F_(d).T)*grad(p), grad(gamma))*dx_f
