@@ -82,8 +82,8 @@ def solver(N, dt, T, u_space, p_space, implementation, sourceterm, extrapol, sav
 
 	bcs = [bc_u, bc_p]
 
-	u0 = interpolate(u_e, V)
-	p0 = interpolate(p_e, Q)
+	assign(up0.sub(0), project(u_e, V))
+	assign(up0.sub(1), project(p_e, Q))
 
 	t_ = Constant(dt)
 	d_x = cos(x[1])*sin(t)
@@ -141,19 +141,14 @@ def solver(N, dt, T, u_space, p_space, implementation, sourceterm, extrapol, sav
 		w_e.t = t; d_e.t = t
 		t_.assign(t)
 		if extrapol == True:
-		    print "extra"
 		    d_vec, w_vec = extrapolation(V, d_e, d_exp, w_e, w_exp, chi, delta)
 
 		J = derivative(F_fluid, up, phi)
 		solve(F_fluid == 0, up, bcs, J = J, solver_parameters={"newton_solver": \
 		{"relative_tolerance": 1E-9,"absolute_tolerance":1E-9,"maximum_iterations":100,"relaxation_parameter":1.0}})
 
-		u_, p_ = up.split(True)
-		u0.assign(u_)
-		p0.assign(p_)
+		up0.assign(up)
 
-		L2_u.append(errornorm(u_e, u_, norm_type="L2", degree_rise = 3))
-		L2_p.append(errornorm(p_e, p_, norm_type="L2", degree_rise = 3))
 		if save_res == True:
 
 		    u_save = project(u_e, V)
@@ -181,20 +176,21 @@ def solver(N, dt, T, u_space, p_space, implementation, sourceterm, extrapol, sav
 
 	p_e.t = t - dt
 	u_e.t = t - dt
+	u_s, p_s = up.split(True)
 
-	E_u.append(np.mean(L2_u))
-	E_p.append(np.mean(L2_p))
+	E_u.append(errornorm(u_e, u_s, norm_type="L2", degree_rise = 3))
+	E_p.append(errornorm(p_e, p_s, norm_type="L2", degree_rise = 3))
 	h.append(np.mean(h_list))
 
 #Convergence Time
-#N = [32]
-#dt = [0.05, 0.04, 0.02, 0.01]
-#T = 0.2
+N = [32]
+dt = [0.05/(2**i) for i in range(3)]
+T = 0.2
 
 #Convergence Space
-N = [4, 8, 12, 16]
-dt = [2E-6]
-T = 1E-5
+#N = [2**i for i in range(1, 5)]
+#dt = [2E-6]
+#T = 1E-5
 
 E_u = [];  E_p = []; h = []
 ###################################################
@@ -207,7 +203,7 @@ for n in N:
 		p_space = 1, \
 		implementation = "map",
 		sourceterm = "nomap",
-		extrapol = False,
+		extrapol = True,
 		save_res = False )
 
 ###################################################
