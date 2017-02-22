@@ -40,7 +40,7 @@ def solver(N, dt, T):
 
     x = SpatialCoordinate(mesh)
 
-    V = VectorFunctionSpace(mesh, "CG", 2)
+    V = VectorFunctionSpace(mesh, "CG", 1)
     W = V*V
     n = FacetNormal(mesh)
 
@@ -122,7 +122,7 @@ def solver(N, dt, T):
         u_, d_ = ud.split(True)
         u0.assign(u_); d0.assign(d_)
 
-        d_e_diff = project(d_e, V)
+        """d_e_diff = project(d_e, V)
         d_diff.vector().zero()
         d_diff.vector().axpy(1, d_e_diff.vector())
         d_diff.vector().axpy(-1, d_.vector())
@@ -134,7 +134,7 @@ def solver(N, dt, T):
         u_diff.vector().axpy(1, u_e_diff.vector())
         u_diff.vector().axpy(-1, u_.vector())
         u_diff.rename("u_diff", "Error in u for each time step")
-        u_file << u_diff
+        u_file << u_diff"""
 
         L2_u.append(errornorm(u_e, u_, norm_type="l2", degree_rise = 3))
         L2_d.append(errornorm(d_e, d_, norm_type="l2", degree_rise = 3))
@@ -145,7 +145,7 @@ def solver(N, dt, T):
     E_d.append(np.mean(L2_d))
     h.append(mesh.hmin())
 
-"""
+
 N = [4,8,16,32,64]
 dt = [1.0E-6]
 T = 1.0E-5
@@ -210,4 +210,4 @@ print
 for i in range(len(E_d) - 1):
     r_d = np.log(E_d[i+1]/E_d[i]) / np.log(dt[i+1]/dt[i])
 
-    print "Convergence Deformation", r_d
+    print "Convergence Deformation", r_d"""
