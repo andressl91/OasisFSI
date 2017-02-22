@@ -147,8 +147,8 @@ def solver(N, dt, T):
 
 """
 N = [4,8,16,32,64]
-dt = [1.0E-8]
-T = 1.0E-7
+dt = [1.0E-6]
+T = 1.0E-5
 E_u = [];  E_d = []; h = []
 
 for n in N:
@@ -183,7 +183,7 @@ for i in range(len(E_d) - 1):
 print "Checking Convergence in time"
 
 N = [64]
-dt = [16.0E-4, 8.0E-4, 4E-4, 2E-4, 1E-4, 0.5E-4]
+dt = [8.0E-4, 4E-4, 2E-4, 1E-4, 0.5E-4]
 T = 1.0E-2
 E_u = [];  E_d = []; h = []
 for n in N:

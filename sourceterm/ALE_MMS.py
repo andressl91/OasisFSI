@@ -62,7 +62,7 @@ def solver(N, dt, T):
     up = Function(W)
     u, p = split(up)
 
-    phi,gamma = TestFunctions(W)
+    phi, gamma = TestFunctions(W)
 
     up0 = Function(W)
     u0, p0 = split(up0)
