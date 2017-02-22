@@ -5,8 +5,8 @@ def parse():
     "For details: http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.550.1689&rep=rep1&type=pdf",\
      formatter_class=RawTextHelpFormatter, \
      epilog="############################################################################\n"
-     "Example --> python ALE_FSI.py \n"
-     "Example --> python ALE_FSI.py -v_deg 2 -p_deg 1 -d_deg 2 -r -dt 0.5 -T 10 -step 10 -FSI_number 1  (Refines mesh one time, -rr for two etc.) \n"
+     "Example --> python FSI1.py \n"
+     "Example --> python FSI1.py -v_deg 2 -p_deg 1 -d_deg 2 -r -dt 0.5 -T 10 -step 10 -FSI_number 1  (Refines mesh one time, -rr for two etc.) \n"
      "############################################################################")
     group = parser.add_argument_group('Parameters')
     group.add_argument("-p_deg",       type=int,   help="Set degree of pressure                     --> Default=1", default=1)
