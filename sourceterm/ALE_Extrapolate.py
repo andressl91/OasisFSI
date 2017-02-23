@@ -183,14 +183,14 @@ def solver(N, dt, T, u_space, p_space, implementation, sourceterm, extrapol, sav
 	h.append(np.mean(h_list))
 
 #Convergence Time
-N = [32]
-dt = [0.05/(2**i) for i in range(3)]
-T = 0.2
+#N = [64]
+#dt = [0.1/(2**i) for i in range(0,4)]
+#T = 0.1
 
 #Convergence Space
-#N = [2**i for i in range(1, 5)]
-#dt = [2E-6]
-#T = 1E-5
+N = [2**i for i in range(1, 5)]
+dt = [1E-6]
+T = 1E-5
 
 E_u = [];  E_p = []; h = []
 ###################################################
