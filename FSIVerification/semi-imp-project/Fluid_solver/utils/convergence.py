@@ -15,7 +15,7 @@ def convergence(E_u, E_p, N, dt):
         print "#################################### - ERROR/CON TIME - ####################################\n"
 
     time = [i for i in range(len(E_u))]
-    for E in [E_u]:
+    for E in [E_u, E_p]:
         print
         print "#################################### - L2 NORM - ####################################\n"
         table = []

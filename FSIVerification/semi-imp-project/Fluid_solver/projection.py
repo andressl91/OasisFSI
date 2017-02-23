@@ -50,8 +50,9 @@ if __name__ == "__main__":
     #Error storing for Convergence rate
     E_u = []; E_p = []; h = []
 
-    dt_list = [0.0005/(2**i) for i in range(3)]
-    runs = [solver_parameters(common, {"N": 32, "dt": i, "T": 0.002} ) for i in dt_list]
+    dt_list = [5E-5/(2**i) for i in range(4)]
+    runs = [solver_parameters(common, {"N": 40, "dt": i, "T": 2E-4,\
+    "v_deg": 3, "p_deg": 2} ) for i in dt_list]
 
     results = []
 

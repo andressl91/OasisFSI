@@ -6,13 +6,10 @@ def ALE_projection_fluid_solver(F1, F2, u_, p_, up_, u_tilde, u0_tilde, \
     dis_x = []; dis_y = []; time = []
 
     a1 = lhs(F1); L1 = rhs(F1)
-
     a2 = lhs(F2); L2 = rhs(F2)
 
     t = dt
     # TODO: Find stable iterator to achive good convergence, LU works now
-    #pc = PETScPreconditioner("jacobi")
-    #sol = PETScKrylovSolver("bicgstab", pc)
 
     while t <= T:
 
@@ -23,9 +20,6 @@ def ALE_projection_fluid_solver(F1, F2, u_, p_, up_, u_tilde, u0_tilde, \
         t_.assign(t)
 
         begin("Computing tentative velocity")
-        #b1 = assemble(L1, tensor=b1)
-        #[bc.apply(A1, b1) for bc in bcu]
-        #sol.solve(A1, u_tilde.vector(), b1)
         solve(a1 == L1, u_tilde, bcu)
         u0_tilde.assign(u_tilde)
         end()
@@ -33,9 +27,6 @@ def ALE_projection_fluid_solver(F1, F2, u_, p_, up_, u_tilde, u0_tilde, \
         # Pressure correction and projection on divergencefree field
         begin("Computing pressure correction")
         solve(a2 == L2, up_["n"], bcs)
-        #b2 = assemble(L2, tensor=b2)
-        #[bc.apply(A2, b2) for bc in bcs]
-        #solve(A2, up.vector(), b2)
         end()
 
 
@@ -49,8 +40,6 @@ def ALE_projection_fluid_solver(F1, F2, u_, p_, up_, u_tilde, u0_tilde, \
         up_["n-1"].assign(up_["n"])
 
         t += dt
-        #if MPI.rank(mpi_comm_world()) == 0:
-            #print "Time: ",t
 
     u_e.t = t - dt
     p_e.t = t - dt

@@ -11,24 +11,24 @@ def ALE_projection_scheme(N, v_deg, p_deg, T, dt, rho, mu, **problem_namespace):
     x = SpatialCoordinate(mesh)
 
     #Exact Solution
-    d_e = Expression(("sin(x[1])*sin(t)",
-                      "sin(x[0])*sin(t)"
+    d_e = Expression(("0.5*( (x[0]+x[1]+t) - 0.5*(sin(2*(x[0]+x[1]+t))) )",
+                      "0.5*( (x[0]+x[1]+t) + 0.5*(sin(2*(x[0]+x[1]+t))) )"
                      ), degree = 4, t = 0)
 
-    w_e = Expression(("cos(x[1])*sin(t)",
-                      "sin(x[0])*sin(t)"
-                     ), degree = 4, t = 0)
+    w_e = Expression(("pow(sin(x[0] + x[1] + t), 2)",
+                      "pow(cos(x[0] + x[1] + t), 2)"
+                     ), degree = 5, t = 0)
 
-    u_e = Expression(("cos(x[1])*sin(t)",
-                      "sin(x[0])*sin(t)"
-                     ), degree = 4, t = 0)
+    u_e = Expression(("pow(sin(x[0] + x[1] + t), 2)",
+                      "pow(cos(x[0] + x[1] + t), 2)"
+                     ), degree = 5, t = 0)
 
-    p_e = Expression("sin(x[1])*sin(t)", degree = 4, t = 0)
+    p_e = Expression("pow(cos(x[0] + x[1] + t), 2)", degree = 5, t = 0)
 
     # Define function spaces (P2-P1)
     V = VectorFunctionSpace(mesh, "CG", v_deg)
     Q = FunctionSpace(mesh, "CG", p_deg)
-    VV = V*Q
+    VV = MixedFunctionSpace([V, Q])
 
     # Define coefficients
     k = Constant(dt)
@@ -63,18 +63,19 @@ def ALE_projection_scheme(N, v_deg, p_deg, T, dt, rho, mu, **problem_namespace):
 
     #Create symbolic sourceterm
     t_ = Constant(dt)
-    d_x = cos(x[1])*sin(t_)
-    d_y = cos(x[0])*sin(t_)
+    d_x = 0.5*( (x[0]+x[1]+t_) + 0.5*(sin(2*(x[0]+x[1]+t_))) )
+    d_y = 0.5*( (x[0]+x[1]+t_) + 0.5*(sin(2*(x[0]+x[1]+t_))) )
     d_vec = as_vector([d_x, d_y])
 
-    w_x = cos(x[1])*cos(t_)
-    w_y = cos(x[0])*cos(t_)
+    w_x = sin(x[0] + x[1] + t_)**2
+    w_y = cos(x[0] + x[1] + t_)**2
     w_vec = as_vector([w_x, w_y])
 
-    u_x = cos(x[1])*cos(t_)
-    u_y = cos(x[0])*cos(t_)
+
+    u_x = sin(x[0] + x[1] + t_)**2
+    u_y = cos(x[0] + x[1] + t_)**2
     u_vec = as_vector([u_x, u_y])
-    p_c = sin(x[0])*sin(t_)
+    p_c = cos(x[0] + x[1] + t_)**2
 
     f = rho*diff(u_vec, t_) + rho*dot(u_vec, grad(u_vec)) - div(sigma_f(p_c, u_vec, mu))
 
@@ -89,8 +90,8 @@ def ALE_projection_scheme(N, v_deg, p_deg, T, dt, rho, mu, **problem_namespace):
 
     # Pressure update
     F2 = rho/k*inner(J_(d_vec)*(u_["n"] - u_tilde), v)*dx \
-        - inner(J_(d_vec)*p_["n"], div(v))*dx \
-        + inner(div(J_(d_vec)*inv(F_(d_vec))*u_["n"]), q)*dx
+        - inner(p_["n"], div(J_(d_vec)*inv(F_(d_vec))*v))*dx \
+        - inner(div(J_(d_vec)*inv(F_(d_vec))*u_["n"]), q)*dx
         #- inner(p, div(J_(d_vec)*inv(F_(d_vec))*v))*dx \
 
     #Solve Numerical Problem

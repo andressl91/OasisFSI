@@ -11,16 +11,16 @@ def semi_projection_scheme(N, v_deg, p_deg, T, dt, rho, mu, **problem_namespace)
     x = SpatialCoordinate(mesh)
 
     #Exact Solution
-    u_e = Expression(("cos(x[1])*sin(t)",
-                      "sin(x[0])*sin(t)"
-                     ), degree = 4, t = 0)
+    u_e = Expression(("pow(sin(x[0] + x[1] + t), 2)",
+                      "pow(cos(x[0] + x[1] + t), 2)"
+                     ), degree = 5, t = 0)
 
-    p_e = Expression("sin(x[1])*sin(t)", degree = 4, t = 0)
+    p_e = Expression("pow(cos(x[0] + x[1] + t), 2)", degree = 5, t = 0)
 
     # Define function spaces (P2-P1)
     V = VectorFunctionSpace(mesh, "CG", v_deg)
     Q = FunctionSpace(mesh, "CG", p_deg)
-    VV = V*Q
+    VV = MixedFunctionSpace([V, Q])
 
     # Define coefficients
     k = Constant(dt)
@@ -49,14 +49,17 @@ def semi_projection_scheme(N, v_deg, p_deg, T, dt, rho, mu, **problem_namespace)
     u_tilde = Function(V)
 
     #Assigning initial condition
-    assign(up_["n-1"].sub(0), project(u_e, V, solver_type="bicgstab"))
+    assign(up_["n-1"].sub(0), project(u_e, V))
     assign(up_["n-1"].sub(1), project(p_e, Q))
-    u0_tilde = project(u_e, V, solver_type="bicgstab")
+    u0_tilde = project(u_e, V)
 
     #Create symbolic sourceterm
     t_ = Constant(dt)
-    u_vec = as_vector([cos(x[1])*sin(t_), sin(x[0])*sin(t_)])
-    p_c = sin(x[1])*sin(t_)
+    u_x = sin(x[0] + x[1] + t_)**2
+    u_y = cos(x[0] + x[1] + t_)**2
+    u_vec = as_vector([u_x, u_y])
+    p_c = cos(x[0] + x[1] + t_)**2
+
     f = rho*diff(u_vec, t_) + rho*dot(u_vec, grad(u_vec)) - div(sigma_f(p_c, u_vec, mu))
 
     #Define boundary condition
@@ -70,7 +73,8 @@ def semi_projection_scheme(N, v_deg, p_deg, T, dt, rho, mu, **problem_namespace)
     L1 = rhs(F1)
 
     # Pressure update
-    F2 = rho/k*inner(u_["n"] - u_tilde, v)*dx - inner(p_["n"], div(v))*dx + inner(q, div(u_["n"]))*dx
+    F2 = rho/k*inner(u_["n"] - u_tilde, v)*dx - inner(p_["n"], div(v))*dx \
+    + inner(q, div(u_["n"]))*dx
 
     #Solve Numerical Problem
     #TODO: Rethink u_tilde
