@@ -102,10 +102,12 @@ def ALE_projection_scheme(N, v_deg, p_deg, T, dt, rho, mu, **problem_namespace):
     #F1 -= inner(J_(d_vec)*f, psi)*dx
 
     # Pressure update
-    F2 = rho/k*inner(J_(d_vec)*(u_["n"] - u_tilde), v)*dx \
-    - inner(J_(d_vec)*p_["n"], div(v))*dx \
-    - inner(div(J_(d_vec)*inv(F_(d_vec))*u_["n"]), q)*dx \
-    + J_(d_vec)*inner(dot(u_["n"], n) - dot(w_vec, n), dot(v, n))*ds
+    F2 = rho/k*inner(J_(d_vec)*(u_["n"] - u_tilde), v)*dx
+    #F2 -= rho*inner(J_(d_vec)*inv(F_(d_vec))*dot(w_vec, grad(u_["n"])), v)*dx
+    F2 -= inner(p_["n"], div(J_(d_vec)*inv(F_(d_vec))*v))*dx
+    #F2 += inner(J_(d_vec)*p_["n"], div(v))*dx
+    F2 += inner(div(J_(d_vec)*inv(F_(d_vec))*u_["n"]), q)*dx
+    F2 += J_(d_vec)*inner(dot(u_["n"], n) - dot(w_vec, n), dot(v, n))*ds
         #- inner(p_["n"], div(J_(d_vec)*inv(F_(d_vec))*v))*dx \
 
     #Solve Numerical Problem
