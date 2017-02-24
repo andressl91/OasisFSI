@@ -18,8 +18,8 @@ if __name__ == "__main__":
     #Parameters for each numerical case
     common = {"v_deg": 2,    #Velocity degree
               "p_deg": 1,    #Pressure degree
-              "T": 0.0001,          # End time
-              "dt": 0.00001,       # Time step
+              "T": 1E-5,          # End time
+              "dt": 1E-6,       # Time step
               "N": 8,      #N-points, argument UnitSquareMesh
               "rho": 10,    #
               "mu": 1,
@@ -30,9 +30,10 @@ if __name__ == "__main__":
     #Error storing for Convergence rate
     E_u = []; E_p = []; h = []
 
-    N_list = [2**i for i in range(2, 5)]
-    runs = [solver_parameters(common, {"N": i} ) for i in N_list]
-
+    N_list = [4, 8, 12, 16]
+    #N_list = [2**i for i in range(1, 6)]
+    runs = [solver_parameters(common, {"N": i, "dt": 1E-6, "T": 1E-5} ) for i in N_list]
+    """
     results = []
 
     for r in runs:
@@ -46,12 +47,13 @@ if __name__ == "__main__":
     convergence(E_u, E_p, h, [runs[0]["dt"] ])
 
     ######## Convergence Time ########
-
+    """
     #Error storing for Convergence rate
     E_u = []; E_p = []; h = []
 
-    dt_list = [5E-5/(2**i) for i in range(3)]
-    runs = [solver_parameters(common, {"N": 40, "dt": i, "T": 2E-4,\
+    dt_list = [0.00005, 0.00004, 0.00002, 0.00001]
+    #dt_list = [5E-5/(2**i) for i in range(3)]
+    runs = [solver_parameters(common, {"N": 30, "dt": i, "T": 1E-4,\
     "v_deg": 3, "p_deg": 2} ) for i in dt_list]
 
     results = []

@@ -16,7 +16,7 @@ if __name__ == "__main__":
     #Parameters for each numerical case
     common = {"v_deg": 2,    #Velocity degree
               "p_deg": 1,    #Pressure degree
-              "T": 0.001,          # End time
+              "T": 0.0001,          # End time
               "dt": 0.00001,       # Time step
               "N": 8,      #N-points, argument UnitSquareMesh
               "rho": 10,    #
