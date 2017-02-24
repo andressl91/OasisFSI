@@ -6,7 +6,7 @@ import sys
 from parser import *
 #from FSI_ALE_Partitioned import *
 
-mesh = Mesh("/Users/TheDude/Documents/master/OasisFSI/FSIVerification/ALE/mesh/fluid_new.xml")
+mesh = Mesh("fluid_new.xml")
 
 for coord in mesh.coordinates():
     if coord[0]==0.6 and (0.199<=coord[1]<=0.2001): # to get the point [0.2,0.6] end of bar
@@ -85,7 +85,7 @@ Um = U_in
 H = 0.41
 L = 2.5
 
-class inlet(Expression):
+class Inlet(Expression):
 	def __init__(self):
 		self.t = 0
 	def eval(self,value,x):
@@ -94,7 +94,7 @@ class inlet(Expression):
 	def value_shape(self):
 		return (2,)
 
-inlet = inlet()
+inlet = Inlet()
 #Fluid velocity conditions
 u_inlet  = DirichletBC(VQ.sub(0), inlet, boundaries, 3)
 
