@@ -26,7 +26,7 @@ BarLeftSide =  AutoSubDomain(lambda x: "on_boundary" and (( (x[0] - 0.2)*(x[0] -
 boundaries = FacetFunction("size_t",mesh)
 boundaries.set_all(0)
 BarLeftSide.mark(boundaries,1)
-#plot(boundaries,interactive=True)
+plot(boundaries,interactive=True)
 
 # SOLID PARAMETERS
 CSM = int(sys.argv[3])
@@ -109,9 +109,9 @@ elif implementation =="2":
     + inner(s_s_n_l(d),grad(psi))*dx \
     - inner(g,psi)*dx - dot(d-d0,phi)*dx + k*dot(w,phi)*dx"""
     G =rho_s*((1./k)*inner(w-w0,psi))*dx\
-    +rho_s*inner(dot(grad(0.5*(w+w0)),0.5*(w+w0)),psi)*dx \
-    + inner(0.5*(s_s_n_l(d)+s_s_n_l(d0)),grad(psi))*dx \
-    - inner(g,psi)*dx - dot(d-d0,phi)*dx + k*dot(0.5*(w+w0),phi)*dx
+    +rho_s*inner(dot(grad(w),w),psi)*dx \
+    + inner(s_s_n_l(d),grad(psi))*dx \
+    - inner(g,psi)*dx - dot(d-d0,phi)*dx + k*dot(w,phi)*dx
 
 #Solving for displacement velocity and updating for displacement.
 elif implementation == "3":
@@ -176,7 +176,7 @@ elif implementation == "5":
 dis_x = []
 dis_y = []
 time_list = []
-T = 4
+T = 10
 t = 0
 #time = np.linspace(0,T,(T/dt)+1)
 dis_file = File("results/x_direction.pvd")
