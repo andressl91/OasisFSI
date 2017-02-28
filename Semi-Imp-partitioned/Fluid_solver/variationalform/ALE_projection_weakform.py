@@ -17,19 +17,20 @@ def ALE_projection_scheme(N, v_deg, p_deg, T, dt, rho, mu, **problem_namespace):
     x = SpatialCoordinate(mesh)
 
     #Exact Solution
-    d_e = Expression(("0.5*( (x[0]+x[1]+t) - 0.5*(sin(2*(x[0]+x[1]+t))) )",
-                      "0.5*( (x[0]+x[1]+t) + 0.5*(sin(2*(x[0]+x[1]+t))) )"
-                     ), degree = 4, t = 0)
+    d_e = Expression(("cos(x[1])*sin(t)",
+                      "cos(x[0])*sin(t)"
+                     ), degree = 3, t = 0)
 
-    w_e = Expression(("pow(sin(x[0] + x[1] + t), 2)",
-                      "pow(cos(x[0] + x[1] + t), 2)"
-                     ), degree = 5, t = 0)
+    w_e = Expression(("cos(x[1])*cos(t)",
+                      "cos(x[0])*cos(t)"
+                     ), degree = 3, t = 0)
 
-    u_e = Expression(("pow(sin(x[0] + x[1] + t), 2)",
-                      "pow(cos(x[0] + x[1] + t), 2)"
-                     ), degree = 5, t = 0)
+    u_e = Expression(("cos(x[1])*cos(t)",
+                      "cos(x[0])*cos(t)"
+                     ), degree = 2, t = 0)
 
-    p_e = Expression("cos(x[0] + x[1] + t)", degree = 5, t = 0)
+    p_e = Expression("sin(x[0])*cos(t)", degree = 4, t = 0)
+
 
     # Define function spaces (P2-P1)
     V = VectorFunctionSpace(mesh, "CG", v_deg)
@@ -69,20 +70,18 @@ def ALE_projection_scheme(N, v_deg, p_deg, T, dt, rho, mu, **problem_namespace):
 
     #Create symbolic sourceterm
     t_ = Constant(dt)
-    d_x = 0.5*( (x[0]+x[1]+t_) - 0.5*(sin(2*(x[0]+x[1]+t_))) )
-    d_y = 0.5*( (x[0]+x[1]+t_) + 0.5*(sin(2*(x[0]+x[1]+t_))) )
+    d_x = cos(x[1])*sin(t_)
+    d_y = cos(x[0])*sin(t_)
     d_vec = as_vector([d_x, d_y])
 
-    w_x = sin(x[0] + x[1] + t_)**2
-    w_y = cos(x[0] + x[1] + t_)**2
+    w_x = cos(x[1])*cos(t_)
+    w_y = cos(x[0])*cos(t_)
     w_vec = as_vector([w_x, w_y])
 
-
-    u_x = sin(x[0] + x[1] + t_)**2
-    u_y = cos(x[0] + x[1] + t_)**2
+    u_x = cos(x[1])*cos(t_)
+    u_y = cos(x[0])*cos(t_)
     u_vec = as_vector([u_x, u_y])
-    p_c = cos(x[0] + x[1] + t_)
-
+    p_c = sin(x[0])*cos(t_)
 
     #Define boundary condition
     #w_e due to u_tilde = w on solid interface
@@ -97,18 +96,20 @@ def ALE_projection_scheme(N, v_deg, p_deg, T, dt, rho, mu, **problem_namespace):
 
     F1 = (rho/k)*inner(J_(d_vec)*(u_t - u_["n-1"]), psi)*dx
     F1 += rho*inner(J_(d_vec)*inv(F_(d_vec))*dot(u0_tilde - w_vec, grad(u_t)), psi)*dx
-    F1 += inner(J_(d_vec)*mu*sigma_f_shearstress_map(u_t, d_vec)*inv(F_(d_vec)).T, sym(grad(psi)))*dx
-    F1 -= inner(f_map, psi)*dx
-    #F1 -= inner(J_(d_vec)*f, psi)*dx
+    F1 += inner(J_(d_vec)*mu*sigma_f_shearstress_map(u_t, d_vec)*inv(F_(d_vec)).T, grad(psi))*dx
+    #F1 -= inner(f_map, psi)*dx
+    F1 -= inner(J_(d_vec)*f, psi)*dx
 
     # Pressure update
     F2 = rho/k*inner(J_(d_vec)*(u_["n"] - u_tilde), v)*dx
-    #F2 -= rho*inner(J_(d_vec)*inv(F_(d_vec))*dot(w_vec, grad(u_["n"])), v)*dx
-    F2 -= inner(p_["n"], div(J_(d_vec)*inv(F_(d_vec))*v))*dx
-    #F2 += inner(J_(d_vec)*p_["n"], div(v))*dx
-    F2 += inner(div(J_(d_vec)*inv(F_(d_vec))*u_["n"]), q)*dx
-    F2 += J_(d_vec)*inner(dot(u_["n"], n) - dot(w_vec, n), dot(v, n))*ds
-        #- inner(p_["n"], div(J_(d_vec)*inv(F_(d_vec))*v))*dx \
+    #F2 += rho*inner(J_(d_vec)*dot(grad(u_["n"]), -inv(F_(d_vec))*w_vec), v)*dx
+    F2 += inner(J_(d_vec)*inv(F_(d_vec)).T*grad(p_["n"]), v)*dx
+    #F2 -= inner(p_["n"], div(J_(d_vec)*inv(F_(d_vec))*v))*dx
+    #F2 -= inner(J_(d_vec)*p_["n"], div(v))*dx
+    F2 += inner(q, div(J_(d_vec)*inv(F_(d_vec))*u_["n"]))*dx
+    #F2 += J_(d_vec)*inner(dot(inv(F_(d_vec))*u_["n"], n) \
+    #    - dot(inv(F_(d_vec))*w_vec, n), dot(v, n))*ds
+
 
     #Solve Numerical Problem
     #TODO: Rethink u_tilde

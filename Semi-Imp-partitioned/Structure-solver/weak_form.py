@@ -1,28 +1,9 @@
-<<<<<<< HEAD
-<<<<<<< HEAD
-
-def problem_mix(T, dt, E, coupling, VV, **Sold_namespace):
-    # Function space
-    V = VectorFunctionSpace(mesh, "CG", 2)
-    VV=V*V
-=======
 from fenics import Constant, DirichletBC, Function, TrialFunction, split, \
                     inner, dx, grad, TestFunctions
 import sys
->>>>>>> 2348945ab24993d5b2df0a939c18a5ba4dab5fbb
-
 from stress_tensor import *
 from solvers import *
 
-=======
-from fenics import Constant, DirichletBC, Function, TrialFunction, split, \
-                    inner, dx, grad, TestFunctions
-import sys
-
-from stress_tensor import *
-from solvers import *
-
->>>>>>> 2348945ab24993d5b2df0a939c18a5ba4dab5fbb
 def problem_mix(T, dt, E, coupling, VV, boundaries, rho_s, lambda_, mu_s, f,
                 bcs, **Solid_namespace):
     # Temporal parameters

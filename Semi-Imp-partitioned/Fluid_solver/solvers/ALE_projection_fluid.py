@@ -39,7 +39,6 @@ def ALE_projection_fluid_solver(F1, F2, u_, p_, up_, u_tilde, u0_tilde, \
             up_[t_tmp].vector().axpy(1, up_[times[i+1]].vector())
 
         time.append(t)
-        up_["n-1"].assign(up_["n"])
 
         t += dt
 

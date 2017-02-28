@@ -74,14 +74,7 @@ def solver_nonlinear(G, d_, w_, wd_, bcs, T, dt, action=None, **namespace):
 
         t += dt
         if MPI.rank(mpi_comm_world()) == 0:
-<<<<<<< HEAD
-<<<<<<< HEAD
+
             print "Time: ",t #,"dis_x: ", d(coord)[0], "dis_y: ", d(coord)[1]
 
     return dis_x, dis_y, time
-=======
-            print "Time: ", t
->>>>>>> 2348945ab24993d5b2df0a939c18a5ba4dab5fbb
-=======
-            print "Time: ", t
->>>>>>> 2348945ab24993d5b2df0a939c18a5ba4dab5fbb

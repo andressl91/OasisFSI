@@ -73,6 +73,8 @@ def semi_projection_scheme(N, v_deg, p_deg, T, dt, rho, mu, **problem_namespace)
     L1 = rhs(F1)
 
     # Pressure update
+    #F2 = rho/k*inner(u_["n"] - u_tilde, v)*dx + inner(grad(p_["n"]), v)*dx \
+    #- inner(q, div(u_["n"]))*dx
     F2 = rho/k*inner(u_["n"] - u_tilde, v)*dx - inner(p_["n"], div(v))*dx \
     - inner(q, div(u_["n"]))*dx
 

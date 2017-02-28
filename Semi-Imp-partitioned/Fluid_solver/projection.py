@@ -16,8 +16,8 @@ if __name__ == "__main__":
     #Parameters for each numerical case
     common = {"v_deg": 2,    #Velocity degree
               "p_deg": 1,    #Pressure degree
-              "T": 0.0001,          # End time
-              "dt": 0.00001,       # Time step
+              "T": 1E-4,          # End time
+              "dt": 1E-5,       # Time step
               "N": 8,      #N-points, argument UnitSquareMesh
               "rho": 10,    #
               "mu": 1,
@@ -46,7 +46,7 @@ if __name__ == "__main__":
     convergence(E_u, E_p, h, [runs[0]["dt"] ])
 
     ######## Convergence Time ########
-
+    """
     #Error storing for Convergence rate
     E_u = []; E_p = []; h = []
 
@@ -66,3 +66,4 @@ if __name__ == "__main__":
         #Start simulation
 
     convergence(E_u, E_p, [runs[0]["N"] ], dt_list )
+    """
