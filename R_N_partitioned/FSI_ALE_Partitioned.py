@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 import sys
+from Traction import *
 
 import argparse
 from argparse import RawTextHelpFormatter
@@ -34,9 +35,11 @@ for tmp_t in [u_file, d_file, p_file]:
 
 
 # TEST TRIAL FUNCTIONS
+df_1,_ = TrialFunctions(VQ)
+#df_1, _ = split(df_1_)
 df_res = Function(VQ)
-df_1, _ = df_res.split()
-df,_ = TrialFunctions(VQ)
+df, _ = split(df_res)
+#df = Function(V1)
 phi, gamma = TestFunctions(VQ)
 # = split(pg)
 psi = TestFunction(V1)
@@ -44,19 +47,21 @@ psi = TestFunction(V1)
 u, p  = TrialFunctions(VQ)
 up_ = Function(VQ)
 u_, p_  = up_.split()
-#u__ = Function(V1)
-#p__ = Function(Q)
+uf = Function(V1)
+pf = Function(Q)
 up0 = Function(VQ)
 u0, p0 = up0.split()
 up_res = Function(VQ)
 
-#d = TrialFunction(V2)
-d = TrialFunction(V1)
+
+d = TrialFunction(V2)
+#d,_ = TrialFunctions(VQ)
 d__ = Function(VQ)
-d_, _ = d__.split()
+d_, _ = d__.split(True)
 d0 = Function(V1)
 d1 = Function(V1)
 d2 = Function(V1)
+traction = Function(V1)
 d_res = Function(V1)
 
 k = Constant(dt)
@@ -84,6 +89,73 @@ class DF_BC(Expression):
         return (2,)
 
 df_bc = DF_BC()
+
+########
+from dolfin import *
+import numpy as np
+from cbcpost import *
+
+def before_first_compute():
+    #u = get("Velocity")
+    #V = u.function_space()
+
+    #spaces = SpacePool(V.mesh())
+
+    #Q = spaces.get_space(0,1)
+    #Q_boundary = spaces.get_space(Q.ufl_element().degree(), 1, boundary=True)
+
+    self.v = TestFunction(Q)
+    self.traction = Function(Q, name="BoundaryTraction_full")
+    self.traction_boundary = Function(Q_boundary, name="BoundaryTraction")
+
+    local_dofmapping = mesh_to_boundarymesh_dofmap(spaces.BoundaryMesh, Q, Q_boundary)
+    self._keys = np.array(local_dofmapping.keys(), dtype=np.intc)
+    self._values = np.array(local_dofmapping.values(), dtype=np.intc)
+    self._temp_array = np.zeros(len(self._keys), dtype=np.float_)
+
+    _dx = Measure("dx")
+    Mb = assemble(inner(TestFunction(Q_boundary), TrialFunction(Q_boundary))*_dx)
+    self.solver = create_solver("gmres", "jacobi")
+    self.solver.set_operator(Mb)
+
+    self.b = Function(Q_boundary).vector()
+
+    self._n = FacetNormal(V.mesh())
+    self.I = SpatialCoordinate(V.mesh())
+
+def compute(self, get):
+    u = get("Velocity")
+    p = get("Pressure")
+    mu = get("DynamicViscosity")
+    d = get("Displacement")
+
+    if isinstance(mu, (float, int)):
+        mu = Constant(mu)
+
+    A = self.I+d # ALE map
+    F = grad(A)
+    J = det(F)
+
+    n = self._n
+    S = J*sigma(mu, u, p)*inv(F).T*n
+
+    form = inner(self.v, S)*ds()
+    assemble(form, tensor=self.traction.vector())
+
+    get_set_vector(self.b, self._keys, self.traction.vector(), self._values, self._temp_array)
+
+    # Ensure proper scaling
+    self.solver.solve(self.traction_boundary.vector(), self.b)
+
+    # Tests
+    _dx = Measure("dx")
+    File("trac.pvd") << self.traction_boundary
+
+    return self.traction_boundary
+
+
+########
+
 
 #The operator B_h is very simple to implement.
 #You simply need to add to the fluid matrix the diagonal entries of the solid lumped-mass matrix related to the solid nodes lying on the fluid-solid interface.
@@ -135,15 +207,19 @@ M_time_lumped_rhs.set_diagonal(Mass_s_rhs_L)
 #d = Function(V1)
 f_ = Function(VQ)
 f, _ = f_.split()
-F_Ext = inner(grad(df), grad(phi))*dx_f + inner(f, phi)*dx_f #- inner(grad(d)*n, psi)*ds
+F_Ext = inner(grad(df_1), grad(phi))*dx_f + inner(f,phi)*dx_f #- inner(grad(d)*n, psi)*ds
 #df_ = Function(V1)
 # Structure variational form
 sigma = sigma_dev
 
+
 F_structure = inner(sigma(d), grad(psi))*dx_s #+ ??alpha*(rho_s/k)*(0.5*(d-d1))*dx_s??
 F_structure += delta*((1.0/k)*inner(d-d0,psi)*dx_s - inner(u_, psi)*dx_s)
-#F_structure += inner(sigma(d("-"))*n("-"), psi("-"))*dS(5)
-#F_structure += inner(J_(d("-"))*sigma_f_new(u_("-"),p_("-"),d("-"))*inv(F_(d("-"))).T*n("-"), psi("-"))*dS(5)
+F_structure += inner(sigma(d("-"))*n("-"), psi("-"))*dS(5)
+F_structure += inner(traction, psi)*dx_s # Idea from IBCS
+
+#F_structure += inner(J_(d("-"))*sigma_f(u_("-"),p_("-"))*inv(F_(d("-"))).T*n("-"), psi("-"))*dS(5)
+#F_structure = inner(sigma_f_new(uf("-"),pf("-"),d("-"))*n("-"), psi("-"))*dS(5)
 
 # Fluid variational form
 F_fluid = (rho_f/k)*inner(J_(df)*(u - u0), phi)*dx_f
@@ -155,10 +231,10 @@ F_fluid += inner(sigma(df("-"))*n("-"), phi("-"))*dS(5)
 F_fluid -= beta*h*h*inner(J_(df)*inv(F_(df).T)*grad(p), grad(gamma))*dx_f
 #F_fluid -= beta*h*h*inner(J_(df)*grad(p)*inv(F_(df)), grad(gamma))*dx_f
 
-#a = lhs(F_fluid)
-#b = rhs(F_fluid)
-#a_s = lhs(F_structure) #+ Mass_s_L#+ Mass_s_and_lhs
-#b_s = rhs(F_structure) #+ Mass_s_and_rhs
+a = lhs(F_fluid)
+b = rhs(F_fluid)
+a_s = lhs(F_structure) #+ Mass_s_L#+ Mass_s_and_lhs
+b_s = rhs(F_structure) #+ Mass_s_and_rhs
 
 
 
@@ -171,7 +247,7 @@ df_inlet  = DirichletBC(VQ.sub(0), noslip, boundaries, 3)
 df_wall   = DirichletBC(VQ.sub(0), noslip, boundaries, 2)
 df_circ   = DirichletBC(VQ.sub(0), noslip, boundaries, 6) #No slip on geometry in fluid
 df_barwall= DirichletBC(VQ.sub(0), noslip, boundaries, 7) #No slip on geometry in fluid
-bc_df = [df_wall] #, df_inlet, df_circ, df_barwall, df_bar]#
+bc_df = [df_wall, df_inlet, df_circ, df_barwall, df_bar]#
 
 time_script_list = []
 
@@ -195,7 +271,21 @@ while t <= T:
     L = inner(f, phi)*dx_f
     A = assemble(a) #, keep_diagonal=True)
     B = assemble(L, keep_diagonal=True)"""
-    solve(a == L, df_1, bc_df)
+    #solve(a == L, df_res, bc_df)
+
+    Adf = assemble(a, keep_diagonal=True)
+    Bdf = assemble(L)
+    #print "b_s", type(b_s)
+
+    #[bc.apply(A,b) for bc in bcs]
+    [bc.apply(Adf, Bdf, df_res.vector()) for bc in bc_df]
+
+    #pc = PETScPreconditioner("default")
+    #sol = PETScKrylovSolver("default",pc)
+    solve(Adf, df.vector(), Bdf)
+
+
+
 
     # Solve fluid step, find u and p
     A = assemble(a) #,keep_diagonal=True)#, tensor=A) #+ Mass_s_b_L
@@ -214,10 +304,18 @@ while t <= T:
 
     up0.assign(up_)
     u_, p_ = up_.split(True)
+    uf.assign(u_)
+    pf.assign(p_)
     #u__.assign(u_)
     #p__.assign(p_)
 
     # Solve structure step find d
+    traction.assign(T_bdry.compute(lambda x: {  "Velocity": u_,
+                                                "Pressure": p_,
+                                                "DynamicViscosity": mu_s,
+                                                "Displacement": d_}[x]
+                    ))
+
     A_s = assemble(a_s, keep_diagonal=True) + M_time_lumped_lhs#, tensor=A) #+ Mass_s_b_L
     B_s = assemble(b_s) + Mass_s_rhs_L
     #print "b_s", type(b_s)
@@ -266,7 +364,7 @@ while t <= T:
     d2.assign(d1)
     d1.assign(d0)
     d0.assign(d_)
-    plot(u_,interactive=True)
+    plot(d_)#,interactive=True)
     print "WE REACHED THE END"
     t += dt
     counter +=1

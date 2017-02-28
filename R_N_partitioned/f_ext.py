@@ -1,4 +1,4 @@
-from fenics import *
+from dolfin import *
 
 mesh = UnitSquareMesh(10, 10)
 V = VectorFunctionSpace(mesh, "CG", 1)
@@ -6,18 +6,19 @@ Q = FunctionSpace(mesh, "CG", 1)
 
 VQ = MixedFunctionSpace([V, Q])
 
-d = TestFunction(VQ)
-d, _ = split(d)
-v = TrialFunction(VQ)
-from IPython import embed; embed()
+d_ = TestFunction(VQ)
+d, _ = split(d_)
+v,_ = TrialFunctions(VQ)
+#from IPython import embed; embed()
 
 F_Ext = inner(grad(d), grad(v))*dx
 
-bc = DirichletBC(V, Constant((0,0)), "on_boundary")
+bc = DirichletBC(VQ.sub(0), Constant((0,0)), "on_boundary")
 
-df = Function(V)
-
+df1 = Function(VQ)
+df, _ = split(df1)
+#df =Function(V)
 a = lhs(F_Ext)
 L = rhs(F_Ext)
 
-solve(a==L, df, bc)
+solve(a==L, df1, bc)
