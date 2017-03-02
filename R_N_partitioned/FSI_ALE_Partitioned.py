@@ -6,14 +6,12 @@ import sys
 
 import argparse
 from argparse import RawTextHelpFormatter
-#from Problems import *
 from parser import *
 from mappings import *
 from Hron_Turek import *
 
 
-#time0 = time()
-#parameters["num_threads"] = 2
+
 parameters["allow_extrapolation"] = True
 if args.refiner == None:
     print "None"
@@ -34,23 +32,19 @@ for tmp_t in [u_file, d_file, p_file]:
 
 
 # TEST TRIAL FUNCTIONS
-df_res = Function(VQ)
-df_1, _ = df_res.split()
-df,_ = TrialFunctions(VQ)
 phi, gamma = TestFunctions(VQ)
-# = split(pg)
 psi = TestFunction(V1)
-#u,d,w,p
 u, p  = TrialFunctions(VQ)
 up_ = Function(VQ)
 u_, p_  = up_.split()
-#u__ = Function(V1)
-#p__ = Function(Q)
 up0 = Function(VQ)
 u0, p0 = up0.split()
 up_res = Function(VQ)
 
-#d = TrialFunction(V2)
+df_res = Function(VQ)
+df_1, _ = df_res.split()
+df,_ = TrialFunctions(VQ)
+
 d = TrialFunction(V1)
 d__ = Function(VQ)
 d_, _ = d__.split()
@@ -59,8 +53,8 @@ d1 = Function(V1)
 d2 = Function(V1)
 d_res = Function(V1)
 
+
 k = Constant(dt)
-print "Re = %f" % (Um/(mu_f/rho_f))
 I = Identity(2)
 delta = 1.0E10
 alpha = 1.0

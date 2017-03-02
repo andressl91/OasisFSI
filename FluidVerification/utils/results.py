@@ -8,6 +8,9 @@ def results(Lift, Drag, Time, nel, ndof, v_deg, p_deg, cfd):
         print "#################################### - Numerical Results - ####################################\n"
         table = []
         headers = ["Element", "nel", "ndof", "drag", "lift"]
+        ## wrong order nel ndof
+        ## should be ndof nel in print
+        
         #headers = ["N"]
         li = []
         li.append("P%d - P%d" % (v_deg, p_deg))

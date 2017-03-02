@@ -24,7 +24,7 @@ V2 = VectorFunctionSpace(mesh, "CG", d_deg) # displacement
 Q  = FunctionSpace(mesh, "CG", p_deg)       # Fluid Pressure
 
 VVQ = MixedFunctionSpace([V1, V2, Q])
-#print "Dofs: ",VVQ.dim(), "Cells:", mesh.num_cells()
+print "Dofs: ",VVQ.dim(), "Cells:", mesh.num_cells()
 
 if args.refiner == None:
     print "None"
@@ -43,8 +43,8 @@ H = 0.41
 L = 2.5
 
 U_in = 0.2
-mu_s = 0.5E6
-rho_s = 1.0E3
+mu_s = 1E12#0.5E6
+rho_s = 1E10#1.0E3
 lamda_s= 2*mu_s*Pr/(1-2.*Pr)
 
 # Getting boundary conditions from problem file.
@@ -102,7 +102,7 @@ while t <= T:
         inlet.t = 2;
 
     #Reset counters
-    atol = 1e-6;rtol = 1e-6; max_it = 100; lmbda = 1.0;
+    atol = 1e-5;rtol = 1e-5; max_it = 1000; lmbda = 1.0;
     timeN = time()
     udp = Newton_manual(F, udp, bcs, atol, rtol, max_it, lmbda,udp_res,VVQ)
     timeme.append(time()-timeN)

@@ -15,13 +15,14 @@ if __name__ == "__main__":
 
     mesh = Mesh("./mesh/turek1.xml")
     mesh = refine(mesh)
+    mesh = refine(mesh)
 
     #Parameters for each numerical case
     common = {"mesh": mesh,
               "v_deg": 2,    #Velocity degree
               "p_deg": 1,    #Pressure degree
               "T": 10,          # End time
-              "dt": 0.02,       # Time step
+              "dt": 0.5,       # Time step
               "rho": 1000.,
               "mu": 1.,
               "Um": 1.0,      #Inflow parameter
