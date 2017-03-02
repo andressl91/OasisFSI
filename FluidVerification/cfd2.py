@@ -20,8 +20,8 @@ if __name__ == "__main__":
     common = {"mesh": mesh,
               "v_deg": 2,    #Velocity degree
               "p_deg": 1,    #Pressure degree
-              "T": 8,          # End time
-              "dt": 0.5,       # Time step
+              "T": 0.04,          # End time
+              "dt": 0.02,       # Time step
               "rho": 1000.,
               "mu": 1.,
               "Um": 1.0,      #Inflow parameter
@@ -31,6 +31,13 @@ if __name__ == "__main__":
     cfd1 = common
 
     vars().update(cfd1)
-    Lift, Drag, nel, ndof = mixedformulation(**vars())
+    Lift, Drag, Time, nel, ndof = mixedformulation(**vars())
 
-    results(Lift, Drag, nel, ndof, v_deg, p_deg, steady = True)
+    case = "cfd2"
+
+    f = open("./results/" + case + "/parameters.txt", 'w')
+    for i in range(len(common)):
+        f.write('%s = %s \n' % (common.keys()[i], common[common.keys()[i]]))
+    f.close()
+
+    results(Lift, Drag, Time, nel, ndof, v_deg, p_deg, case)

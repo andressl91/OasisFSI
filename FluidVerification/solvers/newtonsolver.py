@@ -71,4 +71,4 @@ def Newton_manual(F, VQ, u_, p_, up_, inlet, bcs, T, dt, n, mu, ds):
         rel_res    = residual
         t += dt
 
-    return Lift, Drag
+    return Lift, Drag, Time

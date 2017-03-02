@@ -4,7 +4,7 @@ from solvers.newtonsolver import Newton_manual
 def sigma_f(p_, u_, mu):
     return -p_*Identity(2) + mu*(grad(u_) + grad(u_).T)
 
-def mixedformulation(mesh, N, v_deg, p_deg, T, dt, rho, mu, Um, H, **problem_namespace):
+def mixedformulation(mesh, v_deg, p_deg, T, dt, rho, mu, Um, H, **problem_namespace):
 
     #Mesh
     x = SpatialCoordinate(mesh)
@@ -62,6 +62,6 @@ def mixedformulation(mesh, N, v_deg, p_deg, T, dt, rho, mu, Um, H, **problem_nam
         + inner(sigma_f(p_["n"], u_["n"], mu), grad(v))*dx \
         + inner(div(u_["n"]), q)*dx
 
-    Lift, Drag = Newton_manual(F, VQ, u_, p_, up_, inlet, bcs, T, dt, n, mu, ds)
+    Lift, Drag, Time = Newton_manual(F, VQ, u_, p_, up_, inlet, bcs, T, dt, n, mu, ds)
 
-    return Lift, Drag, VQ.dim(), mesh.num_cells()
+    return Lift, Drag, Time, VQ.dim(), mesh.num_cells()

@@ -1,8 +1,9 @@
 from tabulate import tabulate
+import matplotlib.pyplot as plt
 
-def results(Lift, Drag, nel, ndof, v_deg, p_deg, steady):
+def results(Lift, Drag, Time, nel, ndof, v_deg, p_deg, cfd):
 
-    if steady == True:
+    if cfd != "cfd3":
 
         print "#################################### - Numerical Results - ####################################\n"
         table = []
@@ -16,9 +17,15 @@ def results(Lift, Drag, nel, ndof, v_deg, p_deg, steady):
         li.append(Lift[-1])
         table.append(li)
 
-        print tabulate.tabulate(table, headers, tablefmt="fancy_grid")
+        string = tabulate.tabulate(table, headers)
 
-        print
+        print string
+
+        string = tabulate.tabulate(table, headers)
+
+        text_file = open("./results/" + cfd + "/Results.txt", "w" )
+        text_file.write(string)
+        text_file.close()
 
     else:
         print "#################################### - Numerical Results - ####################################\n"
@@ -49,6 +56,22 @@ def results(Lift, Drag, nel, ndof, v_deg, p_deg, steady):
         li.append("%g +/- %g [%g]" % (Mean_lift, Amp_lift, 1))
         table.append(li)
 
-        print tabulate.tabulate(table, headers, tablefmt="fancy_grid")
+        string = tabulate.tabulate(table, headers)
 
-        print
+        print string
+
+        string = tabulate.tabulate(table, headers)
+
+        text_file = open("./results/" + cfd + "/Results.txt", "w" )
+        text_file.write(string)
+        text_file.close()
+
+        plt.figure(1)
+        plt.plot(Time, Lift, label = "Drag")
+        plt.legend()
+        plt.savefig("./results/" + cfd + "/Lift.png")
+        plt.figure(2)
+        plt.plot(Time, Drag, label = "Drag")
+        plt.legend()
+        plt.savefig("./results/" + cfd + "/Drag.png")
+        #plt.show()
