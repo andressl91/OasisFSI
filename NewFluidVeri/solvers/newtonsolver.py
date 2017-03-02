@@ -13,6 +13,8 @@ def integrateFluidStress(p, u, mu, n, ds):
 
     return fX, fY
 
+Lift = []; Drag = []
+
 def Newton_manual(F, VQ, u_, p_, up_, inlet, bcs, T, dt, n, mu, ds):
     #Reset counters
     Iter      = 0
@@ -23,9 +25,13 @@ def Newton_manual(F, VQ, u_, p_, up_, inlet, bcs, T, dt, n, mu, ds):
     atol = 1e-6;rtol = 1e-6; max_it = 100; lmbda = 1.0;
     up_res = Function(VQ)
 
+    Lift = [0]
+    Drag = [0]
+    Time = [0]
+
     t = 0
     while t < T:
-        print "Solving for t = %d" % t
+        print "Solving for t = %g" % t
 
         if t < 2:
             inlet.t = t;
@@ -54,11 +60,15 @@ def Newton_manual(F, VQ, u_, p_, up_, inlet, bcs, T, dt, n, mu, ds):
 
         up_["n-1"].assign(up_["n"])
         u_s, p_s = up_["n"].split(True)
-
         F_x, F_y = integrateFluidStress(p_s, u_s, mu, n, ds)
-        print "LIFT = %g    DRAG = %g" % (F_x, F_y)
+        print "LIFT = %g    DRAG = %g \n" % (F_x, F_y)
+        Lift.append(F_y)
+        Drag.append(F_x)
+        Time.append(t)
 
         Iter      = 0
         residual   = 1
         rel_res    = residual
         t += dt
+
+    return Lift, Drag

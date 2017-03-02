@@ -16,7 +16,7 @@ parser = argparse.ArgumentParser(description="Implementation of Turek test case 
 group = parser.add_argument_group('Parameters')
 group.add_argument("-p_deg",  type=int, help="Set degree of pressure                     --> Default=1", default=1)
 group.add_argument("-v_deg",  type=int, help="Set degree of velocity                     --> Default=2", default=2)
-group.add_argument("-theta",  type=float, help="Explicit, Implicit, Cranc-Nic (0, 1, 0.5)  --> Default=1", default=2)
+group.add_argument("-theta",  type=float, help="Explicit, Implicit, Cranc-Nic (0, 1, 0.5)  --> Default=1", default=1)
 group.add_argument("-discr",  help="Write out or keep tensor in variational form --> Default=1", default="keep")
 group.add_argument("-r", "--refiner", action="count", help="Mesh-refiner using built-in FEniCS method refine(Mesh)")
 group2 = parser.add_argument_group('Solvers')

@@ -24,7 +24,7 @@ def mixedformulation(mesh, N, v_deg, p_deg, T, dt, rho, mu, Um, H, **problem_nam
     Outlet = AutoSubDomain(lambda x: "on_boundary" and near(x[0], 2.5))
     Walls  = AutoSubDomain(lambda x: "on_boundary" and near(x[1], 0) or near(x[1], 0.41))
 
-    boundaries = FacetFunction("size_t",mesh)
+    boundaries = FacetFunction("size_t", mesh)
     boundaries.set_all(0)
     DomainBoundary().mark(boundaries, 1)
     Inlet.mark(boundaries, 2)
@@ -58,8 +58,10 @@ def mixedformulation(mesh, N, v_deg, p_deg, T, dt, rho, mu, Um, H, **problem_nam
 
     # Navier-Stokes mixed formulation
     F = rho/k*inner(u_["n"] - u_["n-1"], v)*dx \
-        + rho*inner(dot(u_["n"], grad(u_["n"])), v)*dx \
+        + rho*inner(dot(grad(u_["n"]), u_["n"]), v)*dx \
         + inner(sigma_f(p_["n"], u_["n"], mu), grad(v))*dx \
         + inner(div(u_["n"]), q)*dx
 
-    Newton_manual(F, VQ, u_, p_, up_, inlet, bcs, T, dt, n, mu, ds)
+    Lift, Drag = Newton_manual(F, VQ, u_, p_, up_, inlet, bcs, T, dt, n, mu, ds)
+
+    return Lift, Drag, VQ.dim(), mesh.num_cells()
