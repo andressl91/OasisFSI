@@ -14,7 +14,7 @@ from solvers.newtonsolver import Newton_manual
 if __name__ == "__main__":
 
     mesh = Mesh("./mesh/turek1.xml")
-    #mesh = refine(mesh)
+    mesh = refine(mesh)
 
     #Parameters for each numerical case
     common = {"mesh": mesh,
