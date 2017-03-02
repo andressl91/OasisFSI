@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 import sys
-from Traction import *
 
 import argparse
 from argparse import RawTextHelpFormatter
@@ -90,70 +89,90 @@ class DF_BC(Expression):
 
 df_bc = DF_BC()
 
-########
-from dolfin import *
-import numpy as np
+
 from cbcpost import *
+from cbcpost.utils import *
+#from cbcflow import create_solver
+#from cbcflow.schemes.utils import *
 
-def before_first_compute():
+
+F_structure = inner(sigma_dev(d), grad(psi))*dx_s #+ ??alpha*(rho_s/k)*(0.5*(d-d1))*dx_s??
+F_structure += delta*((1.0/k)*inner(d-d0,psi)*dx_s - inner(u_, psi)*dx_s)
+F_structure += inner(sigma_dev(d("-"))*n("-"), psi("-"))*dS(5)
+F_structure += inner(traction, psi)*dx_s # Idea from IBCS
+
+
+###
+# Making boundary values of force as a function to be used in variational form.
+###
+#u = get("Velocity")
+V = u_.function_space()
+
+spaces = SpacePool(V1.mesh())
+
+Q = spaces.get_space(0,1)
+Q_boundary = spaces.get_space(Q.ufl_element().degree(), 1, boundary=True)
+#boundary_mesh = BoundaryMesh(mesh, 'exterior',True)
+#Q_boundary = VectorFunctionSpace(boundary_mesh, "CG", 1)
+
+#Q_boundary = VQ.get_space(Q.ufl_element().degree(), 1, boundary=True)
+
+v = TestFunction(Q)
+traction = Function(Q, name="BoundaryTraction_full")
+traction_boundary = Function(Q_boundary)#, name="BoundaryTraction")
+
+#local_dofmapping = mesh_to_boundarymesh_dofmap(spaces.BoundaryMesh, Q, Q_boundary)
+local_dofmapping = mesh_to_boundarymesh_dofmap(spaces.BoundaryMesh, Q, Q_boundary)
+
+_keys = np.array(local_dofmapping.keys(), dtype=np.intc)
+_values = np.array(local_dofmapping.values(), dtype=np.intc)
+_temp_array = np.zeros(len(_keys), dtype=np.float_)
+
+_dx = Measure("dx")
+Mb = assemble(inner(TestFunction(Q_boundary), TrialFunction(Q_boundary))*_dx)
+pc = PETScPreconditioner("jacobi")
+solver = PETScKrylovSolver("gmres",pc)
+#solver = create_solver("gmres", "jacobi")
+solver.set_operator(Mb)
+
+b = Function(Q_boundary).vector()
+
+_n = FacetNormal(V1.mesh())
+I = SpatialCoordinate(V1.mesh())
+
+
+def boundary_compute():
     #u = get("Velocity")
-    #V = u.function_space()
+    #p = get("Pressure")
+    #mu = get("DynamicViscosity")
+    #d = get("Displacement")
 
-    #spaces = SpacePool(V.mesh())
+    #if isinstance(mu, (float, int)):
+    #    mu = Constant(mu)
 
-    #Q = spaces.get_space(0,1)
-    #Q_boundary = spaces.get_space(Q.ufl_element().degree(), 1, boundary=True)
-
-    self.v = TestFunction(Q)
-    self.traction = Function(Q, name="BoundaryTraction_full")
-    self.traction_boundary = Function(Q_boundary, name="BoundaryTraction")
-
-    local_dofmapping = mesh_to_boundarymesh_dofmap(spaces.BoundaryMesh, Q, Q_boundary)
-    self._keys = np.array(local_dofmapping.keys(), dtype=np.intc)
-    self._values = np.array(local_dofmapping.values(), dtype=np.intc)
-    self._temp_array = np.zeros(len(self._keys), dtype=np.float_)
-
-    _dx = Measure("dx")
-    Mb = assemble(inner(TestFunction(Q_boundary), TrialFunction(Q_boundary))*_dx)
-    self.solver = create_solver("gmres", "jacobi")
-    self.solver.set_operator(Mb)
-
-    self.b = Function(Q_boundary).vector()
-
-    self._n = FacetNormal(V.mesh())
-    self.I = SpatialCoordinate(V.mesh())
-
-def compute(self, get):
-    u = get("Velocity")
-    p = get("Pressure")
-    mu = get("DynamicViscosity")
-    d = get("Displacement")
-
-    if isinstance(mu, (float, int)):
-        mu = Constant(mu)
-
-    A = self.I+d # ALE map
+    A = I+d # ALE map
     F = grad(A)
     J = det(F)
+    _n = FacetNormal(V1.mesh())
 
-    n = self._n
-    S = J*sigma(mu, u, p)*inv(F).T*n
+    #n = _n
+    #S = J_(d("-"))*sigma_f_new(uf("-"),pf("-"),d("-"))*inv(F_(d("-"))).T*n("-")
+    S = J*sigma_f(uf,pf)*inv(F).T*_n
+    form = inner(v, S)*ds()
+    assemble(form, tensor=traction.vector())
 
-    form = inner(self.v, S)*ds()
-    assemble(form, tensor=self.traction.vector())
-
-    get_set_vector(self.b, self._keys, self.traction.vector(), self._values, self._temp_array)
+    get_set_vector(b, _keys, traction.vector(), _values, _temp_array)
 
     # Ensure proper scaling
-    self.solver.solve(self.traction_boundary.vector(), self.b)
+    solver.solve(traction_boundary.vector(), b)
 
     # Tests
     _dx = Measure("dx")
-    File("trac.pvd") << self.traction_boundary
+    #File("trac.pvd") << self.traction_boundary
 
-    return self.traction_boundary
+    return traction_boundary
 
-
+#before_first_compute(u)
 ########
 
 
@@ -213,10 +232,7 @@ F_Ext = inner(grad(df_1), grad(phi))*dx_f + inner(f,phi)*dx_f #- inner(grad(d)*n
 sigma = sigma_dev
 
 
-F_structure = inner(sigma(d), grad(psi))*dx_s #+ ??alpha*(rho_s/k)*(0.5*(d-d1))*dx_s??
-F_structure += delta*((1.0/k)*inner(d-d0,psi)*dx_s - inner(u_, psi)*dx_s)
-F_structure += inner(sigma(d("-"))*n("-"), psi("-"))*dS(5)
-F_structure += inner(traction, psi)*dx_s # Idea from IBCS
+
 
 #F_structure += inner(J_(d("-"))*sigma_f(u_("-"),p_("-"))*inv(F_(d("-"))).T*n("-"), psi("-"))*dS(5)
 #F_structure = inner(sigma_f_new(uf("-"),pf("-"),d("-"))*n("-"), psi("-"))*dS(5)
@@ -282,7 +298,7 @@ while t <= T:
 
     #pc = PETScPreconditioner("default")
     #sol = PETScKrylovSolver("default",pc)
-    solve(Adf, df.vector(), Bdf)
+    solve(Adf, df_res.vector(), Bdf)
 
 
 
@@ -310,11 +326,7 @@ while t <= T:
     #p__.assign(p_)
 
     # Solve structure step find d
-    traction.assign(T_bdry.compute(lambda x: {  "Velocity": u_,
-                                                "Pressure": p_,
-                                                "DynamicViscosity": mu_s,
-                                                "Displacement": d_}[x]
-                    ))
+    traction.assign(boundary_compute()) #updating traction.
 
     A_s = assemble(a_s, keep_diagonal=True) + M_time_lumped_lhs#, tensor=A) #+ Mass_s_b_L
     B_s = assemble(b_s) + Mass_s_rhs_L
