@@ -56,9 +56,6 @@ dx = Measure("dx",subdomain_data=domains)
 #plot(domains,interactive = True)
 dx_f = dx(1,subdomain_data=domains)
 dx_s = dx(2,subdomain_data=domains)
-u_wall   = DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 2)
-u_circ   = DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
-u_barwall= DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
 
 #displacement conditions:
 d_wall    = DirichletBC(V1, ((0.0, 0.0)), boundaries, 2)
@@ -81,22 +78,27 @@ Pr = 0.4
 mu_s = [0.5, 0.5, 2.0][FSI-1]*1e6
 rho_s = [1.0, 10, 1.0][FSI-1]*1e3
 lamda_s = 2*mu_s*Pr/(1-2.*Pr)
-Um = U_in
 H = 0.41
 L = 2.5
 
-class Inlet(Expression):
-	def __init__(self):
-		self.t = 0
-	def eval(self,value,x):
-		value[0] = 0.5*(1-np.cos(self.t*np.pi/2))*1.5*Um*x[1]*(H-x[1])/((H/2.0)**2)
-		value[1] = 0
-	def value_shape(self):
-		return (2,)
 
-inlet = Inlet()
+class inlet(Expression):
+    def __init__(self):
+        self.t = 0
+    def eval(self,value,x):
+        value[0] = -0.5*(1-np.cos(self.t*np.pi/2))*1.5*U_in*x[1]*(H-x[1])/((H/2.0)**2)
+        value[1] = 0
+    def value_shape(self):
+        return (2,)
+
+inlet = inlet()
 #Fluid velocity conditions
 u_inlet  = DirichletBC(VQ.sub(0), inlet, boundaries, 3)
+u_wall   = DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 2)
+u_circ   = DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
+u_barwall= DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
+
+#Fluid velocity conditions
 
 bc_u = [u_inlet, u_wall, u_circ, u_barwall]
 bc_d = [d_wall, d_inlet, d_outlet, d_circle,d_barwall]

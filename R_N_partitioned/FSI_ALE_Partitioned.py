@@ -4,9 +4,6 @@ import numpy as np
 import time
 import sys
 
-import argparse
-from argparse import RawTextHelpFormatter
-#from Problems import *
 from parser import *
 from mappings import *
 from Hron_Turek import *
@@ -31,19 +28,11 @@ for tmp_t in [u_file, d_file, p_file]:
 
 #print "Dofs: ",VQ.dim(), "Cells:", mesh.num_cells()
 
-
-
 # TEST TRIAL FUNCTIONS
-df_1,_ = TrialFunctions(VQ)
-#df_1, _ = split(df_1_)
-df_res = Function(VQ)
-df, _ = split(df_res)
-#df = Function(V1)
 phi, gamma = TestFunctions(VQ)
-# = split(pg)
 psi = TestFunction(V1)
-#u,d,w,p
 u, p  = TrialFunctions(VQ)
+
 up_ = Function(VQ)
 u_, p_  = up_.split()
 uf = Function(V1)
@@ -52,9 +41,11 @@ up0 = Function(VQ)
 u0, p0 = up0.split()
 up_res = Function(VQ)
 
+df_1,_ = TrialFunctions(VQ)
+df_res = Function(VQ)
+df, _ = split(df_res)
 
 d = TrialFunction(V2)
-#d,_ = TrialFunctions(VQ)
 d__ = Function(VQ)
 d_, _ = d__.split(True)
 d0 = Function(V1)
@@ -64,12 +55,12 @@ traction_ = Function(V1)
 d_res = Function(V1)
 
 k = Constant(dt)
-print "Re = %f" % (Um/(mu_f/rho_f))
 I = Identity(2)
 delta = 1.0E10
 alpha = 1.0
 beta = 0.01
 h =  mesh.hmin()
+
 time_list = []
 dis_x = []
 dis_y = []
@@ -81,53 +72,52 @@ class DF_BC(Expression):
     def eval(self, value, x):
         value[0] = d_(x)[0]
         value[1] = d_(x)[1]
-        #print "Value", value
-        #print "d", d_(x)
 
     def value_shape(self):
         return (2,)
 
 df_bc = DF_BC()
 
+#Boundary conditions for df in Ext
+noslip = Constant((0.0,0.0))
+df_bar    = DirichletBC(VQ.sub(0), df_bc, boundaries, 5)
+df_inlet  = DirichletBC(VQ.sub(0), noslip, boundaries, 3)
+df_wall   = DirichletBC(VQ.sub(0), noslip, boundaries, 2)
+df_circ   = DirichletBC(VQ.sub(0), noslip, boundaries, 6) #No slip on geometry in fluid
+df_barwall= DirichletBC(VQ.sub(0), noslip, boundaries, 7) #No slip on geometry in fluid
+bc_df = [df_wall, df_inlet, df_circ, df_barwall, df_bar]#
+
+
 
 from cbcpost import *
 from cbcpost.utils import *
-#from cbcflow import create_solver
-#from cbcflow.schemes.utils import *
-
-
-
 
 ###
 # Making boundary values of force as a function to be used in variational form.
-###
+# From IBCS
 #u = get("Velocity")
 V = u_.function_space()
 
-spaces = SpacePool(V.mesh())
+spaces = SpacePool(V.mesh()) #Think this pull out all the spaces from the mesh
 
-Q = spaces.get_space(0,1)
-Q_boundary = spaces.get_space(Q.ufl_element().degree(), 1, boundary=True)
-#boundary_mesh = BoundaryMesh(mesh, 'exterior',True)
-#Q_boundary = VectorFunctionSpace(boundary_mesh, "CG", 1)
-
-#Q_boundary = VQ.get_space(Q.ufl_element().degree(), 1, boundary=True)
+Q = spaces.get_space(0,1) #Think this pulls out the V1 space
+Q_boundary = spaces.get_space(Q.ufl_element().degree(), 1, boundary=True) # Taking out only the boundary and making a space
 
 v = TestFunction(Q)
 traction = Function(Q, name="BoundaryTraction_full")
-traction_boundary = Function(Q_boundary, name="BoundaryTraction")
+traction_boundary = Function(Q_boundary, name="BoundaryTraction") #boundary function
 
-local_dofmapping = mesh_to_boundarymesh_dofmap(spaces.BoundaryMesh, Q, Q_boundary)
+local_dofmapping = mesh_to_boundarymesh_dofmap(spaces.BoundaryMesh, Q, Q_boundary) #getting dofmap from mixed to single space
 
 _keys = np.array(local_dofmapping.keys(), dtype=np.intc)
 _values = np.array(local_dofmapping.values(), dtype=np.intc)
 _temp_array = np.zeros(len(_keys), dtype=np.float_)
 
 _dx = Measure("dx")
-Mb = assemble(inner(TestFunction(Q_boundary), TrialFunction(Q_boundary))*_dx)
+Mb = assemble(inner(TestFunction(Q_boundary), TrialFunction(Q_boundary))*_dx) #not sure think this sets up the size of the operator for solve later
 pc = PETScPreconditioner("jacobi")
 solver = PETScKrylovSolver("gmres",pc)
-#solver = create_solver("gmres", "jacobi")
+#solver = create_solver("gmres", "jacobi") # from IBCS
 solver.set_operator(Mb)
 
 b = Function(Q_boundary).vector()
@@ -137,35 +127,24 @@ I = SpatialCoordinate(V.mesh())
 
 
 def boundary_compute():
-    #u = get("Velocity")
-    #p = get("Pressure")
-    #mu = get("DynamicViscosity")
-    #d = get("Displacement")
-
-    #if isinstance(mu, (float, int)):
-    #    mu = Constant(mu)
 
     A = I+d_("-") # ALE map
     F = grad(A)
     J = det(F)
-    #    _n = FacetNormal(V1.mesh())
 
-    #n = _n
     S = J*sigma_f(u_("-"),p_("-"))*inv(F).T*n("-")
-    #S = J_(d_("-"))*sigma_f(uf("-"),pf("-"))*inv(F_(d_("-"))).T*_n("-")
-    print shape(v),shape(S)
-    form = inner(v("-"), S)*dS(5)
-    print shape(traction),
-    assemble(form, tensor=traction.vector())
 
-    get_set_vector(b, _keys, traction.vector(), _values, _temp_array)
+    form = inner(v("-"), S)*dS(5)
+    assemble(form, tensor=traction.vector()) #assembles a testfunction agains the force on the interface boundary
+
+    get_set_vector(b, _keys, traction.vector(), _values, _temp_array) # not sure, think this sets up the vector b in the right space from mixed space
     #miros way : get_set_vector(self.b, self._keys, self.traction.vector(), self._values, self._temp_array)
 
     # Ensure proper scaling
-    solver.solve(traction_boundary.vector(), b)
+    solver.solve(traction_boundary.vector(), b) # gives the traction_boundary function values from b on the interface boundary
 
     # Tests
-    _dx = Measure("dx")
+    #_dx = Measure("dx")
     #File("trac.pvd") << self.traction_boundary
 
     return traction_boundary
@@ -259,13 +238,6 @@ b_s = rhs(F_structure) #+ Mass_s_and_rhs
 #print "b_s", type(b_s)
 counter = 0
 t = dt
-noslip = Constant((0.0,0.0))
-df_bar    = DirichletBC(VQ.sub(0), df_bc, boundaries, 5)
-df_inlet  = DirichletBC(VQ.sub(0), noslip, boundaries, 3)
-df_wall   = DirichletBC(VQ.sub(0), noslip, boundaries, 2)
-df_circ   = DirichletBC(VQ.sub(0), noslip, boundaries, 6) #No slip on geometry in fluid
-df_barwall= DirichletBC(VQ.sub(0), noslip, boundaries, 7) #No slip on geometry in fluid
-bc_df = [df_wall, df_inlet, df_circ, df_barwall, df_bar]#
 
 time_script_list = []
 
@@ -282,15 +254,6 @@ while t <= T:
     if t >= 2:
         inlet.t = 2;
 
-    #Update fluid domain, solving laplace d = 0, solve for d_star?????????
-    """print df_.vector().array().shape
-
-    f = Function(V1)
-    L = inner(f, phi)*dx_f
-    A = assemble(a) #, keep_diagonal=True)
-    B = assemble(L, keep_diagonal=True)"""
-    #solve(a == L, df_res, bc_df)
-
     Adf = assemble(a, keep_diagonal=True)
     Bdf = assemble(L)
     #print "b_s", type(b_s)
@@ -302,9 +265,6 @@ while t <= T:
     #sol = PETScKrylovSolver("default",pc)
     solve(Adf, df_res.vector(), Bdf)
 
-
-
-
     # Solve fluid step, find u and p
     A = assemble(af) #,keep_diagonal=True)#, tensor=A) #+ Mass_s_b_L
     #A += Mass_s_b_L
@@ -314,7 +274,7 @@ while t <= T:
     B += Mass_s_and_rhs
 
     #[bc.apply(A,b) for bc in bcs]
-    [bc.apply(A, B, up_.vector()) for bc in bc_u]
+    [bc.apply(A, B, up_.vector()) for bc in (bc_u+bc_p)]
 
     #pc = PETScPreconditioner("default")
     #sol = PETScKrylovSolver("default",pc)
@@ -383,6 +343,7 @@ while t <= T:
     t += dt
     counter +=1
 print "mean time: ",np.mean(time_script_list)
+"""
 #print "script time: ", time.time()-time0
 plt.plot(time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
 plt.savefig("results/FSI-" +str(FSI_deg) +"/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
@@ -395,4 +356,4 @@ plt.savefig("results/FSI-" +str(FSI_deg) +"/P-"+str(v_deg) +"/dt-"+str(dt)+"/dra
 #plt.show()
 plt.plot(time_list,Lift);plt.ylabel("Lift");plt.xlabel("Time");plt.grid();
 plt.savefig("results/FSI-" +str(FSI_deg) +"/P-"+str(v_deg) +"/dt-"+str(dt)+"/lift.png")
-#plt.show()
+#plt.show()"""
