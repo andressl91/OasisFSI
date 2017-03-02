@@ -60,7 +60,7 @@ d_, _ = d__.split(True)
 d0 = Function(V1)
 d1 = Function(V1)
 d2 = Function(V1)
-traction = Function(V1)
+traction_ = Function(V1)
 d_res = Function(V1)
 
 k = Constant(dt)
@@ -96,10 +96,6 @@ from cbcpost.utils import *
 #from cbcflow.schemes.utils import *
 
 
-F_structure = inner(sigma_dev(d), grad(psi))*dx_s #+ ??alpha*(rho_s/k)*(0.5*(d-d1))*dx_s??
-F_structure += delta*((1.0/k)*inner(d-d0,psi)*dx_s - inner(u_, psi)*dx_s)
-F_structure += inner(sigma_dev(d("-"))*n("-"), psi("-"))*dS(5)
-F_structure += inner(traction, psi)*dx_s # Idea from IBCS
 
 
 ###
@@ -108,7 +104,7 @@ F_structure += inner(traction, psi)*dx_s # Idea from IBCS
 #u = get("Velocity")
 V = u_.function_space()
 
-spaces = SpacePool(V1.mesh())
+spaces = SpacePool(V.mesh())
 
 Q = spaces.get_space(0,1)
 Q_boundary = spaces.get_space(Q.ufl_element().degree(), 1, boundary=True)
@@ -119,9 +115,8 @@ Q_boundary = spaces.get_space(Q.ufl_element().degree(), 1, boundary=True)
 
 v = TestFunction(Q)
 traction = Function(Q, name="BoundaryTraction_full")
-traction_boundary = Function(Q_boundary)#, name="BoundaryTraction")
+traction_boundary = Function(Q_boundary, name="BoundaryTraction")
 
-#local_dofmapping = mesh_to_boundarymesh_dofmap(spaces.BoundaryMesh, Q, Q_boundary)
 local_dofmapping = mesh_to_boundarymesh_dofmap(spaces.BoundaryMesh, Q, Q_boundary)
 
 _keys = np.array(local_dofmapping.keys(), dtype=np.intc)
@@ -137,8 +132,8 @@ solver.set_operator(Mb)
 
 b = Function(Q_boundary).vector()
 
-_n = FacetNormal(V1.mesh())
-I = SpatialCoordinate(V1.mesh())
+_n = FacetNormal(V.mesh())
+I = SpatialCoordinate(V.mesh())
 
 
 def boundary_compute():
@@ -150,18 +145,21 @@ def boundary_compute():
     #if isinstance(mu, (float, int)):
     #    mu = Constant(mu)
 
-    A = I+d # ALE map
+    A = I+d_("-") # ALE map
     F = grad(A)
     J = det(F)
-    _n = FacetNormal(V1.mesh())
+    #    _n = FacetNormal(V1.mesh())
 
     #n = _n
-    #S = J_(d("-"))*sigma_f_new(uf("-"),pf("-"),d("-"))*inv(F_(d("-"))).T*n("-")
-    S = J*sigma_f(uf,pf)*inv(F).T*_n
-    form = inner(v, S)*ds()
+    S = J*sigma_f(u_("-"),p_("-"))*inv(F).T*n("-")
+    #S = J_(d_("-"))*sigma_f(uf("-"),pf("-"))*inv(F_(d_("-"))).T*_n("-")
+    print shape(v),shape(S)
+    form = inner(v("-"), S)*dS(5)
+    print shape(traction),
     assemble(form, tensor=traction.vector())
 
     get_set_vector(b, _keys, traction.vector(), _values, _temp_array)
+    #miros way : get_set_vector(self.b, self._keys, self.traction.vector(), self._values, self._temp_array)
 
     # Ensure proper scaling
     solver.solve(traction_boundary.vector(), b)
@@ -233,6 +231,10 @@ sigma = sigma_dev
 
 
 
+F_structure = inner(sigma_dev(d), grad(psi))*dx_s #+ ??alpha*(rho_s/k)*(0.5*(d-d1))*dx_s??
+F_structure += delta*((1.0/k)*inner(d-d0,psi)*dx_s - inner(u_, psi)*dx_s)
+F_structure += inner(sigma_dev(d("-"))*n("-"), psi("-"))*dS(5)
+F_structure += inner(traction_, psi)*dx_s # Idea from IBCS
 
 #F_structure += inner(J_(d("-"))*sigma_f(u_("-"),p_("-"))*inv(F_(d("-"))).T*n("-"), psi("-"))*dS(5)
 #F_structure = inner(sigma_f_new(uf("-"),pf("-"),d("-"))*n("-"), psi("-"))*dS(5)
@@ -247,8 +249,8 @@ F_fluid += inner(sigma(df("-"))*n("-"), phi("-"))*dS(5)
 F_fluid -= beta*h*h*inner(J_(df)*inv(F_(df).T)*grad(p), grad(gamma))*dx_f
 #F_fluid -= beta*h*h*inner(J_(df)*grad(p)*inv(F_(df)), grad(gamma))*dx_f
 
-a = lhs(F_fluid)
-b = rhs(F_fluid)
+af = lhs(F_fluid)
+bf = rhs(F_fluid)
 a_s = lhs(F_structure) #+ Mass_s_L#+ Mass_s_and_lhs
 b_s = rhs(F_structure) #+ Mass_s_and_rhs
 
@@ -304,11 +306,11 @@ while t <= T:
 
 
     # Solve fluid step, find u and p
-    A = assemble(a) #,keep_diagonal=True)#, tensor=A) #+ Mass_s_b_L
+    A = assemble(af) #,keep_diagonal=True)#, tensor=A) #+ Mass_s_b_L
     #A += Mass_s_b_L
     A += M_lumped
     A.ident_zeros()
-    B = assemble(b)
+    B = assemble(bf)
     B += Mass_s_and_rhs
 
     #[bc.apply(A,b) for bc in bcs]
@@ -326,7 +328,7 @@ while t <= T:
     #p__.assign(p_)
 
     # Solve structure step find d
-    traction.assign(boundary_compute()) #updating traction.
+    traction_.assign(boundary_compute()) #updating traction.
 
     A_s = assemble(a_s, keep_diagonal=True) + M_time_lumped_lhs#, tensor=A) #+ Mass_s_b_L
     B_s = assemble(b_s) + Mass_s_rhs_L
@@ -376,7 +378,7 @@ while t <= T:
     d2.assign(d1)
     d1.assign(d0)
     d0.assign(d_)
-    plot(d_)#,interactive=True)
+    plot(u_)#,interactive=True)
     print "WE REACHED THE END"
     t += dt
     counter +=1
