@@ -10,8 +10,8 @@ def mixedformulation(mesh, v_deg, p_deg, T, dt, rho, mu, Um, H, **problem_namesp
     x = SpatialCoordinate(mesh)
 
     #Exact Solution
-    inlet = Expression(("1.5*Um*x[1]*(H - x[1]) / pow((H/2.0), 2)"\
-    ,"0"), Um = Um, H = H, degree = 3)
+    inlet = Expression(("1.5*Um*x[1]*(H - x[1]) / pow((H/2.0), 2)*(1 - cos(pi/2.*t))/2."\
+    ,"0"), t = 0, Um = Um, H = H, degree = 3)
 
 
     # Define function spaces (P2-P1)
