@@ -8,8 +8,9 @@ import matplotlib.pyplot as plt
 import sys
 
 mesh = Mesh("von_karman_street_FSI_structure.xml")
-mesh=refine(mesh)
-mesh=refine(mesh)
+#mesh=refine(mesh)
+#mesh=refine(mesh)
+#mesh=refine(mesh)
 
 for coord in mesh.coordinates():
     if coord[0]==0.6 and (0.199<=coord[1]<=0.2001): # to get the point [0.2,0.6] end of bar
@@ -111,6 +112,12 @@ while t <= T:
     #plot(d,mode = "displacement")
     t += dt
 print "Dofs: ",W.dim(), "Cells:", mesh.num_cells()
+last_cycle = int(9/dt)
+
+print "dis_x Mean: %6.7e" %(0.5*(np.max(dis_x[last_cycle:])+np.min(dis_x[last_cycle:])))
+print "dis_y Mean: %6.7e" %(0.5*(np.max(dis_y[last_cycle:])+np.min(dis_y[last_cycle:])))
+print "dis_x Amplitude: %6.7e" %(0.5*(np.max(dis_x[last_cycle:])-np.min(dis_x[last_cycle:])))
+print "dis_y Amplitude: %6.7e" %(0.5*(np.max(dis_y[last_cycle:])-np.min(dis_y[last_cycle:])))
 
 title = plt.title("CSM 3 displacement of point A")
 plt.figure(1)

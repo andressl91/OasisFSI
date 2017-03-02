@@ -67,8 +67,11 @@ def solver(N, dt, T, u_space, p_space, implementation, sourceterm, extrapol, sav
 	              "cos(x[0])*sin(t)"
 	             ), degree = 2, t = t)
 
-	w_e = Expression(("cos(x[1])*cos(t)",
-	              "cos(x[0])*cos(t)"
+	#w_e = Expression(("cos(x[1])*cos(t)",
+	#              "cos(x[0])*cos(t)"
+	#             ), degree = 2, t = t)
+	w_e = Expression(("0",
+	              "0"
 	             ), degree = 2, t = t)
 
 	u_e = Expression(("cos(x[1])*cos(t)",
@@ -90,8 +93,8 @@ def solver(N, dt, T, u_space, p_space, implementation, sourceterm, extrapol, sav
 	d_y = cos(x[0])*sin(t)
 	d_vec = as_vector([d_x, d_y])
 
-	w_x = cos(x[1])*cos(t)
-	w_y = cos(x[0])*cos(t)
+	w_x = 0
+	w_y = 0
 	w_vec = as_vector([w_x, w_y])
 
 	u_x = cos(x[1])*cos(t)

@@ -54,7 +54,7 @@ class FSI_Decoupled(NSScheme):
             s = 1, # Extrapolation degree of pressure and displacement
             )
         return params
-    
+
     def solve(self, problem, timer):
         assert isinstance(problem, FSIProblem)
 
@@ -98,7 +98,7 @@ class FSI_Decoupled(NSScheme):
         DF1 = Function(D)
         DF2 = Function(D)
         ETA1 = Function(Dgb)        # eta time derivatives
-        
+
         Uext = Extrapolation(V, self.params.r) # Velocity extrapolation
         Pext = Extrapolation(Q, self.params.s) # Pressure extrapolation
         phi = p - Pext
@@ -126,7 +126,7 @@ class FSI_Decoupled(NSScheme):
         # Dgb defined in bdry_mesh, facet domains on mesh
         # Create a facet
         dgb_mesh = Dgb.mesh()
-        dgb_dim = dgb_mesh.topology().dim() 
+        dgb_dim = dgb_mesh.topology().dim()
         eta_boundaries = MeshFunction('size_t', dgb_mesh, dgb_dim - 1)
         eta_boundaries.set_all(0)
         Left().mark(eta_boundaries, 1)
@@ -156,11 +156,11 @@ class FSI_Decoupled(NSScheme):
         assert len(nonfixed_boundaries) > 0
 
         nds = ds(nonfixed_boundaries[0])        # Is nds Sigma?
-        for i in nonfixed_boundaries[1:]: 
+        for i in nonfixed_boundaries[1:]:
             nds += ds(i)
         if len(fixed_boundaries) > 0:
             fds = ds(fixed_boundaries[0])       # Is fds Gamma?
-            for i in fixed_boundaries[1:]: 
+            for i in fixed_boundaries[1:]:
                 fds += ds(i)
 
         def par(f,n):
@@ -171,7 +171,7 @@ class FSI_Decoupled(NSScheme):
         rho_f = Constant(problem.params.rho) # Fluid density
         rho_s = Constant(problem.params.rho_s) # Structure density
         h_s = Constant(problem.params.h) # Thickness
-        
+
         if isinstance(problem.params.R, float):
             R = Constant(problem.params.R)
         else:
@@ -190,7 +190,7 @@ class FSI_Decoupled(NSScheme):
         s = self.params.s
 
         I = SpatialCoordinate(mesh)
-        
+
         A = I+DF # ALE map
         F = grad(A)
         J = det(F)
@@ -200,8 +200,8 @@ class FSI_Decoupled(NSScheme):
         a1 = inner(rho_f*(u-U1)/dt, v)*J*dx() # Is this mapping correct?
         #a1 = inner(rho_f*(u-U1)/dt, v)*dx() # Is this mapping correct?
 
-        a1 += rho_f*inner((grad(u)*inv(F))*(U1 - w), v)*J*dx() 
-        #a1 += rho_f*inner(grad(u)*U1, v)*dx() 
+        a1 += rho_f*inner((grad(u)*inv(F))*(U1 - w), v)*J*dx()
+        #a1 += rho_f*inner(grad(u)*U1, v)*dx()
 
         a1 += inner(J*Sigma(mu, u, Pext, F)*inv(F).T, grad(v))*dx()
         #a1 += inner(sigma(mu, u, Pext), grad(v))*dx()
@@ -214,8 +214,8 @@ class FSI_Decoupled(NSScheme):
 
         # Eq. 30.2
         #a1 += inner(sigma(mu, u, Pext)*n, v)*fds # Inflow/outflow. Should be Sigma?
-        a1 += inner(Sigma(mu, u, Pext, F)*n, v)*fds # Matters only if Gamma is non-fixed? 
-        #a1 += inner(sigma(mu, u, Pext)*n, v)*fds # Matters only if Gamma is non-fixed? 
+        a1 += inner(Sigma(mu, u, Pext, F)*n, v)*fds # Matters only if Gamma is non-fixed?
+        #a1 += inner(sigma(mu, u, Pext)*n, v)*fds # Matters only if Gamma is non-fixed?
 
         # Eq. 30.3
         #a1 += inner(J*sigma(mu, u, Pext)*inv(F).T*n, v)*nds # Should be Sigma?
@@ -234,17 +234,17 @@ class FSI_Decoupled(NSScheme):
             _F = grad(I + DF1)
             _J = det(_F)
             a1 -= 2*2*mu*inner(par(_J*Epsilon(U1, _F)*inv(_F).T*n, n), v)*nds
-            
+
             _F = grad(I + DF2)
             _J = det(_F)
             a1 += 2*mu*inner(par(_J*Epsilon(U2, _F)*inv(_F).T*n, n), v)*nds
-        
+
         L1 = rhs(a1)
         a1 = lhs(a1)
-        
+
         A1 = assemble(a1)
         b1 = assemble(L1)
-        
+
         solver_u_tent = create_solver("gmres", "additive_schwarz")
 
         # Pressure, Eq 31, mapped to reference mesh (note phi=p - Pext)
@@ -291,13 +291,13 @@ class FSI_Decoupled(NSScheme):
         a2 -= dt/(rho_s*h_s)*phiext*q*nds
         a2 -= inner(Uext-(DFext-DFext1)/dt, n)*q*nds
 
-        
+
         L2 = rhs(a2)
         a2 = lhs(a2)
-        
+
         A2 = assemble(a2, keep_diagonal=True)
         b2 = assemble(L2)
-        
+
         solver_p_corr = create_solver("bicgstab", "amg")
         #solver_p_corr = LinearSolver()
 
@@ -308,13 +308,13 @@ class FSI_Decoupled(NSScheme):
         a3 += dt/rho_f*inner(v, grad(P - Pext))*dx()
 
         a3 += dt/rho_f*inner(v, grad(P-Pext))*dx()  # missing F?
-        
+
         L3 = rhs(a3)
         a3 = lhs(a3)
-        
+
         A3 = assemble(a3)
         b3 = assemble(L3)
-        
+
         solver_u_corr = create_solver("gmres", "additive_schwarz")
 
 
@@ -352,9 +352,9 @@ class FSI_Decoupled(NSScheme):
         b5 = assemble(L5)
 
         solver_displacement = create_solver("gmres", "hypre_euclid")    # same as solid solver. Seems to work
-        #solver_displacement = create_solver("cg", "ml_amg")        # fails to return a valid solver. 
+        #solver_displacement = create_solver("cg", "ml_amg")        # fails to return a valid solver.
 
-        # Helper functionality for getting boundary displacement as boundary condition        
+        # Helper functionality for getting boundary displacement as boundary condition
         local_dofmapping = boundarymesh_to_mesh_dofmap(bmesh, Db, D)
         _keys, _values = zip(*local_dofmapping.iteritems())
         _keys = np.array(_keys, dtype=np.intc)
@@ -367,14 +367,14 @@ class FSI_Decoupled(NSScheme):
             # Update various functions
             problem.update(spaces, U, P, t, timestep, bcs, None, None)
             timer.completed("problem update")
-            
+
             # Solve tentative velocity
             assemble(a1, tensor=A1)
             assemble(L1, tensor=b1)
 
             for bc in bcu:
                 bc.apply(A1, b1)
-            
+
             #solve(A1, U.vector(), b1)
             solver_u_tent.solve(A1, U.vector(), b1)
 
@@ -386,11 +386,11 @@ class FSI_Decoupled(NSScheme):
 
             for bc in bcp:
                 bc.apply(A2, b2)
-            
+
             #solve(A2, P.vector(), b2)
             b2.apply("insert")
             solver_p_corr.solve(A2, P.vector(), b2)
-            
+
             #P-vector().zero()
             #P.vector().axpy(1.0, phi.vector())
             #P.vector().axpy(1.0, Pext.vector())
@@ -400,7 +400,7 @@ class FSI_Decoupled(NSScheme):
             assemble(L3, tensor=b3)
             for bc in bcu:
                 bc.apply(A3, b3)
-            
+
             #solve(A3, U.vector(), b3)
             solver_u_corr.solve(A3, U.vector(), b3)
 
@@ -420,7 +420,7 @@ class FSI_Decoupled(NSScheme):
             #embed()
             #sys.exit()
             #b4.array()[np.array([0, -1])] = 0
-            
+
             #solve(A4, dgb.vector(), b4)
             solver_solid.solve(A4, dgb.vector(), b4)
 
@@ -430,7 +430,7 @@ class FSI_Decoupled(NSScheme):
 
             for bc in bcs_eta:
                 bc.apply(A5,b5)
-                
+
 
             solver_displacement.solve(A5, DF.vector(), b5)
 
