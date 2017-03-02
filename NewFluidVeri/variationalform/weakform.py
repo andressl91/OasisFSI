@@ -22,7 +22,7 @@ def mixedformulation(mesh, N, v_deg, p_deg, T, dt, rho, mu, Um, H, **problem_nam
     # BOUNDARIES
     Inlet  = AutoSubDomain(lambda x: "on_boundary" and near(x[0], 0))
     Outlet = AutoSubDomain(lambda x: "on_boundary" and near(x[0], 2.5))
-    Walls  = AutoSubDomain(lambda x: "on_boundary" and near(x[1],0) or near(x[1], 0.41))
+    Walls  = AutoSubDomain(lambda x: "on_boundary" and near(x[1], 0) or near(x[1], 0.41))
 
     boundaries = FacetFunction("size_t",mesh)
     boundaries.set_all(0)
@@ -48,28 +48,18 @@ def mixedformulation(mesh, N, v_deg, p_deg, T, dt, rho, mu, Um, H, **problem_nam
     # Create functions
     u_ = {}; p_ = {}; up_ = {}
     for time in ["n", "n-1", "n-2"]:
-        if time == "n":
-            tmp_up = Function(VQ)
-            up_[time] = tmp_up
-            up = TrialFunction(VQ)
-            u, p = split(up)
-        else:
-            up = Function(VQ)
-            up_[time] = up
-            u, p = split(up)
-
+        up = Function(VQ)
+        up_[time] = up
+        u, p = split(up_[time])
         u_[time] = u
         p_[time] = p
 
     v, q = TestFunctions(VQ)
 
-
-    #Define boundary condition
-
     # Navier-Stokes mixed formulation
     F = rho/k*inner(u_["n"] - u_["n-1"], v)*dx \
-        + rho*inner(dot(grad(u_["n"]), u_["n"]), v)*dx \
+        + rho*inner(dot(u_["n"], grad(u_["n"])), v)*dx \
         + inner(sigma_f(p_["n"], u_["n"], mu), grad(v))*dx \
-        - inner(div(u_["n"]), q)*dx
+        + inner(div(u_["n"]), q)*dx
 
-    Newton_manual(F, VQ, u_, p_, up_, inlet, bcs, T, dt)
+    Newton_manual(F, VQ, u_, p_, up_, inlet, bcs, T, dt, n, mu, ds)
