@@ -4,6 +4,7 @@ import numpy as np
 
 # Local import
 from utils.results import results
+from utils.store_results import store_results
 from common.common import solver_parameters
 from variationalform.weakform import mixedformulation
 from solvers.newtonsolver import Newton_manual

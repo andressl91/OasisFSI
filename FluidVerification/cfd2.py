@@ -4,6 +4,7 @@ import numpy as np
 
 # Local import
 from utils.results import results
+from utils.store_results import store_results
 from common.common import solver_parameters
 from variationalform.weakform import mixedformulation
 from solvers.newtonsolver import Newton_manual
@@ -29,16 +30,16 @@ if __name__ == "__main__":
               "H": 0.41,      #Hight of tube
          }
 
-    cfd1 = common
-
-    vars().update(cfd1)
-    Lift, Drag, Time, nel, ndof = mixedformulation(**vars())
-
+    cfd2 = common
+    cfd2_2 = solver_parameters(common, {"v_deg": 3, "p_deg": 2})
+    cfd2_3 = solver_parameters(common, {"v_deg": 2, "p_deg": 1, "mesh": refine(mesh)})
+    cfd2_4 = solver_parameters(common, {"v_deg": 3, "p_deg": 2, "mesh": refine(mesh)})
     case = "cfd2"
 
-    f = open("./results/" + case + "/parameters.txt", 'w')
-    for i in range(len(common)):
-        f.write('%s = %s \n' % (common.keys()[i], common[common.keys()[i]]))
-    f.close()
+    cases  = [cfd2, cfd2_2, cfd2_3, cfd2_4]
+    for r in cases:
+        vars().update(cfd1)
+        Lift, Drag, Time, nel, ndof = mixedformulation(**vars())
 
-    results(Lift, Drag, Time, nel, ndof, v_deg, p_deg, case)
+        store_results(**vars())
+        results(Lift, Drag, Time, nel, ndof, v_deg, p_deg, case)
