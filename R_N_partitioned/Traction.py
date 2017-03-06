@@ -1,61 +1,58 @@
-from dolfin import *
+# From IBCS
+#u = get("Velocity")
 import numpy as np
+
+from dolfin import *
 from cbcpost import *
+from cbcpost.utils import *
+from mappings import *
 
-def before_first_compute(VQ,V1,Q,u,mesh):
-    u = get("Velocity")
-    V = u.function_space()
+def boundary_compute(u_,d_, p_):
+    V = u_.function_space()
 
-    spaces = SpacePool(V.mesh())
+    spaces = SpacePool(V.mesh()) #Think this pull out all the spaces from the mesh
 
-    Q = spaces.get_space(0,1)
-    Q_boundary = spaces.get_space(Q.ufl_element().degree(), 1, boundary=True)
+    Q = spaces.get_space(0,1) #Think this pulls out the V1 space
+    Q_boundary = spaces.get_space(Q.ufl_element().degree(), 1, boundary=True) # Taking out only the boundary and making a space
 
-    self.v = TestFunction(Q)
-    self.traction = Function(Q, name="BoundaryTraction_full")
-    self.traction_boundary = Function(Q_boundary, name="BoundaryTraction")
+    v = TestFunction(Q)
+    traction = Function(Q, name="BoundaryTraction_full")
+    traction_boundary = Function(Q_boundary, name="BoundaryTraction") #boundary function
 
-    local_dofmapping = mesh_to_boundarymesh_dofmap(spaces.BoundaryMesh, Q, Q_boundary)
-    self._keys = np.array(local_dofmapping.keys(), dtype=np.intc)
-    self._values = np.array(local_dofmapping.values(), dtype=np.intc)
-    self._temp_array = np.zeros(len(self._keys), dtype=np.float_)
+    local_dofmapping = mesh_to_boundarymesh_dofmap(spaces.BoundaryMesh, Q, Q_boundary) #getting dofmap from mixed to single space
+
+    _keys = np.array(local_dofmapping.keys(), dtype=np.intc)
+    _values = np.array(local_dofmapping.values(), dtype=np.intc)
+    _temp_array = np.zeros(len(_keys), dtype=np.float_)
 
     _dx = Measure("dx")
-    Mb = assemble(inner(TestFunction(Q_boundary), TrialFunction(Q_boundary))*_dx)
-    self.solver = create_solver("gmres", "jacobi")
-    self.solver.set_operator(Mb)
+    Mb = assemble(inner(TestFunction(Q_boundary), TrialFunction(Q_boundary))*_dx) #not sure think this sets up the size of the operator for solve later
+    pc = PETScPreconditioner("jacobi")
+    solver = PETScKrylovSolver("gmres",pc)
+    #solver = create_solver("gmres", "jacobi") # from IBCS
+    solver.set_operator(Mb)
 
-    self.b = Function(Q_boundary).vector()
+    b = Function(Q_boundary).vector()
 
-    self._n = FacetNormal(V.mesh())
-    self.I = SpatialCoordinate(V.mesh())
+    _n = FacetNormal(V.mesh())
+    I = SpatialCoordinate(V.mesh())
+    #return b,solver,I,_n,v,traction,_keys,_values,_temp_array,traction_boundary
 
-def compute(self, get):
-    u = get("Velocity")
-    p = get("Pressure")
-    mu = get("DynamicViscosity")
-    d = get("Displacement")
+    #def boundary_compute(b,solver,I,_n,v,traction,traction_boundary,_keys,_values,_temp_array,d_,u_,p_):
 
-    if isinstance(mu, (float, int)):
-        mu = Constant(mu)
-
-    A = self.I+d # ALE map
+    A = I+d_("-") # ALE map
     F = grad(A)
     J = det(F)
 
-    n = self._n
-    S = J*sigma(mu, u, p)*inv(F).T*n
+    S = J*sigma_f(u_("-"),p_("-"))*inv(F).T*_n("-")
 
-    form = inner(self.v, S)*ds()
-    assemble(form, tensor=self.traction.vector())
+    form = inner(v("-"), S)*dS(5)
+    assemble(form, tensor=traction.vector()) #assembles a testfunction agains the force on the interface boundary
 
-    get_set_vector(self.b, self._keys, self.traction.vector(), self._values, self._temp_array)
+    get_set_vector(b, _keys, traction.vector(), _values, _temp_array) # not sure, think this sets up the vector b in the right space from mixed space
+    #miros way : get_set_vector(self.b, self._keys, self.traction.vector(), self._values, self._temp_array)
 
     # Ensure proper scaling
-    self.solver.solve(self.traction_boundary.vector(), self.b)
+    solver.solve(traction_boundary.vector(), b) # gives the traction_boundary function values from b on the interface boundary
 
-    # Tests
-    _dx = Measure("dx")
-    File("trac.pvd") << self.traction_boundary
-
-    return self.traction_boundary
+    return traction_boundary

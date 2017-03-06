@@ -7,7 +7,7 @@ from parser import *
 #from FSI_ALE_Partitioned import *
 
 mesh = Mesh("fluid_new.xml")
-
+h = mesh.hmin()
 for coord in mesh.coordinates():
     if coord[0]==0.6 and (0.199<=coord[1]<=0.2001): # to get the point [0.2,0.6] end of bar
         print coord
@@ -86,7 +86,7 @@ class inlet(Expression):
     def __init__(self):
         self.t = 0
     def eval(self,value,x):
-        value[0] = -0.5*(1-np.cos(self.t*np.pi/2))*1.5*U_in*x[1]*(H-x[1])/((H/2.0)**2)
+        value[0] = 0.5*(1-np.cos(self.t*np.pi/2))*1.5*U_in*x[1]*(H-x[1])/((H/2.0)**2)
         value[1] = 0
     def value_shape(self):
         return (2,)
@@ -103,4 +103,4 @@ u_barwall= DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 7) #No slip on geome
 bc_u = [u_inlet, u_wall, u_circ, u_barwall]
 bc_d = [d_wall, d_inlet, d_outlet, d_circle,d_barwall]
 bc_p = [p_out]
-bcs = bc_u + bc_d + bc_p
+#bcs = bc_u + bc_d + bc_p

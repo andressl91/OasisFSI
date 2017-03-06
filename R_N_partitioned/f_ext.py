@@ -13,12 +13,16 @@ v,_ = TrialFunctions(VQ)
 
 F_Ext = inner(grad(d), grad(v))*dx
 
-bc = DirichletBC(VQ.sub(0), Constant((0,0)), "on_boundary")
+bc = DirichletBC(VQ.sub(0), Constant((1,1)), "on_boundary")
 
 df1 = Function(VQ)
-df, _ = split(df1)
+df, _ = df1.split(True)
+
 #df =Function(V)
 a = lhs(F_Ext)
 L = rhs(F_Ext)
 
 solve(a==L, df1, bc)
+df_hold ,_ = df1.split(True)
+#df.assign(df_hold)
+plot(df,interactive = True)
