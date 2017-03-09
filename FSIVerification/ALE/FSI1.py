@@ -134,6 +134,7 @@ while t <= T:
     u0.assign(u)
     d1.assign(d0)
     d0.assign(d)
+    plot(d,mode="displacement")
     p0.assign(p)
     t += dt
     counter +=1

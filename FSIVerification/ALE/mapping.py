@@ -23,6 +23,9 @@ def P1(U,lamda_s,mu_s):
 def sigma_f(v,p,mu_f):
 	return 2*mu_f*sym(grad(v)) - p*Identity(2)
 
+def sigma_dev(U,lamda_s,mu_s): #linear solid stress tensor
+	return 2*mu_s*sym(grad(U)) + lamda_s*tr(sym(grad(U)))*Identity(2)
+
 def sigma_f_hat(v,p,u,mu_f):
 	return J_(u)*sigma_f(v,p,mu_f)*inv(F_(u)).T
 def epsilon(u):
