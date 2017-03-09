@@ -83,24 +83,34 @@ L = 2.5
 
 
 class inlet(Expression):
-    def __init__(self):
+    #def __init__(self):
+    #    self.t = 0
+    def init(self):
         self.t = 0
+
+    def set_t(self, t):
+        self.t = t
+
     def eval(self,value,x):
         value[0] = 0.5*(1-np.cos(self.t*np.pi/2))*1.5*U_in*x[1]*(H-x[1])/((H/2.0)**2)
         value[1] = 0
+
     def value_shape(self):
         return (2,)
 
 inlet = inlet()
+inlet.init()
 #Fluid velocity conditions
 u_inlet  = DirichletBC(VQ.sub(0), inlet, boundaries, 3)
 u_wall   = DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 2)
 u_circ   = DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
 u_barwall= DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
+u_bar= DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 5) #No slip on geometry in fluid
 
 #Fluid velocity conditions
 
-bc_u = [u_inlet, u_wall, u_circ, u_barwall]
-bc_d = [d_wall, d_inlet, d_outlet, d_circle,d_barwall]
+bc_u = [u_inlet, u_wall, u_circ, u_barwall]#,u_bar]
+#bc_d = [d_wall, d_inlet, d_outlet, d_circle, d_barwall] # TODO: Only need barwall? Ident zeros
+bc_d = [d_barwall] # TODO: Only need barwall? Ident zeros
 bc_p = [p_out]
 #bcs = bc_u + bc_d + bc_p

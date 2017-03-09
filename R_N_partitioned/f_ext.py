@@ -22,7 +22,7 @@ df, _ = df1.split(True)
 a = lhs(F_Ext)
 L = rhs(F_Ext)
 
-solve(a==L, df1, bc)
+solve(a==L, df, bc)
 df_hold ,_ = df1.split(True)
 #df.assign(df_hold)
 plot(df,interactive = True)

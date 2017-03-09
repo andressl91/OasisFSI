@@ -8,6 +8,7 @@ from cbcpost.utils import *
 from mappings import *
 
 def boundary_compute(u_,d_, p_):
+
     V = u_.function_space()
 
     spaces = SpacePool(V.mesh()) #Think this pull out all the spaces from the mesh
@@ -45,12 +46,12 @@ def boundary_compute(u_,d_, p_):
     J = det(F)
 
     S = J*sigma_f(u_("-"),p_("-"))*inv(F).T*_n("-")
-
     form = inner(v("-"), S)*dS(5)
     assemble(form, tensor=traction.vector()) #assembles a testfunction agains the force on the interface boundary
 
     get_set_vector(b, _keys, traction.vector(), _values, _temp_array) # not sure, think this sets up the vector b in the right space from mixed space
     #miros way : get_set_vector(self.b, self._keys, self.traction.vector(), self._values, self._temp_array)
+    #print _keys, _values, _temp_array
 
     # Ensure proper scaling
     solver.solve(traction_boundary.vector(), b) # gives the traction_boundary function values from b on the interface boundary
