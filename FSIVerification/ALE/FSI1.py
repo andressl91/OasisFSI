@@ -19,18 +19,19 @@ from Hron_Turek_problem import *
 from solver_monolithic import *
 
 mesh = Mesh("fluid_new.xml")
-V1 = VectorFunctionSpace(mesh, "CG", v_deg) # Fluid velocity
-V2 = VectorFunctionSpace(mesh, "CG", d_deg) # displacement
-Q  = FunctionSpace(mesh, "CG", p_deg)       # Fluid Pressure
-
-VVQ = MixedFunctionSpace([V1, V2, Q])
-#print "Dofs: ",VVQ.dim(), "Cells:", mesh.num_cells()
-
 if args.refiner == None:
     print "None"
 else:
     for i in range(args.refiner):
         mesh = refine(mesh)
+V1 = VectorFunctionSpace(mesh, "CG", v_deg) # Fluid velocity
+V2 = VectorFunctionSpace(mesh, "CG", d_deg) # displacement
+Q  = FunctionSpace(mesh, "CG", p_deg)       # Fluid Pressure
+
+VVQ = MixedFunctionSpace([V1, V2, Q])
+print "Dofs: ",VVQ.dim(), "Cells:", mesh.num_cells()
+
+
 #BOUNDARY CONDITIONS
 # FLUID
 nu = 1.0E-3

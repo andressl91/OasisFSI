@@ -11,15 +11,16 @@ def Newton_manual(F, udp, bcs, atol, rtol, max_it, lmbda,udp_res,VVQ):
     Jac = derivative(F, udp,dw)                # Jacobi
 
     while rel_res > rtol and residual > atol and Iter < max_it:
-        A = assemble(Jac)
-        A.ident_zeros()
+        if Iter == 0 or Iter == 10:
+            A = assemble(Jac)
+            A.ident_zeros()
         b = assemble(-F)
 
         [bc.apply(A, b, udp.vector()) for bc in bcs]
 
         #solve(A, udp_res.vector(), b, "superlu_dist")
-
-        solve(A, udp_res.vector(), b)#, "mumps")
+        list_linear_solver_methods()
+        solve(A, udp_res.vector(), b, "mumps")
 
         udp.vector()[:] = udp.vector()[:] + lmbda*udp_res.vector()[:]
         #udp.vector().axpy(1., udp_res.vector())
