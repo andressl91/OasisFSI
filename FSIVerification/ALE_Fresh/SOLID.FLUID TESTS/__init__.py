@@ -1,1 +1,0 @@
-from dolfin import *
