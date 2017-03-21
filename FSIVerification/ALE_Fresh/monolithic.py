@@ -2,7 +2,7 @@ from dolfin import *
 import sys
 import numpy as np
 
-from Problems.fsi1 import *
+from Problems.fsi2 import *
 from Fluidvariation.fluid_coupled import *
 from Structurevariation.CN_mixed import *
 
@@ -69,8 +69,10 @@ up_sol = LUSolver()
 up_sol.parameters["same_nonzero_pattern"] = True
 up_sol.parameters["reuse_factorization"] = True #Maby, maby not doesnt do mutch
 tic()
+counter = 0
 while t <= T + 1e-8:
     t += dt
+
 
     print "Solving for timestep %g" % t
     if t < 2:
@@ -109,7 +111,7 @@ while t <= T + 1e-8:
     	dvp_[t_tmp].vector().axpy(1, dvp_[times[i+1]].vector())
 
     vars().update(after_solve(**vars()))
-
+    counter +=1
 print "TIME SPENT!!!", toc()
 t = t - dt
 post_process(**vars())
