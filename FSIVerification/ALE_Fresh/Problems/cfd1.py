@@ -26,7 +26,8 @@ common = {"mesh": mesh_file,
           "Um" : 0.2,
           "D" : 0.1,
           "H" : 0.41,
-          "L" : 2.5
+          "L" : 2.5,
+          "step": 0 #Which timestep to store solution
      }
 
 vars().update(common)

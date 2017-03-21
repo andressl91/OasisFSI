@@ -88,14 +88,16 @@ class Inlet(Expression):
 	def value_shape(self):
 		return (2,)
 
-def init(dvp_, DVP, D, V, P, **monolithic):
-    d = DVP.sub(0).dofmap().collapse(mesh_file)[1].values()
-	dw_["n"].vector()[d] = d_n.vector()
-	dw_["n-1"].vector()[d] = d_n1.vector()
-	dw_["tilde"].vector()[d] = d_tilde.vector()
-	w = DW.sub(1).dofmap().collapse(mesh_file)[1].values()
-    hdf = HDF5File(mpi_comm_world(), './checkpoint/up.h5','r')
-    hdf.read(dvp_["n-1"], 'velocity')
+def initiate(dvp_, DVP, **monolithic):
+    hdf = HDF5File(mpi_comm_world(), './FSI_fresh_checkpoints/FSI2-2/dvp.h5','r')
+    print hdf.has_dataset("19")
+    #hdf.read(dvp_["n-1"], '/1')
+    hdf.read(dvp_["n-1"].vector(), "step3", True)
+    d_s, v_s, p_s = dvp_["n-1"].split(True)
+    f = File("results.pvd")
+    f<< v_s
+    print "DONE"
+    return {}
 
 def create_bcs(DVP, dvp_, n, k, Um, H, boundaries, Inlet, **semimp_namespace):
     inlet = Inlet()

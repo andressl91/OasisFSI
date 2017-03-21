@@ -17,18 +17,18 @@ common = {"mesh": mesh_file,
           "v_deg": 2,    #Velocity degree
           "p_deg": 1,    #Pressure degree
           "d_deg": 2,    #Deformation degree
-          "T": 1,          # End time
-          "dt": 0.05,       # Time step
+          "T": 0.02,          # End time
+          "dt": 0.005,       # Time step
           "rho_f": 1.0E3,    #
           "mu_f": 1.,
           "rho_s" : Constant(1.0E3),
           "mu_s" : Constant(0.5E6),
           "nu_s" : Constant(0.4),
-          "Um" : 0.2,
+          "Um" : 1.0, #Turek specific paramter for inflow
           "D" : 0.1,
           "H" : 0.41,
           "L" : 2.5,
-          "step": 1,
+          "step": 1, #Which timestep to store solution
      }
 
 vars().update(common)
@@ -78,19 +78,26 @@ dis_x = []
 dis_y = []
 Drag_list = []
 Lift_list = []
-#Fluid properties
-U_in = Um
-class Inlet(Expression):
-	def __init__(self):
-		self.t = 0
-	def eval(self,value,x):
-		value[0] = 0.5*(1-np.cos(self.t*np.pi/2))*1.5*U_in*x[1]*(H-x[1])/((H/2.0)**2)
-		value[1] = 0
-	def value_shape(self):
-		return (2,)
 
-def create_bcs(DVP, dvp_, n, k, Um, H, boundaries, Inlet, **semimp_namespace):
-    inlet = Inlet()
+#Fluid properties
+hdf = HDF5File(mesh.mpi_comm(), "./FSI_fresh_checkpoints/FSI2/dvp.h5", "w")
+
+class Inlet(Expression):
+    def __init__(self, Um):
+        self.t = 0
+        self.Um = Um
+    def eval(self, value, x):
+    	value[0] = 0.5*(1-np.cos(self.t*np.pi/2))*1.5*self.Um*x[1]*(H-x[1])/((H/2.0)**2)
+    	value[1] = 0
+    def value_shape(self):
+    	return (2,)
+
+inlet = Inlet(Um)
+
+def initiate(**monolithic):
+    return {}
+
+def create_bcs(DVP, dvp_, n, k, Um, H, boundaries, inlet, **semimp_namespace):
     #Fluid velocity conditions
     u_inlet  = DirichletBC(DVP.sub(1), inlet, boundaries, 3)
     u_wall   = DirichletBC(DVP.sub(1), ((0.0, 0.0)), boundaries, 2)
@@ -114,7 +121,7 @@ def create_bcs(DVP, dvp_, n, k, Um, H, boundaries, Inlet, **semimp_namespace):
 
     return dict(bcs = bcs, inlet = inlet)
 
-def pre_solve(t, inlet, **semimp_namespace):
+def pre_solve(t, dvp_, inlet, **semimp_namespace):
     if t < 2:
         inlet.t = t
     else:
@@ -122,29 +129,18 @@ def pre_solve(t, inlet, **semimp_namespace):
 
     return dict(inlet = inlet)
 
-u_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-2/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.xdmf")
-d_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-2/P-"+str(v_deg) +"/dt-"+str(dt)+"/d.xdmf")
-p_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-2/P-"+str(v_deg) +"/dt-"+str(dt)+"/pressure.xdmf")
-dvp_file = XDMFFile(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-2/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.xdmf")
 
-for tmp_t in [u_file, d_file, p_file]:
-    tmp_t.parameters["flush_output"] = True
-    tmp_t.parameters["multi_file"] = 0
-    tmp_t.parameters["rewrite_function_mesh"] = False
-#dvp_file = HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-2/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
-#v_file = HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-2/P-"+str(v_deg)+"/dt-"+str(dt)+"/vFile.h5", "w")
-
-def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_file,u_file,p_file,d_file, **semimp_namespace):
-    #d = dvp_["n"].sub(0, deepcopy=True)
-    #v = dvp_["n"].sub(1, deepcopy=True)
-    #p = dvp_["n"].sub(2, deepcopy=True)
-    d, v, p = dvp_["n"].split(True)
+def after_solve(t, dvp_, counter, step, **semimp_namespace):
+    d = dvp_["n"].sub(0, deepcopy=True)
+    v = dvp_["n"].sub(1, deepcopy=True)
+    p = dvp_["n"].sub(2, deepcopy=True)
+    #d, v, p = dvp_["n"].split(True)
     if counter%step ==0:
-        u_file << v
-        d_file << d
-        p_file << p
-        dvp_file << dvp_["n"]
-        #v_file.write(v, "v")
+        #u_file << v
+        #d_file << d
+        #p_file << p
+        #dvp_file << dvp_["n"]
+        hdf.write(dvp_["n-1"].vector(), "/step%g" % t)
 
     def F_(U):
     	return (Identity(len(U)) + grad(U))
@@ -176,7 +172,9 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_fil
 
     return {}
 
-def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list,**semimp_namespace):
+def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list, **semimp_namespace):
+    print "DONE"
+    """
     time_list = np.linspace(0,T,T/dt+1)
     plt.plot(time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
     #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
@@ -190,4 +188,4 @@ def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list,**semimp_namespace):
     plt.plot(time_list,Lift);plt.ylabel("Lift");plt.xlabel("Time");plt.grid();
     #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/lift.png")
     plt.show()
-    return {}
+    """

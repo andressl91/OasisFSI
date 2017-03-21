@@ -2,7 +2,7 @@ from dolfin import *
 import sys
 import numpy as np
 
-from Problems.cfd1 import *
+from Problems.fsi2 import *
 from Fluidvariation.fluid_coupled import *
 from Structurevariation.CN_mixed import *
 from Solver.newtonsolver import *
@@ -45,7 +45,7 @@ phi, psi, gamma = TestFunctions(DVP)
 vars().update(create_bcs(**vars()))
 vars().update(fluid_setup(**vars()))
 vars().update(structure_setup(**vars()))
-#vars().update(init(**vars()))
+vars().update(initiate(**vars()))
 
 F_lin = F_fluid_linear + F_solid_linear
 F_nonlin = F_fluid_nonlinear + F_solid_nonlinear
@@ -77,7 +77,6 @@ tic()
 counter = 0
 while t <= T + 1e-8:
     t += dt
-
     print "Solving for timestep %g" % t
     pre_solve(**vars())
     newtonsolver(**vars())
@@ -90,5 +89,5 @@ while t <= T + 1e-8:
     vars().update(after_solve(**vars()))
     counter +=1
 print "TIME SPENT!!!", toc()
-t = t - dt
+
 post_process(**vars())
