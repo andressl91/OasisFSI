@@ -2,11 +2,7 @@ from dolfin import *
 import sys
 import numpy as np
 
-<<<<<<< HEAD
 from Problems.cfd1 import *
-=======
-from Problems.fsi2 import *
->>>>>>> 4b5bab3da928fab325b347c21c271763c8266766
 from Fluidvariation.fluid_coupled import *
 from Structurevariation.CN_mixed import *
 from Solver.newtonsolver import *
@@ -81,11 +77,7 @@ tic()
 counter = 0
 while t <= T + 1e-8:
     t += dt
-<<<<<<< HEAD
-=======
 
-
->>>>>>> 4b5bab3da928fab325b347c21c271763c8266766
     print "Solving for timestep %g" % t
     pre_solve(**vars())
     newtonsolver(**vars())
