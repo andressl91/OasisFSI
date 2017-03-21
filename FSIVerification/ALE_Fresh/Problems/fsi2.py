@@ -125,25 +125,26 @@ def pre_solve(t, inlet, **semimp_namespace):
 u_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-2/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.xdmf")
 d_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-2/P-"+str(v_deg) +"/dt-"+str(dt)+"/d.xdmf")
 p_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-2/P-"+str(v_deg) +"/dt-"+str(dt)+"/pressure.xdmf")
+dvp_file = XDMFFile(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-2/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.xdmf")
 
 for tmp_t in [u_file, d_file, p_file]:
     tmp_t.parameters["flush_output"] = True
     tmp_t.parameters["multi_file"] = 0
     tmp_t.parameters["rewrite_function_mesh"] = False
-dvp_file = HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-2/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
+#dvp_file = HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-2/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
 #v_file = HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-2/P-"+str(v_deg)+"/dt-"+str(dt)+"/vFile.h5", "w")
 
-def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_file, **semimp_namespace):
+def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_file,u_file,p_file,d_file, **semimp_namespace):
     #d = dvp_["n"].sub(0, deepcopy=True)
     #v = dvp_["n"].sub(1, deepcopy=True)
     #p = dvp_["n"].sub(2, deepcopy=True)
-    if counter%step ==0:
-        #u_file << v
-        #d_file << d
-        #p_file << p
-        dvp_file.write(dvp_["n"], "dvp")
-        #v_file.write(v, "v")
     d, v, p = dvp_["n"].split(True)
+    if counter%step ==0:
+        u_file << v
+        d_file << d
+        p_file << p
+        dvp_file << dvp_["n"]
+        #v_file.write(v, "v")
 
     def F_(U):
     	return (Identity(len(U)) + grad(U))
