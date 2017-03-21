@@ -49,6 +49,10 @@ ds = Measure("ds", subdomain_data = boundaries)
 dS = Measure("dS", subdomain_data = boundaries)
 n = FacetNormal(mesh)
 
+
+def get_mesh_n():
+    return mesh,n
+
 domains = CellFunction("size_t",mesh)
 domains.set_all(1)
 Bar_area.mark(domains,2) #Overwrites structure domain
@@ -105,7 +109,7 @@ u_inlet  = DirichletBC(VQ.sub(0), inlet, boundaries, 3)
 u_wall   = DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 2)
 u_circ   = DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
 u_barwall= DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
-u_bar= DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 5) #No slip on geometry in fluid
+#u_bar= DirichletBC(VQ.sub(0), ((0.0, 0.0)), boundaries, 5) #No slip on geometry in fluid
 
 #Fluid velocity conditions
 

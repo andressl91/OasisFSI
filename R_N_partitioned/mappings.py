@@ -1,7 +1,11 @@
 from dolfin import *
-mu_s = 1
-mu_f = 1
-lamda_s = 1
+nu = 10**-3
+rho_f = 1.0*1e3
+mu_f = rho_f*nu
+Pr = 0.4
+mu_s = 0.5*1e6
+rho_s = 1.0*1e3
+lamda_s = 2*mu_s*Pr/(1-2.*Pr)
 I = Identity(2)
 def Eij(U):
 	return sym(grad(U))# - 0.5*dot(grad(U),grad(U))
@@ -33,8 +37,8 @@ def sigma_f_hat(v,p,u):
 def sigma_dev(U): #linear solid stress tensor
 	return 2*mu_s*sym(grad(U)) + lamda_s*tr(sym(grad(U)))*Identity(2)
 
-def sigma_f_new(u,p,d):
+def sigma_f_new(u,p,d,mu_f):
 	return -p*I + mu_f*(grad(u)*inv(F_(d)) + inv(F_(d)).T*grad(u).T)
-	
+
 def epsilon(u):
     return sym(grad(u))
