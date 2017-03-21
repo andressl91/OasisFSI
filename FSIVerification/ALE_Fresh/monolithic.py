@@ -2,10 +2,15 @@ from dolfin import *
 import sys
 import numpy as np
 
-from Problems.fsi2 import *
+from Problems.fsi3 import *
 from Fluidvariation.fluid_coupled import *
 from Structurevariation.CN_mixed import *
 from Solver.newtonsolver import *
+
+#from Utils.userinput import *
+#from Utils.argpar import *
+#userinput(parse())
+#sys.exit(1)
 
 #Silence FEniCS output
 set_log_active(False)
