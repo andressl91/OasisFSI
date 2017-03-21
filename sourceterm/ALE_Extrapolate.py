@@ -1,7 +1,7 @@
 from fenics import *
 import numpy as np
 I = Identity(2)
-set_log_active(False)
+#set_log_active(False)
 parameters['allow_extrapolation'] = True
 
 def F_(U):
@@ -63,19 +63,19 @@ def solver(N, dt, T, u_space, p_space, implementation, sourceterm, extrapol, sav
 	mu = 1
 	rho = 1
 
-	d_e = Expression(("cos(x[1])*sin(t)",
-	              "cos(x[0])*sin(t)"
-	             ), degree = 2, t = t)
+	d_e = Expression(("cos(x[0])*sin(x[1])*sin(t)",
+	              "-sin(x[0])*cos(x[1])*sin(t)"
+	             ), degree = 5, t = t)
 
-	w_e = Expression(("cos(x[1])*cos(t)",
-	              "cos(x[0])*cos(t)"
-	             ), degree = 2, t = t)
+	w_e = Expression(("cos(x[0])*sin(x[1])*cos(t)",
+				  "-sin(x[0])*cos(x[1])*cos(t)"
+				 ), degree = 5, t = 0)
 
-	u_e = Expression(("cos(x[1])*cos(t)",
-	              "cos(x[0])*cos(t)"
-	             ), degree = 2, t = 0)
+	u_e = Expression(("cos(x[0])*sin(x[1])*cos(t)",
+	              "-sin(x[0])*cos(x[1])*cos(t)"
+	             ), degree = 5, t = 0)
 
-	p_e = Expression("cos(x[1])*cos(t)", degree = 1, t = 0)
+	p_e = Expression("-cos(x[0])*sin(x[1])*cos(t)", degree = 4, t = 0)
 
 	bc_u = DirichletBC(W.sub(0), u_e, "on_boundary")
 	bc_p = DirichletBC(W.sub(1), p_e, "on_boundary")
@@ -86,44 +86,54 @@ def solver(N, dt, T, u_space, p_space, implementation, sourceterm, extrapol, sav
 	assign(up0.sub(1), project(p_e, Q))
 
 	t_ = Constant(dt)
-	d_x = cos(x[1])*sin(t)
-	d_y = cos(x[0])*sin(t)
+	d_x = cos(x[0])*sin(x[1])*sin(t_)
+	d_y = -sin(x[0])*cos(x[1])*sin(t_)
 	d_vec = as_vector([d_x, d_y])
 
-	w_x = cos(x[1])*cos(t)
-	w_y = cos(x[0])*cos(t)
+	w_x = cos(x[0])*sin(x[1])*cos(t_)
+	w_y = -sin(x[0])*cos(x[1])*cos(t_)
 	w_vec = as_vector([w_x, w_y])
 
-	u_x = cos(x[1])*cos(t)
-	u_y = cos(x[0])*cos(t)
+	u_x = cos(x[0])*sin(x[1])*cos(t_)
+	u_y = -sin(x[0])*cos(x[1])*cos(t_)
 	u_vec = as_vector([u_x, u_y])
 
-	p_c = cos(x[1])*cos(t)
+	p_c = -cos(x[0])*sin(x[1])*cos(t_)
 
 	# Create right hand side f
 	#Sourceterm no-map
 	if sourceterm == "nomap":
-	    f = rho*diff(u_vec, t_) + rho*dot(grad(u_vec), (u_vec - w_vec)) - div(sigma_f(p_c, u_vec, mu))
+	    f = rho*diff(u_vec, t_) + rho*dot((u_vec - w_vec), grad(u_vec)) - div(sigma_f(p_c, u_vec, mu))
+	    #f = rho*diff(u_vec, t_) + rho*dot(u_vec, grad(u_vec)) - div(sigma_f(p_c, u_vec, mu))
 
 	#Sourceterm with mapping
 	elif sourceterm == "map":
 	    f = J_(d_vec)*rho*diff(u_vec, t_) \
-	    + J_(d_vec)*rho*inv(F_(d_vec))*dot((u_vec-w_vec), grad(u_vec))\
+	    + J_(d_vec)*rho*inv(F_(d_vec))*dot(grad(u_vec), (u_vec-w_vec))\
 	    - div(J_(d_vec)*sigma_f_new(u_vec, p_c, d_vec, mu)*inv(F_(d_vec)).T)
 
 	#Variational Form no map
 	if implementation == "nomap":
-	    F_fluid = rho/k*inner(u - u0, psi)*dx + rho*inner(dot(grad(u), (u - w_vec)), psi)*dx \
+	    #F_fluid = rho/k*inner(u - u0, psi)*dx + rho*inner(dot(u, grad(u)), psi)*dx \
+	     #  + inner(sigma_f(p, u, mu), grad(psi))*dx \
+	     #  - inner(f, psi)*dx(mesh) + inner(div(u), gamma)*dx - inner(Constant(0), gamma)*dx
+	   F_fluid = rho/k*inner(u - u0, psi)*dx + rho*inner(dot((u - w_vec), grad(u)), psi)*dx \
 	       + inner(sigma_f(p, u, mu), grad(psi))*dx \
-	       - inner(f, psi)*dx(mesh) + inner(div(u), gamma)*dx - inner(Constant(0), gamma)*dx
+	       - inner(f, psi)*dx + inner(div(u), gamma)*dx - inner(Constant(0), gamma)*dx
 
 	#Variational Form map
 	if implementation == "map":
-	    F_fluid = (rho/k)*inner(J_(d_vec)*(u - u0), psi)*dx
-	    F_fluid += rho*inner(J_(d_vec)*inv(F_(d_vec))*dot(u - w_vec, grad(u)), psi)*dx
-	    F_fluid += inner(J_(d_vec)*sigma_f_new(u, p, d_vec, mu)*inv(F_(d_vec)).T, eps(psi))*dx
-	    F_fluid -= inner(J_(d_vec)*f, psi)*dx
-	    F_fluid -= inner(div(J_(d_vec)*inv(F_(d_vec))*u), gamma)*dx
+		F_fluid = (rho/k)*inner(J_(d_vec)*(u - u0), psi)*dx
+		F_fluid += rho*inner(J_(d_vec)*inv(F_(d_vec))*dot(grad(u), u - w_vec), psi)*dx
+		F_fluid += inner(J_(d_vec)*sigma_f_new(u, p, d_vec, mu)*inv(F_(d_vec)).T, eps(psi))*dx
+		F_fluid -= inner(div(J_(d_vec)*inv(F_(d_vec))*u), gamma)*dx
+
+		if sourceterm == "nomap":
+			F_fluid -= inner(J_(d_vec)*f, psi)*dx
+
+		if sourceterm == "map":
+			F_fluid -= inner(f, psi)*dx
+
 
 	L2_u = []
 	L2_p = []
@@ -136,16 +146,47 @@ def solver(N, dt, T, u_space, p_space, implementation, sourceterm, extrapol, sav
 	p_diff = Function(Q)
 	d_move = Function(D)
 	p_file = XDMFFile(mpi_comm_world(), "p_diff_n%d.xdmf" % N)
+
+
+	dw = TrialFunction(W)
+	Jac = derivative(F_fluid, up, dw)
+	atol = 1e-6; rtol = 1e-6; max_it = 15; lmbda = 1.0;
+	up_res = Function(W)
+
+	J = derivative(F_fluid, up, dw)
+
 	while t <= T:
+		Iter      = 0
+		residual   = 1
+		rel_res    = residual
+
 		u_e.t = t; p_e.t = t
 		w_e.t = t; d_e.t = t
 		t_.assign(t)
 		if extrapol == True:
 		    d_vec, w_vec = extrapolation(V, d_e, d_exp, w_e, w_exp, chi, delta)
 
-		J = derivative(F_fluid, up, phi)
-		solve(F_fluid == 0, up, bcs, J = J, solver_parameters={"newton_solver": \
-		{"relative_tolerance": 1E-9,"absolute_tolerance":1E-9,"maximum_iterations":100,"relaxation_parameter":1.0}})
+		while rel_res > rtol and residual > atol and Iter < max_it:
+			if Iter == 0 or Iter == 10:
+				A = assemble(Jac)
+				A.ident_zeros()
+			b = assemble(-F_fluid)
+
+			[bc.apply(A, b, up.vector()) for bc in bcs]
+
+			solve(A, up_res.vector(), b)
+
+			up.vector()[:] = up.vector()[:] + lmbda*up_res.vector()[:]
+			#udp.vector().axpy(1., up_res.vector())
+			[bc.apply(up.vector()) for bc in bcs]
+			rel_res = norm(up_res, 'l2')
+			residual = b.norm('l2')
+
+			if MPI.rank(mpi_comm_world()) == 0:
+				print "Newton iteration %d: r (atol) = %.3e (tol = %.3e), r (rel) = %.3e (tol = %.3e) " \
+			% (Iter, residual, atol, rel_res, rtol)
+			Iter += 1
+
 
 		up0.assign(up)
 
@@ -182,15 +223,15 @@ def solver(N, dt, T, u_space, p_space, implementation, sourceterm, extrapol, sav
 	E_p.append(errornorm(p_e, p_s, norm_type="L2", degree_rise = 3))
 	h.append(np.mean(h_list))
 
+	N = [32]
 #Convergence Time
-#N = [64]
-#dt = [0.1/(2**i) for i in range(0,4)]
-#T = 0.1
+dt = [5E-2, 4E-2, 2E-2, 1E-2]
+T = 0.2
 
 #Convergence Space
-N = [2**i for i in range(1, 5)]
-dt = [1E-6]
-T = 1E-5
+#N = [2**i for i in range(2, 5)]
+#dt = [1E-6]
+#T = 1E-5
 
 E_u = [];  E_p = []; h = []
 ###################################################
@@ -203,18 +244,13 @@ for n in N:
 		p_space = 1, \
 		implementation = "map",
 		sourceterm = "nomap",
-		extrapol = True,
+		extrapol = False,
 		save_res = False )
 
 ###################################################
-
+print
 for i in E_u:
     print "Errornorm Velocity L2", i
-print
-
-for i in E_p:
-    print "Errornorm Pressure L2", i
-
 print
 
 check = dt if len(dt) > 1 else h
@@ -222,6 +258,11 @@ check = dt if len(dt) > 1 else h
 for i in range(len(E_u) - 1):
 	r_u = np.log(E_u[i+1]/E_u[i]) / np.log(check[i+1]/check[i])
 	print "Convergence Velocity", r_u
+
+print
+
+for i in E_p:
+    print "Errornorm Pressure L2", i
 
 print
 

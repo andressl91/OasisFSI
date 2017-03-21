@@ -41,7 +41,7 @@ def monolithic_form(VVQ,V1,V2,Q,dx_f,dx_s,mesh,v_deg,beta,n,lamda_s,mu_s,rho_f ,
         print "v_deg",v_deg
 
     # Structure var form
-    F_structure = (rho_s/k)*inner(u-u0,phi)*dx_s + inner(0.5*(P1(d,lamda_s,mu_s)+ P1(d0,lamda_s,mu_s)),grad(phi))*dx_s
+    F_structure = (rho_s/k)*inner(u-u0,phi)*dx_s + inner(P1(0.5*(d+d0),lamda_s,mu_s),grad(phi))*dx_s
 
     # Setting w = u on the structure using (d-d0)/k = w
     F_w = delta*((1.0/k)*inner(d-d0,psi)*dx_s - inner(0.5*(u+u0),psi)*dx_s)

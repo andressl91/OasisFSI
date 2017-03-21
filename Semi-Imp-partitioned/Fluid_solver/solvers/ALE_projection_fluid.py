@@ -15,11 +15,11 @@ def ALE_projection_fluid_solver(F1, F2, u_, p_, up_, u_tilde, u0_tilde, \
 
         # FIXME: Change to assemble seperatly and try different solver methods
         # (convex problem as long as we do not have bulking)
-        w_e.t = t
-        d_e.t = t
+        w_e.t = t - dt
+        d_e.t = t - dt
         u_e.t = t
         p_e.t = t
-        t_.assign(t)
+        t_.assign(t - dt)
 
         begin("Computing tentative velocity")
         solve(a1 == L1, u_tilde, bcu)
