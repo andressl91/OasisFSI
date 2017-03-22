@@ -2,7 +2,7 @@ from dolfin import *
 import sys
 import numpy as np
 
-from Problems.fsi3 import *
+from Problems.seeh5 import *
 from Fluidvariation.fluid_coupled import *
 from Structurevariation.CN_mixed import *
 from Solver.newtonsolver import *
@@ -74,23 +74,29 @@ up_sol = LUSolver(solver_method)
 up_sol.parameters["same_nonzero_pattern"] = True
 up_sol.parameters["reuse_factorization"] = True #Maby, maby not doesnt do mutch
 tic()
+
+
+
+
+
+
 counter = 0
 while t <= T + 1e-8:
     t += dt
-    if MPI.rank(mpi_comm_world()) == 0:		
+    if MPI.rank(mpi_comm_world()) == 0:
         print "Solving for timestep %g" % t
     pre_solve(**vars())
     newton_time = time_.time()
     newtonsolver(**vars())
     if MPI.rank(mpi_comm_world()) == 0:
-	print "newton time: ",time_.time() - newton_time 	
+	print "newton time: ",time_.time() - newton_time
     times = ["n-2", "n-1", "n"]
     for i, t_tmp in enumerate(times[:-1]):
     	dvp_[t_tmp].vector().zero()
     	dvp_[t_tmp].vector().axpy(1, dvp_[times[i+1]].vector())
-
     vars().update(after_solve(**vars()))
     counter +=1
+
 print "TIME SPENT!!!", toc()
 t = t - dt
 post_process(**vars())

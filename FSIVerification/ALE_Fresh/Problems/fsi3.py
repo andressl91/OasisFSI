@@ -17,7 +17,7 @@ common = {"mesh": mesh_file,
           "v_deg": 2,    #Velocity degree
           "p_deg": 1,    #Pressure degree
           "d_deg": 2,    #Deformation degree
-          "T": 2,          # End time
+          "T": 0.1,          # End time
           "dt": 0.005,       # Time step
           "rho_f": 1.0E3,    #
           "mu_f": 1.0,
@@ -124,22 +124,31 @@ def pre_solve(t, inlet, **semimp_namespace):
 u_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.xdmf")
 d_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/d.xdmf")
 p_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/pressure.xdmf")
-dvp_file = XDMFFile(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.xdmf")
+#dvp_file = XDMFFile(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.xdmf")
 
 for tmp_t in [u_file, d_file, p_file]:
     tmp_t.parameters["flush_output"] = True
     tmp_t.parameters["multi_file"] = 0
     tmp_t.parameters["rewrite_function_mesh"] = False
+
+dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
+dvp_file.write(mesh_file, "mesh")
+
+
+
 def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_file,u_file,p_file,d_file, **semimp_namespace):
     #d = dvp_["n"].sub(0, deepcopy=True)
     #v = dvp_["n"].sub(1, deepcopy=True)
     #p = dvp_["n"].sub(2, deepcopy=True)
+    dvp_file.write(dvp_["n"], "dvp%d"%counter)
+
     d, v, p = dvp_["n"].split(True)
+
     if counter%step ==0:
         u_file << v
         d_file << d
         p_file << p
-        dvp_file << (dvp_["n"],t)
+        #dvp_file << (dvp_["n"],t)
         #v_file.write(v, "v")
 
     def F_(U):
@@ -170,7 +179,8 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_fil
     return {}
 
 
-def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list,**semimp_namespace):
+def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list,dvp_file,**semimp_namespace):
+    dvp_file.close()
     time_list = np.linspace(0,T,T/dt+1)
     plt.plot(time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
     #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
