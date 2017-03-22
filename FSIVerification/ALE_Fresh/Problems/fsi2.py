@@ -155,10 +155,6 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_fil
     def sigma_f_new(v, p, d, mu_f):
     	return -p*Identity(len(v)) + mu_f*(grad(v)*inv(F_(d)) + inv(F_(d)).T*grad(v).T)
 
-    #Fx = -assemble((sigma_f_new(v, p, d, mu_f)*n)[0]*ds(6))
-    #Fy = -assemble((sigma_f_new(v, p, d, mu_f)*n)[1]*ds(6))
-    #Fx += -assemble(((-p("-")*Identity(len(v)) + mu_f*(grad(v)("-")*inv(F_(d("-"))) + inv(F_(d("-"))).T*grad(v)("-").T))*n('-'))[0]*dS(5))
-    #Fy += -assemble(((-p("-")*Identity(len(v)) + mu_f*(grad(v)("-")*inv(F_(d("-"))) + inv(F_(d("-"))).T*grad(v)("-").T))*n('-'))[1]*dS(5))
     Dr = -assemble((sigma_f_new(v,p,d,mu_f)*n)[0]*ds(6))
     Li = -assemble((sigma_f_new(v,p,d,mu_f)*n)[1]*ds(6))
     Dr += -assemble((sigma_f_new(v("-"),p("-"),d("-"),mu_f)*n("-"))[0]*dS(5))
@@ -172,8 +168,8 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_fil
     dis_x.append(dsx)
     dis_y.append(dsy)
     if MPI.rank(mpi_comm_world()) == 0:
-	print "LIFT = %g,  DRAG = %g" % (Li, Dr)
-	print "dis_x/dis_y : %g %g "%(dsx,dsy)
+	    print "LIFT = %g,  DRAG = %g" % (Li, Dr)
+	    print "dis_x/dis_y : %g %g "%(dsx,dsy)
 
     return {}
 
@@ -191,4 +187,6 @@ def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list,**semimp_namespace):
     plt.plot(time_list,Lift);plt.ylabel("Lift");plt.xlabel("Time");plt.grid();
     #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/lift.png")
     plt.show()
+    return {}
+def initiate(**monolithic):
     return {}

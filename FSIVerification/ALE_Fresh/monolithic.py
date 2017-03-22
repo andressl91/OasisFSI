@@ -2,7 +2,7 @@ from dolfin import *
 import sys
 import numpy as np
 
-from Problems.cfd1 import *
+from Problems.fsi3 import *
 from Fluidvariation.fluid_coupled import *
 from Structurevariation.CN_mixed import *
 from Solver.newtonsolver import *
@@ -42,10 +42,10 @@ for time in ["n", "n-1", "n-2"]:
 
 phi, psi, gamma = TestFunctions(DVP)
 
-vars().update(create_bcs(**vars()))
 vars().update(fluid_setup(**vars()))
 vars().update(structure_setup(**vars()))
-#vars().update(init(**vars()))
+vars().update(initiate(**vars()))
+vars().update(create_bcs(**vars()))
 
 F_lin = F_fluid_linear + F_solid_linear
 F_nonlin = F_fluid_nonlinear + F_solid_nonlinear

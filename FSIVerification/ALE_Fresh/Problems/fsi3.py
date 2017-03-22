@@ -17,8 +17,8 @@ common = {"mesh": mesh_file,
           "v_deg": 2,    #Velocity degree
           "p_deg": 1,    #Pressure degree
           "d_deg": 2,    #Deformation degree
-          "T": 10,          # End time
-          "dt": 0.00005,       # Time step
+          "T": 3,          # End time
+          "dt": 0.005,       # Time step
           "rho_f": 1.0E3,    #
           "mu_f": 1.0,
           "rho_s" : Constant(1.0E3),
@@ -136,10 +136,10 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_fil
     #p = dvp_["n"].sub(2, deepcopy=True)
     d, v, p = dvp_["n"].split(True)
     if counter%step ==0:
-        u_file.write(v)
-        d_file.write(d)
-        p_file.write(p)
-        dvp_file.write(dvp_["n"])
+        u_file << v
+        d_file << d
+        p_file << p
+        dvp_file << dvp_["n"]
         #v_file.write(v, "v")
 
     def F_(U):
@@ -151,10 +151,6 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_fil
     def sigma_f_new(v, p, d, mu_f):
         return -p*Identity(len(v)) + mu_f*(grad(v)*inv(F_(d)) + inv(F_(d)).T*grad(v).T)
 
-    #Fx = -assemble((sigma_f_new(v, p, d, mu_f)*n)[0]*ds(6))
-    #Fy = -assemble((sigma_f_new(v, p, d, mu_f)*n)[1]*ds(6))
-    #Fx += -assemble(((-p("-")*Identity(len(v)) + mu_f*(grad(v)("-")*inv(F_(d("-"))) + inv(F_(d("-"))).T*grad(v)("-").T))*n('-'))[0]*dS(5))
-    #Fy += -assemble(((-p("-")*Identity(len(v)) + mu_f*(grad(v)("-")*inv(F_(d("-"))) + inv(F_(d("-"))).T*grad(v)("-").T))*n('-'))[1]*dS(5))
     Dr = -assemble((sigma_f_new(v,p,d,mu_f)*n)[0]*ds(6))
     Li = -assemble((sigma_f_new(v,p,d,mu_f)*n)[1]*ds(6))
     Dr += -assemble((sigma_f_new(v("-"),p("-"),d("-"),mu_f)*n("-"))[0]*dS(5))
@@ -188,4 +184,6 @@ def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list,**semimp_namespace):
     plt.plot(time_list,Lift);plt.ylabel("Lift");plt.xlabel("Time");plt.grid();
     #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/lift.png")
     plt.show()
+    return {}
+def initiate(**monolithic):
     return {}
