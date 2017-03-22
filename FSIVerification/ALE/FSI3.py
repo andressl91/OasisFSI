@@ -62,7 +62,7 @@ p_file = XDMFFile(mpi_comm_world(), "FSI_results/FSI-3/P-"+str(v_deg) +"/dt-"+st
 
 for tmp_t in [u_file, d_file, p_file]:
     tmp_t.parameters["flush_output"] = True
-    tmp_t.parameters["multi_file"] = 1
+    tmp_t.parameters["multi_file"] = 0
     tmp_t.parameters["rewrite_function_mesh"] = False
 
 dis_x = []

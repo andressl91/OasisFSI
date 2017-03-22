@@ -17,7 +17,7 @@ common = {"mesh": mesh_file,
           "v_deg": 2,    #Velocity degree
           "p_deg": 1,    #Pressure degree
           "d_deg": 2,    #Deformation degree
-          "T": 3,          # End time
+          "T": 2,          # End time
           "dt": 0.005,       # Time step
           "rho_f": 1.0E3,    #
           "mu_f": 1.0,
@@ -28,7 +28,7 @@ common = {"mesh": mesh_file,
           "D" : 0.1,
           "H" : 0.41,
           "L" : 2.5,
-	  "step" : 100
+	  "step" : 1
      }
 
 vars().update(common)
@@ -139,7 +139,7 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_fil
         u_file << v
         d_file << d
         p_file << p
-        dvp_file << dvp_["n"]
+        dvp_file << (dvp_["n"],t)
         #v_file.write(v, "v")
 
     def F_(U):
