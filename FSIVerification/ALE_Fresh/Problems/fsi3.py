@@ -17,17 +17,18 @@ common = {"mesh": mesh_file,
           "v_deg": 2,    #Velocity degree
           "p_deg": 1,    #Pressure degree
           "d_deg": 2,    #Deformation degree
-          "T": 1,          # End time
-          "dt": 0.0005,       # Time step
+          "T": 10,          # End time
+          "dt": 0.00005,       # Time step
           "rho_f": 1.0E3,    #
-          "mu_f": 1.,
+          "mu_f": 1.0,
           "rho_s" : Constant(1.0E3),
           "mu_s" : Constant(2.0E6),
           "nu_s" : Constant(0.4),
           "Um" : 2.0,
           "D" : 0.1,
           "H" : 0.41,
-          "L" : 2.5
+          "L" : 2.5,
+	  "step" : 100
      }
 
 vars().update(common)
@@ -120,21 +121,35 @@ def pre_solve(t, inlet, **semimp_namespace):
         inlet.t = 2
 
     return dict(inlet = inlet)
+u_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.xdmf")
+d_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/d.xdmf")
+p_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/pressure.xdmf")
+dvp_file = XDMFFile(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.xdmf")
 
-def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, **semimp_namespace):
+for tmp_t in [u_file, d_file, p_file]:
+    tmp_t.parameters["flush_output"] = True
+    tmp_t.parameters["multi_file"] = 0
+    tmp_t.parameters["rewrite_function_mesh"] = False
+def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_file,u_file,p_file,d_file, **semimp_namespace):
     #d = dvp_["n"].sub(0, deepcopy=True)
     #v = dvp_["n"].sub(1, deepcopy=True)
     #p = dvp_["n"].sub(2, deepcopy=True)
     d, v, p = dvp_["n"].split(True)
+    if counter%step ==0:
+        u_file.write(v)
+        d_file.write(d)
+        p_file.write(p)
+        dvp_file.write(dvp_["n"])
+        #v_file.write(v, "v")
 
     def F_(U):
-    	return (Identity(len(U)) + grad(U))
+        return (Identity(len(U)) + grad(U))
 
     def J_(U):
-    	return det(F_(U))
+        return det(F_(U))
 
     def sigma_f_new(v, p, d, mu_f):
-    	return -p*Identity(len(v)) + mu_f*(grad(v)*inv(F_(d)) + inv(F_(d)).T*grad(v).T)
+        return -p*Identity(len(v)) + mu_f*(grad(v)*inv(F_(d)) + inv(F_(d)).T*grad(v).T)
 
     #Fx = -assemble((sigma_f_new(v, p, d, mu_f)*n)[0]*ds(6))
     #Fy = -assemble((sigma_f_new(v, p, d, mu_f)*n)[1]*ds(6))
@@ -147,15 +162,17 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, **semimp_names
     Drag_list.append(Dr)
     Lift_list.append(Li)
 
-    print "LIFT = %g,  DRAG = %g" % (Li, Dr)
 
     dsx = d(coord)[0]
     dsy = d(coord)[1]
     dis_x.append(dsx)
     dis_y.append(dsy)
-    print "dis_x/dis_y : %g %g "%(dsx,dsy)
+    if MPI.rank(mpi_comm_world()) == 0:
+        print "LIFT = %g,  DRAG = %g" % (Li, Dr)
+        print "dis_x/dis_y : %g %g "%(dsx,dsy)
 
     return {}
+
 
 def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list,**semimp_namespace):
     time_list = np.linspace(0,T,T/dt+1)

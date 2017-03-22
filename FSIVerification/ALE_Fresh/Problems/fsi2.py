@@ -17,18 +17,18 @@ common = {"mesh": mesh_file,
           "v_deg": 2,    #Velocity degree
           "p_deg": 1,    #Pressure degree
           "d_deg": 2,    #Deformation degree
-          "T": 1,          # End time
-          "dt": 0.05,       # Time step
+          "T": 20,          # End time
+          "dt": 0.00001,       # Time step
           "rho_f": 1.0E3,    #
           "mu_f": 1.,
-          "rho_s" : Constant(1.0E3),
-          "mu_s" : Constant(0.5E6),
+          "rho_s" : Constant(10.0E3),
+          "mu_s" : Cot(0.5E6),
           "nu_s" : Constant(0.4),
-          "Um" : 0.2,
+          "Um" : 1.0,
           "D" : 0.1,
           "H" : 0.41,
           "L" : 2.5,
-          "step": 1,
+          "step": 100,
      }
 
 vars().update(common)
@@ -36,9 +36,9 @@ lamda_s = nu_s*2*mu_s/(1 - 2.*nu_s)
 #plot(mesh, interactive=True)
 
 for coord in mesh.coordinates():
-    if coord[0]==0.6 and (0.199<=coord[1]<=0.2001): # to get the point [0.2,0.6] end of bar
-        print coord
-        break
+    coord[0]==0.6 and (0.199<=coord[1]<=0.2001): # to get the point [0.2,0.6] end of bar
+    print coord
+    break
 # BOUNDARIES
 
 #NOS = AutoSubDomain(lambda x: "on_boundary" and( near(x[1],0) or near(x[1], 0.41)))
@@ -140,10 +140,10 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_fil
     #p = dvp_["n"].sub(2, deepcopy=True)
     d, v, p = dvp_["n"].split(True)
     if counter%step ==0:
-        u_file << v
-        d_file << d
-        p_file << p
-        dvp_file << dvp_["n"]
+        u_file.write(v)
+        d_file.write(d)
+        p_file.write(p)
+        dvp_file.write(dvp_)
         #v_file.write(v, "v")
 
     def F_(U):
@@ -166,13 +166,14 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_fil
     Drag_list.append(Dr)
     Lift_list.append(Li)
 
-    print "LIFT = %g,  DRAG = %g" % (Li, Dr)
 
     dsx = d(coord)[0]
     dsy = d(coord)[1]
     dis_x.append(dsx)
     dis_y.append(dsy)
-    print "dis_x/dis_y : %g %g "%(dsx,dsy)
+    if MPI.rank(mpi_comm_world()) == 0:
+	print "LIFT = %g,  DRAG = %g" % (Li, Dr)
+	print "dis_x/dis_y : %g %g "%(dsx,dsy)
 
     return {}
 
