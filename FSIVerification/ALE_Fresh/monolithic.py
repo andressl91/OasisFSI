@@ -2,7 +2,7 @@ from dolfin import *
 import sys
 import numpy as np
 
-from Problems.seeh5 import *
+from Problems.fsi3 import *
 from Fluidvariation.fluid_coupled import *
 from Structurevariation.CN_mixed import *
 from Solver.newtonsolver import *
@@ -41,11 +41,13 @@ for time in ["n", "n-1", "n-2"]:
     p_[time] = p
 
 phi, psi, gamma = TestFunctions(DVP)
-
+t = 0
 vars().update(fluid_setup(**vars()))
 vars().update(structure_setup(**vars()))
 vars().update(initiate(**vars()))
 vars().update(create_bcs(**vars()))
+
+print "t after initiate in monolithic: ", t
 
 F_lin = F_fluid_linear + F_solid_linear
 F_nonlin = F_fluid_nonlinear + F_solid_nonlinear
@@ -59,7 +61,7 @@ A = Matrix(A_pre)
 b = None
 
 F = F_lin + F_nonlin
-t = 0
+
 
 atol = 1e-8; rtol = 1e-8; max_it = 100; lmbda = 1.0
 
@@ -74,9 +76,6 @@ up_sol = LUSolver(solver_method)
 up_sol.parameters["same_nonzero_pattern"] = True
 up_sol.parameters["reuse_factorization"] = True #Maby, maby not doesnt do mutch
 tic()
-
-
-
 
 
 
@@ -98,5 +97,4 @@ while t <= T + 1e-8:
     counter +=1
 
 print "TIME SPENT!!!", toc()
-t = t - dt
 post_process(**vars())

@@ -34,6 +34,6 @@ def structure_setup(d_, v_, p_, phi, psi, gamma, dS, mu_f, n,\
 	#F_w = delta*((1.0/k)*inner(d-d0,psi)*dx_s - inner(0.5*(u+u0),psi)*dx_s)
 
 	# laplace
-	F_solid_linear += inner(grad(d_["n"]), grad(phi))*dx_f + (1./k)*inner(d_["n"] - d_["n-1"], phi)*dx_f
+	F_solid_linear += inner(grad(d_["n"]), grad(phi))*dx_f #+ (1./k)*inner(d_["n"] - d_["n-1"], phi)*dx_f
 
 	return dict(F_solid_linear = F_solid_linear, F_solid_nonlinear = F_solid_nonlinear)

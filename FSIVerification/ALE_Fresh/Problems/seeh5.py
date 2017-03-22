@@ -95,7 +95,7 @@ inlet = Inlet(Um)
 
 def initiate(dvp_, **monolithic):
     f = File("u.pvd")
-    hdf = HDF5File(mpi_comm_world(),"./FSI_fresh_checkpoints/FSI-3/P-2/dt-0.005/dvpFile.h5", "r")
+    hdf = HDF5File(mpi_comm_world(),"./FSI_fresh_checkpoints/FSI-3/P-2/dt-0.05/dvpFile.h5", "r")
     print hdf.has_dataset("/dvp9")
     hdf.read(dvp_["n-1"], "/dvp9")
     print "Type: ",type(dvp_["n-1"])
@@ -142,7 +142,7 @@ def after_solve(t, dvp_, counter, step, **semimp_namespace):
     v = dvp_["n"].sub(1, deepcopy=True)
     p = dvp_["n"].sub(2, deepcopy=True)
     #d, v, p = dvp_["n"].split(True)
-    if counter%step ==0:
+    #if counter%step ==0:
         #u_file << v
         #d_file << d
         #p_file << p

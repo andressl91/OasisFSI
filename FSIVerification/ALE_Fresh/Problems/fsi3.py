@@ -1,6 +1,7 @@
 from dolfin import *
 import numpy as np
 import matplotlib.pyplot as plt
+import sys
 """
 from Utils.argpar import *
 
@@ -17,8 +18,8 @@ common = {"mesh": mesh_file,
           "v_deg": 2,    #Velocity degree
           "p_deg": 1,    #Pressure degree
           "d_deg": 2,    #Deformation degree
-          "T": 0.1,          # End time
-          "dt": 0.005,       # Time step
+          "T": 10.0,          # End time
+          "dt": 0.001,       # Time step
           "rho_f": 1.0E3,    #
           "mu_f": 1.0,
           "rho_s" : Constant(1.0E3),
@@ -28,8 +29,10 @@ common = {"mesh": mesh_file,
           "D" : 0.1,
           "H" : 0.41,
           "L" : 2.5,
-	  "step" : 1
+	  "step" : 10,
+      "checkpoint": "./FSI_fresh_checkpoints/FSI-3/P-2/dt-0.05/dvpFile.h5"
      }
+#"./FSI_fresh_checkpoints/FSI-3/P-2/dt-0.005/dvpFile.h5"
 
 vars().update(common)
 lamda_s = nu_s*2*mu_s/(1 - 2.*nu_s)
@@ -130,17 +133,16 @@ for tmp_t in [u_file, d_file, p_file]:
     tmp_t.parameters["flush_output"] = True
     tmp_t.parameters["multi_file"] = 0
     tmp_t.parameters["rewrite_function_mesh"] = False
-
-dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
-dvp_file.write(mesh_file, "mesh")
+if checkpoint == "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5":
+    sys.exit(0)
+else:
+    dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
 
 
 
 def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_file,u_file,p_file,d_file, **semimp_namespace):
-    #d = dvp_["n"].sub(0, deepcopy=True)
-    #v = dvp_["n"].sub(1, deepcopy=True)
-    #p = dvp_["n"].sub(2, deepcopy=True)
-    dvp_file.write(dvp_["n"], "dvp%d"%counter)
+    if counter%step == 0:
+        dvp_file.write(dvp_["n"], "dvp%g"%t)
 
     d, v, p = dvp_["n"].split(True)
 
@@ -148,8 +150,6 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_fil
         u_file << v
         d_file << d
         p_file << p
-        #dvp_file << (dvp_["n"],t)
-        #v_file.write(v, "v")
 
     def F_(U):
         return (Identity(len(U)) + grad(U))
@@ -195,5 +195,16 @@ def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list,dvp_file,**semimp_namespa
     #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/lift.png")
     plt.show()
     return {}
-def initiate(**monolithic):
-    return {}
+def initiate(dvp_, checkpoint,t, **monolithic):
+    print checkpoint
+    if checkpoint != False:
+        f = File("u.pvd")
+        hdf = HDF5File(mpi_comm_world(), checkpoint, "r")
+        print hdf.has_dataset("/dvp40")
+        hdf.read(dvp_["n-1"], "/dvp40")
+        t = 2.0
+        print "Type: ",type(dvp_["n-1"])
+        d, u, p = dvp_["n-1"].split(True)
+        f << u
+        plot(u, interactive=True)
+    return dict(t=t)
