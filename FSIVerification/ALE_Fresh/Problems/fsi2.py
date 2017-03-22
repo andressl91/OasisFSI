@@ -18,17 +18,18 @@ common = {"mesh": mesh_file,
           "p_deg": 1,    #Pressure degree
           "d_deg": 2,    #Deformation degree
           "T": 20,          # End time
-          "dt": 0.00001,       # Time step
+          "dt": 0.001,       # Time step
           "rho_f": 1.0E3,    #
           "mu_f": 1.,
           "rho_s" : Constant(10.0E3),
-          "mu_s" : Cot(0.5E6),
+          "mu_s" : Constant(0.5E6),
           "nu_s" : Constant(0.4),
           "Um" : 1.0,
           "D" : 0.1,
           "H" : 0.41,
           "L" : 2.5,
-          "step": 100,
+          "step" : 50,
+	"checkpoint" : "FSI_fresh_checkpoints/FSI-2/P-2/dt-0.05/dvpFile.h5"
      }
 
 vars().update(common)
@@ -36,9 +37,9 @@ lamda_s = nu_s*2*mu_s/(1 - 2.*nu_s)
 #plot(mesh, interactive=True)
 
 for coord in mesh.coordinates():
-    coord[0]==0.6 and (0.199<=coord[1]<=0.2001): # to get the point [0.2,0.6] end of bar
-    print coord
-    break
+    if coord[0]==0.6 and (0.199<=coord[1]<=0.2001): # to get the point [0.2,0.6] end of bar
+        print coord
+        break
 # BOUNDARIES
 
 #NOS = AutoSubDomain(lambda x: "on_boundary" and( near(x[1],0) or near(x[1], 0.41)))
@@ -131,13 +132,19 @@ for tmp_t in [u_file, d_file, p_file]:
     tmp_t.parameters["flush_output"] = True
     tmp_t.parameters["multi_file"] = 0
     tmp_t.parameters["rewrite_function_mesh"] = False
-#dvp_file = HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-2/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
-#v_file = HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-2/P-"+str(v_deg)+"/dt-"+str(dt)+"/vFile.h5", "w")
+
+
+if checkpoint == "FSI_fresh_checkpoints/FSI-2/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5":
+    sys.exit(0)
+else:
+    dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-2/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
+
+
 
 def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_file,u_file,p_file,d_file, **semimp_namespace):
-    #d = dvp_["n"].sub(0, deepcopy=True)
-    #v = dvp_["n"].sub(1, deepcopy=True)
-    #p = dvp_["n"].sub(2, deepcopy=True)
+    if counter%step == 0:
+        dvp_file.write(dvp_["n"], "dvp%g"%t)
+
     d, v, p = dvp_["n"].split(True)
     if counter%step ==0:
         u_file.write(v)
@@ -174,6 +181,8 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_fil
     return {}
 
 def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list,**semimp_namespace):
+    dvp_file.close()
+
     time_list = np.linspace(0,T,T/dt+1)
     plt.plot(time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
     #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
@@ -188,5 +197,17 @@ def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list,**semimp_namespace):
     #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/lift.png")
     plt.show()
     return {}
-def initiate(**monolithic):
-    return {}
+
+def initiate(dvp_, checkpoint,t, **monolithic):
+    print checkpoint
+    if checkpoint != False:
+        #f = File("u.pvd")
+        hdf = HDF5File(mpi_comm_world(), checkpoint, "r")
+        print hdf.has_dataset("/dvp4")
+        hdf.read(dvp_["n-1"], "/dvp4")
+        t = 4
+        #print "Type: ",type(dvp_["n-1"])
+        #d, u, p = dvp_["n-1"].split(True)
+        #f << u
+        #plot(u, interactive=True)
+    return dict(t=t)

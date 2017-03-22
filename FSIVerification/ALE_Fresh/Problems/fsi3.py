@@ -29,7 +29,7 @@ common = {"mesh": mesh_file,
           "D" : 0.1,
           "H" : 0.41,
           "L" : 2.5,
-	  "step" : 10,
+	  "step" : 50,
       "checkpoint": "./FSI_fresh_checkpoints/FSI-3/P-2/dt-0.05/dvpFile.h5"
      }
 #"./FSI_fresh_checkpoints/FSI-3/P-2/dt-0.005/dvpFile.h5"
@@ -147,9 +147,9 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_fil
     d, v, p = dvp_["n"].split(True)
 
     if counter%step ==0:
-        u_file << v
-        d_file << d
-        p_file << p
+        u_file.write(v)
+        d_file.write(d)
+        p_file.write(p)
 
     def F_(U):
         return (Identity(len(U)) + grad(U))
@@ -203,8 +203,8 @@ def initiate(dvp_, checkpoint,t, **monolithic):
         print hdf.has_dataset("/dvp40")
         hdf.read(dvp_["n-1"], "/dvp40")
         t = 2.0
-        print "Type: ",type(dvp_["n-1"])
-        d, u, p = dvp_["n-1"].split(True)
-        f << u
-        plot(u, interactive=True)
+        #print "Type: ",type(dvp_["n-1"])
+        #d, u, p = dvp_["n-1"].split(True)
+        #f << u
+       	#plot(u, interactive=True)
     return dict(t=t)

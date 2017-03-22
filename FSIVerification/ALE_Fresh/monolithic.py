@@ -2,7 +2,7 @@ from dolfin import *
 import sys
 import numpy as np
 
-from Problems.fsi3 import *
+from Problems.fsi2 import *
 from Fluidvariation.fluid_coupled import *
 from Structurevariation.CN_mixed import *
 from Solver.newtonsolver import *
