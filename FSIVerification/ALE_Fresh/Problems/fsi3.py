@@ -19,7 +19,7 @@ common = {"mesh": mesh_file,
           "p_deg": 1,    #Pressure degree
           "d_deg": 2,    #Deformation degree
           "T": 10.0,          # End time
-          "dt": 0.001,       # Time step
+          "dt": 0.0001,       # Time step
           "rho_f": 1.0E3,    #
           "mu_f": 1.0,
           "rho_s" : Constant(1.0E3),
@@ -143,7 +143,7 @@ else:
 def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_file,u_file,p_file,d_file, **semimp_namespace):
     if counter%step == 0:
         dvp_file.write(dvp_["n"], "dvp%g"%t)
-
+	dvp_file.close()
     d, v, p = dvp_["n"].split(True)
 
     if counter%step ==0:
@@ -180,7 +180,7 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_fil
 
 
 def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list,dvp_file,**semimp_namespace):
-    dvp_file.close()
+    #dvp_file.close()
     time_list = np.linspace(0,T,T/dt+1)
     plt.plot(time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
     #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")

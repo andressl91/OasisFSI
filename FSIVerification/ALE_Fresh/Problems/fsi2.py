@@ -18,7 +18,7 @@ common = {"mesh": mesh_file,
           "p_deg": 1,    #Pressure degree
           "d_deg": 2,    #Deformation degree
           "T": 20,          # End time
-          "dt": 0.001,       # Time step
+          "dt": 0.0001,       # Time step
           "rho_f": 1.0E3,    #
           "mu_f": 1.,
           "rho_s" : Constant(10.0E3),
