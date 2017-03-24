@@ -15,7 +15,7 @@ if args.refiner != None:
 # Import variationalform and solver
 from Fluidvariation.fluid_coupled import *
 from Structurevariation.CN_mixed import *
-from Newtonsolver.newtonsolver import *
+print args.solver
 exec("from Newtonsolver.%s import *" % args.solver)
 
 #Silence FEniCS output

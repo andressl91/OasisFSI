@@ -1,5 +1,5 @@
 from dolfin import *
-
+from numpy import isnan
 def solver_setup(F_fluid_linear, F_fluid_nonlinear, \
                  F_solid_linear, F_solid_nonlinear, DVP, dvp_, **monolithic):
 
@@ -19,7 +19,7 @@ def solver_setup(F_fluid_linear, F_fluid_nonlinear, \
 
 
 def newtonsolver(F, J_nonlinear, A_pre, A, b, bcs, \
-                dvp_, dvp_res, up_sol, rtol, atol, max_it, **monolithic):
+                dvp_, dvp_res, up_sol, rtol, atol, max_it, t, **monolithic):
     Iter      = 0
     residual   = 1
     rel_res    = residual
@@ -39,6 +39,9 @@ def newtonsolver(F, J_nonlinear, A_pre, A, b, bcs, \
         [bc.apply(dvp_["n"].vector()) for bc in bcs]
         rel_res = norm(dvp_res, 'l2')
         residual = b.norm('l2')
+        if isnan(rel_res) or isnan(residual):
+            print "type rel_res: ",type(rel_res)
+            t = T*T
 
         if MPI.rank(mpi_comm_world()) == 0:
             print "Newton iteration %d: r (atol) = %.3e (tol = %.3e), r (rel) = %.3e (tol = %.3e) " \
