@@ -18,13 +18,8 @@ common = {"mesh": mesh_file,
           "v_deg": 2,    #Velocity degree
           "p_deg": 1,    #Pressure degree
           "d_deg": 2,    #Deformation degree
-<<<<<<< HEAD
           "T": 4,          # End time
           "dt": 0.0005,       # Time step
-=======
-          "T": 10.0,          # End time
-          "dt": 0.0001,       # Time step
->>>>>>> 617d166f1e7aa1a9086be64ee03a5d06b82ef989
           "rho_f": 1.0E3,    #
           "mu_f": 1.0,
           "rho_s" : Constant(1.0E3),
@@ -34,14 +29,9 @@ common = {"mesh": mesh_file,
           "D" : 0.1,
           "H" : 0.41,
           "L" : 2.5,
-<<<<<<< HEAD
-          "step": 1 #Which timestep to store solution
-=======
-	  "step" : 50,
-      "checkpoint": "./FSI_fresh_checkpoints/FSI-3/P-2/dt-0.05/dvpFile.h5"
->>>>>>> 617d166f1e7aa1a9086be64ee03a5d06b82ef989
-     }
-#"./FSI_fresh_checkpoints/FSI-3/P-2/dt-0.005/dvpFile.h5"
+    	  "step" : 50,
+          "checkpoint": "./FSI_fresh_checkpoints/FSI-3/P-2/dt-0.05/dvpFile.h5"
+          }
 
 vars().update(common)
 lamda_s = nu_s*2*mu_s/(1 - 2.*nu_s)
@@ -141,13 +131,7 @@ def pre_solve(t, inlet, **semimp_namespace):
         inlet.t = 2
 
     return dict(inlet = inlet)
-<<<<<<< HEAD
 
-def after_solve(t, dvp_, counter, step, **semimp_namespace):
-    #d = dvp_["n"].sub(0, deepcopy=True)
-    #v = dvp_["n"].sub(1, deepcopy=True)
-    #p = dvp_["n"].sub(2, deepcopy=True)
-=======
 u_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.xdmf")
 d_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/d.xdmf")
 p_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/pressure.xdmf")
@@ -162,25 +146,18 @@ if checkpoint == "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dv
 else:
     dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
 
-
-
 def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_file,u_file,p_file,d_file, **semimp_namespace):
-    if counter%step == 0:
-        dvp_file.write(dvp_["n"], "dvp%g"%t)
-	dvp_file.close()
->>>>>>> 617d166f1e7aa1a9086be64ee03a5d06b82ef989
+
     d, v, p = dvp_["n"].split(True)
     if counter%step ==0:
         #u_file << v
         #d_file << d
         #p_file << p
-        #dvp_file << dvp_["n"]
-        hdf.write(dvp_["n-1"].vector(), "/step%g" % t)
-
-    if counter%step ==0:
-        u_file.write(v)
+        #p_file.write(p)
         d_file.write(d)
-        p_file.write(p)
+        u_file.write(v)
+        #dvp_file << dvp_["n"]
+        dvp_file.write(dvp_["n"], "dvp%g"%t)
 
     def F_(U):
         return (Identity(len(U)) + grad(U))
@@ -211,7 +188,7 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_fil
 
 
 def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list,dvp_file,**semimp_namespace):
-    #dvp_file.close()
+    dvp_file.close()
     time_list = np.linspace(0,T,T/dt+1)
     plt.plot(time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
     #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
@@ -226,6 +203,7 @@ def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list,dvp_file,**semimp_namespa
     #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/lift.png")
     plt.show()
     return {}
+
 def initiate(dvp_, checkpoint,t, **monolithic):
     print checkpoint
     if checkpoint != False:

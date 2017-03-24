@@ -78,7 +78,7 @@ while t <= T + 1e-8:
         print "Solving for timestep %g" % t
 
     pre_solve(**vars())
-    newtonsolver(**vars())
+    vars().update(newtonsolver(**vars()))
     if MPI.rank(mpi_comm_world()) == 0:
 	print "newton time: ",time_.time() - newton_time
     times = ["n-2", "n-1", "n"]
