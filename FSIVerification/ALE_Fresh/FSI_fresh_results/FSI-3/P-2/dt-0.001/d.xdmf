@@ -1,9 +1,10 @@
 <?xml version="1.0"?>
+<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>
 <Xdmf Version="2.0" xmlns:xi="http://www.w3.org/2001/XInclude">
   <Domain>
     <Grid Name="TimeSeries" GridType="Collection" CollectionType="Temporal">
       <Time TimeType="List">
-        <DataItem Format="XML" Dimensions="9"> 0 1 2 3 4 5 6 7 8</DataItem>
+        <DataItem Format="XML" Dimensions="1"> 0</DataItem>
       </Time>
       <Grid Name="grid_1" GridType="Uniform">
         <Topology NumberOfElements="2698" TopologyType="Triangle">
@@ -12,96 +13,8 @@
         <Geometry GeometryType="XY">
           <DataItem Format="HDF" Dimensions="1419 2">d.h5:/Mesh/0/coordinates</DataItem>
         </Geometry>
-        <Attribute Name="f_21-0" AttributeType="Vector" Center="Node">
+        <Attribute Name="f_22-0" AttributeType="Vector" Center="Node">
           <DataItem Format="HDF" Dimensions="1419 3">d.h5:/VisualisationVector/0</DataItem>
-        </Attribute>
-      </Grid>
-      <Grid Name="grid_2" GridType="Uniform">
-        <Topology NumberOfElements="2698" TopologyType="Triangle">
-          <DataItem Format="HDF" Dimensions="2698 3">d.h5:/Mesh/0/topology</DataItem>
-        </Topology>
-        <Geometry GeometryType="XY">
-          <DataItem Format="HDF" Dimensions="1419 2">d.h5:/Mesh/0/coordinates</DataItem>
-        </Geometry>
-        <Attribute Name="f_21-0" AttributeType="Vector" Center="Node">
-          <DataItem Format="HDF" Dimensions="1419 3">d.h5:/VisualisationVector/1</DataItem>
-        </Attribute>
-      </Grid>
-      <Grid Name="grid_3" GridType="Uniform">
-        <Topology NumberOfElements="2698" TopologyType="Triangle">
-          <DataItem Format="HDF" Dimensions="2698 3">d.h5:/Mesh/0/topology</DataItem>
-        </Topology>
-        <Geometry GeometryType="XY">
-          <DataItem Format="HDF" Dimensions="1419 2">d.h5:/Mesh/0/coordinates</DataItem>
-        </Geometry>
-        <Attribute Name="f_21-0" AttributeType="Vector" Center="Node">
-          <DataItem Format="HDF" Dimensions="1419 3">d.h5:/VisualisationVector/2</DataItem>
-        </Attribute>
-      </Grid>
-      <Grid Name="grid_4" GridType="Uniform">
-        <Topology NumberOfElements="2698" TopologyType="Triangle">
-          <DataItem Format="HDF" Dimensions="2698 3">d.h5:/Mesh/0/topology</DataItem>
-        </Topology>
-        <Geometry GeometryType="XY">
-          <DataItem Format="HDF" Dimensions="1419 2">d.h5:/Mesh/0/coordinates</DataItem>
-        </Geometry>
-        <Attribute Name="f_21-0" AttributeType="Vector" Center="Node">
-          <DataItem Format="HDF" Dimensions="1419 3">d.h5:/VisualisationVector/3</DataItem>
-        </Attribute>
-      </Grid>
-      <Grid Name="grid_5" GridType="Uniform">
-        <Topology NumberOfElements="2698" TopologyType="Triangle">
-          <DataItem Format="HDF" Dimensions="2698 3">d.h5:/Mesh/0/topology</DataItem>
-        </Topology>
-        <Geometry GeometryType="XY">
-          <DataItem Format="HDF" Dimensions="1419 2">d.h5:/Mesh/0/coordinates</DataItem>
-        </Geometry>
-        <Attribute Name="f_21-0" AttributeType="Vector" Center="Node">
-          <DataItem Format="HDF" Dimensions="1419 3">d.h5:/VisualisationVector/4</DataItem>
-        </Attribute>
-      </Grid>
-      <Grid Name="grid_6" GridType="Uniform">
-        <Topology NumberOfElements="2698" TopologyType="Triangle">
-          <DataItem Format="HDF" Dimensions="2698 3">d.h5:/Mesh/0/topology</DataItem>
-        </Topology>
-        <Geometry GeometryType="XY">
-          <DataItem Format="HDF" Dimensions="1419 2">d.h5:/Mesh/0/coordinates</DataItem>
-        </Geometry>
-        <Attribute Name="f_21-0" AttributeType="Vector" Center="Node">
-          <DataItem Format="HDF" Dimensions="1419 3">d.h5:/VisualisationVector/5</DataItem>
-        </Attribute>
-      </Grid>
-      <Grid Name="grid_7" GridType="Uniform">
-        <Topology NumberOfElements="2698" TopologyType="Triangle">
-          <DataItem Format="HDF" Dimensions="2698 3">d.h5:/Mesh/0/topology</DataItem>
-        </Topology>
-        <Geometry GeometryType="XY">
-          <DataItem Format="HDF" Dimensions="1419 2">d.h5:/Mesh/0/coordinates</DataItem>
-        </Geometry>
-        <Attribute Name="f_21-0" AttributeType="Vector" Center="Node">
-          <DataItem Format="HDF" Dimensions="1419 3">d.h5:/VisualisationVector/6</DataItem>
-        </Attribute>
-      </Grid>
-      <Grid Name="grid_8" GridType="Uniform">
-        <Topology NumberOfElements="2698" TopologyType="Triangle">
-          <DataItem Format="HDF" Dimensions="2698 3">d.h5:/Mesh/0/topology</DataItem>
-        </Topology>
-        <Geometry GeometryType="XY">
-          <DataItem Format="HDF" Dimensions="1419 2">d.h5:/Mesh/0/coordinates</DataItem>
-        </Geometry>
-        <Attribute Name="f_21-0" AttributeType="Vector" Center="Node">
-          <DataItem Format="HDF" Dimensions="1419 3">d.h5:/VisualisationVector/7</DataItem>
-        </Attribute>
-      </Grid>
-      <Grid Name="grid_9" GridType="Uniform">
-        <Topology NumberOfElements="2698" TopologyType="Triangle">
-          <DataItem Format="HDF" Dimensions="2698 3">d.h5:/Mesh/0/topology</DataItem>
-        </Topology>
-        <Geometry GeometryType="XY">
-          <DataItem Format="HDF" Dimensions="1419 2">d.h5:/Mesh/0/coordinates</DataItem>
-        </Geometry>
-        <Attribute Name="f_21-0" AttributeType="Vector" Center="Node">
-          <DataItem Format="HDF" Dimensions="1419 3">d.h5:/VisualisationVector/8</DataItem>
         </Attribute>
       </Grid>
     </Grid>

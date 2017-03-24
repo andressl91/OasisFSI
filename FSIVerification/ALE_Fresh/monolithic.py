@@ -67,7 +67,7 @@ for i in ["mumps", "superlu_dist", "default"]:
     if has_lu_solver_method(i):
         solver_method = i
 
-up_sol = LUSolver(mpi_comm_world(), solver_method)
+up_sol = LUSolver(mpi_comm_world(),solver_method)
 #up_sol.parameters["same_nonzero_pattern"] = True
 #up_sol.parameters["reuse_factorization"] = True
 

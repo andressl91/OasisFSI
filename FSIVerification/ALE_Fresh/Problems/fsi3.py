@@ -29,7 +29,7 @@ common = {"mesh": mesh_file,
           "D" : 0.1,
           "H" : 0.41,
           "L" : 2.5,
-    	  "step" : 1,
+    	  "step" : 50,
           "checkpoint": "./FSI_fresh_checkpoints/FSI-3/P-2/dt-0.05/dvpFile.h5"
           }
 
@@ -160,7 +160,7 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_fil
         u_file.write(v)
         #dvp_file << dvp_["n"]
         dvp_file.write(dvp_["n"], "dvp%g"%t)
-	dvp_file.close()
+	#dvp_file.close()
     def F_(U):
         return (Identity(len(U)) + grad(U))
 
