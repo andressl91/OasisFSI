@@ -5,12 +5,14 @@ import numpy as np
 # Get user input
 from Utils.argpar import *
 args = parse()
-vars().update(args.__dict__)
+
 # Mesh refiner
 exec("from Problems.%s import *" % args.problem)
 if args.refiner != None:
     for i in range(args.refiner):
         mesh = refine(mesh)
+
+vars().update(args.__dict__)
 
 # Import variationalform and solver
 from Fluidvariation.fluid_coupled import *
@@ -47,6 +49,7 @@ for time in ["n", "n-1", "n-2"]:
     p_[time] = p
 
 phi, psi, gamma = TestFunctions(DVP)
+t = 0
 
 vars().update(fluid_setup(**vars()))
 vars().update(structure_setup(**vars()))
@@ -68,7 +71,7 @@ up_sol = LUSolver(mpi_comm_world(), solver_method)
 #up_sol.parameters["same_nonzero_pattern"] = True
 #up_sol.parameters["reuse_factorization"] = True
 
-t = 0
+
 counter = 0
 tic()
 while t <= T + 1e-8:
@@ -77,10 +80,9 @@ while t <= T + 1e-8:
     if MPI.rank(mpi_comm_world()) == 0:
         print "Solving for timestep %g" % t
 
-    pre_solve(**vars())
+    pre_solve(**vars())	
     vars().update(newtonsolver(**vars()))
-    if MPI.rank(mpi_comm_world()) == 0:
-	print "newton time: ",time_.time() - newton_time
+ 
     times = ["n-2", "n-1", "n"]
     for i, t_tmp in enumerate(times[:-1]):
     	dvp_[t_tmp].vector().zero()

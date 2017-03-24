@@ -18,8 +18,8 @@ common = {"mesh": mesh_file,
           "v_deg": 2,    #Velocity degree
           "p_deg": 1,    #Pressure degree
           "d_deg": 2,    #Deformation degree
-          "T": 4,          # End time
-          "dt": 0.0005,       # Time step
+          "T": 2.1,          # End time
+          "dt": 0.001,       # Time step
           "rho_f": 1.0E3,    #
           "mu_f": 1.0,
           "rho_s" : Constant(1.0E3),
@@ -29,7 +29,7 @@ common = {"mesh": mesh_file,
           "D" : 0.1,
           "H" : 0.41,
           "L" : 2.5,
-    	  "step" : 50,
+    	  "step" : 1,
           "checkpoint": "./FSI_fresh_checkpoints/FSI-3/P-2/dt-0.05/dvpFile.h5"
           }
 
@@ -81,7 +81,7 @@ dis_y = []
 Drag_list = []
 Lift_list = []
 
-hdf = HDF5File(mesh.mpi_comm(), "./FSI_fresh_checkpoints/FSI3/dvp.h5", "w")
+#hdf = HDF5File(mesh.mpi_comm(), "./FSI_fresh_checkpoints/FSI3/dvp.h5", "w")
 #Fluid properties
 
 class Inlet(Expression):
@@ -143,13 +143,15 @@ for tmp_t in [u_file, d_file, p_file]:
     tmp_t.parameters["rewrite_function_mesh"] = False
 if checkpoint == "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5":
     sys.exit(0)
-else:
+else:	
     dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
-
+    print "under making dvp file"	 
+	
 def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_file,u_file,p_file,d_file, **semimp_namespace):
 
     d, v, p = dvp_["n"].split(True)
     if counter%step ==0:
+	print "counter%step ==0"
         #u_file << v
         #d_file << d
         #p_file << p
@@ -158,7 +160,7 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_fil
         u_file.write(v)
         #dvp_file << dvp_["n"]
         dvp_file.write(dvp_["n"], "dvp%g"%t)
-
+	dvp_file.close()
     def F_(U):
         return (Identity(len(U)) + grad(U))
 
@@ -188,7 +190,9 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_fil
 
 
 def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list,dvp_file,**semimp_namespace):
+    print "Inside post process"
     dvp_file.close()
+    """
     time_list = np.linspace(0,T,T/dt+1)
     plt.plot(time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
     #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
@@ -201,7 +205,7 @@ def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list,dvp_file,**semimp_namespa
     plt.show()
     plt.plot(time_list,Lift);plt.ylabel("Lift");plt.xlabel("Time");plt.grid();
     #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/lift.png")
-    plt.show()
+    plt.show()"""
     return {}
 
 def initiate(dvp_, checkpoint,t, **monolithic):
