@@ -81,7 +81,7 @@ dis_y = []
 Drag_list = []
 Lift_list = []
 
-hdf = HDF5File(mesh.mpi_comm(), "./FSI_fresh_checkpoints/FSI3/dvp.h5", "w")
+#hdf = HDF5File(mesh.mpi_comm(), "./FSI_fresh_checkpoints/FSI3/dvp.h5", "w")
 #Fluid properties
 
 class Inlet(Expression):
@@ -145,11 +145,13 @@ if checkpoint == "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dv
     sys.exit(0)
 else:
     dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
+    print "under making dvp file"
 
 def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_file,u_file,p_file,d_file, **semimp_namespace):
 
     d, v, p = dvp_["n"].split(True)
     if counter%step ==0:
+	print "counter%step ==0"
         #u_file << v
         #d_file << d
         #p_file << p
@@ -158,7 +160,7 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_fil
         u_file.write(v)
         #dvp_file << dvp_["n"]
         dvp_file.write(dvp_["n"], "dvp%g"%t)
-
+	#dvp_file.close()
     def F_(U):
         return (Identity(len(U)) + grad(U))
 
@@ -188,7 +190,9 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_fil
 
 
 def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list,dvp_file,**semimp_namespace):
+    print "Inside post process"
     dvp_file.close()
+    """
     time_list = np.linspace(0,T,T/dt+1)
     plt.plot(time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
     #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
@@ -201,8 +205,9 @@ def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list,dvp_file,**semimp_namespa
     plt.show()
     plt.plot(time_list,Lift);plt.ylabel("Lift");plt.xlabel("Time");plt.grid();
     #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/lift.png")
-    plt.show()
+    plt.show()"""
     return {}
+
 
 def initiate(dvp_, checkpoint,t, **monolithic):
     print checkpoint
