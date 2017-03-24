@@ -39,7 +39,7 @@ if __name__ == "__main__":
 
     cases  = [cfd1, cfd1_2, cfd1_3, cfd1_4]
     for r in cases:
-        vars().update(cfd1)
+        vars().update(r)
         Lift, Drag, Time, nel, ndof = mixedformulation(**vars())
 
         store_results(**vars())

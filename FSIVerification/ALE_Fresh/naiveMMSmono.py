@@ -136,12 +136,19 @@ for n in N:
                 #if Iter == 0 or Iter == 5:
                 A = assemble(Jac)
                 b = assemble(-F)
-
                 [bc.apply(A, b, up.vector()) for bc in bcs]
                 solve(A, upres.vector(), b)
-
                 up.vector()[:] = up.vector()[:] + lmbda*upres.vector()[:]
                 [bc.apply(up.vector()) for bc in bcs]
+                """
+                TEST
+                A, b = assemble_system(Jac, -F, bcs)
+                [bc.apply(A, b, up.vector()) for bc in bcs]
+                solve(A, upres.vector(), b)
+                up.vector()[:] = up.vector()[:] + lmbda*upres.vector()[:]
+                [bc.apply(up.vector()) for bc in bcs]
+                """
+
                 rel_res = norm(upres, 'l2')
                 residual = b.norm('l2')
 

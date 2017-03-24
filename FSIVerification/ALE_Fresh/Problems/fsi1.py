@@ -10,7 +10,7 @@ d_deg = args.d_deg
 dt = args.dt
 """
 mesh_file = Mesh("Mesh/fluid_new.xml")
-mesh_file = refine(mesh_file)
+#mesh_file = refine(mesh_file)
 #Parameters for each numerical case
 common = {"mesh": mesh_file,
           "v_deg": 2,    #Velocity degree
@@ -119,6 +119,9 @@ def pre_solve(t, inlet, **semimp_namespace):
         inlet.t = 2
 
     return dict(inlet = inlet)
+
+def initiate(**monolithic):
+    return {}
 
 def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, **semimp_namespace):
     #d = dvp_["n"].sub(0, deepcopy=True)

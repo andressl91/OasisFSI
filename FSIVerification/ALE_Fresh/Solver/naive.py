@@ -1,23 +1,5 @@
 from dolfin import *
 
-def solver_setup(F_fluid_linear, F_fluid_nonlinear, \
-                 F_solid_linear, F_solid_nonlinear, DVP, dvp_, **monolithic):
-
-    F_lin = F_fluid_linear + F_solid_linear
-    F_nonlin = F_fluid_nonlinear + F_solid_nonlinear
-    F = F_lin + F_nonlin
-
-    chi = TrialFunction(DVP)
-    J_linear    = derivative(F_lin, dvp_["n"], chi)
-    J_nonlinear = derivative(F_nonlin, dvp_["n"], chi)
-
-    A_pre = assemble(J_linear)
-    A = Matrix(A_pre)
-    b = None
-
-    return dict(F=F, J_nonlinear=J_nonlinear, A_pre=A_pre, A=A, b=b)
-
-
 def newtonsolver(F, J_nonlinear, A_pre, A, b, bcs, \
                 dvp_, dvp_res, up_sol, rtol, atol, max_it, **monolithic):
     Iter      = 0

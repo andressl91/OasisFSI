@@ -16,19 +16,29 @@ if __name__ == "__main__":
     #Parameters for each numerical case
     common = {"v_deg": 2,    #Velocity degree
               "p_deg": 1,    #Pressure degree
-              "T": 1E-4,          # End time
-              "dt": 1E-5,       # Time step
-              "N": 8,      #N-points, argument UnitSquareMesh
-              "rho": 10,    #
+              "T": 2E-5,          # End time
+              "dt": 1E-6,       # Time step
+              "rho": 1,    #
               "mu": 1,
          }
 
-    ######## Convergence Space ########
+    vars().update(common)
+    #u_x = "x[1]"
+    #u_y = "x[0]"
+    #p_c = "2"
 
-    #Error storing for Convergence rate
+    u_x = "cos(x[1]) + sin(t_)"
+    u_y = "cos(x[0]) + cos(t_)"
+    p_c = "cos(x[0]) + cos(t_)"
+
+    #u_x = "cos(x[1])*sin(t_)"
+    #u_y = "cos(x[0])*sin(t_)"
+    #p_c = "cos(x[0])*sin(t_)"
+
+    ######## Convergence Space ########
     E_u = []; E_p = []; h = []
 
-    N_list = [2**i for i in range(2, 5)]
+    N_list = [4, 8, 12, 16]
     runs = [solver_parameters(common, {"N": i} ) for i in N_list]
 
     results = []
@@ -46,12 +56,11 @@ if __name__ == "__main__":
     convergence(E_u, E_p, h, [runs[0]["dt"] ])
 
     ######## Convergence Time ########
-    """
-    #Error storing for Convergence rate
     E_u = []; E_p = []; h = []
 
-    dt_list = [5E-5/(2**i) for i in range(4)]
-    runs = [solver_parameters(common, {"N": 40, "dt": i, "T": 2E-4,\
+    #dt_list = [1E-1]
+    dt_list = [5E-2, 4E-2, 2E-2, 1E-2]
+    runs = [solver_parameters(common, {"N": 40, "dt": i, "T": 2E-1,\
     "v_deg": 3, "p_deg": 2} ) for i in dt_list]
 
     results = []
@@ -66,4 +75,3 @@ if __name__ == "__main__":
         #Start simulation
 
     convergence(E_u, E_p, [runs[0]["N"] ], dt_list )
-    """

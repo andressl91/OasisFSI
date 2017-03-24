@@ -29,10 +29,10 @@ if __name__ == "__main__":
 
     #Error storing for Convergence rate
     E_u = []; E_p = []; h = []
-
-    N_list = [4, 8, 12, 16, 20]
+    
+    N_list = [4, 8, 12]
     #N_list = [2**i for i in range(1, 6)]
-    runs = [solver_parameters(common, {"N": i, "dt": 1E-5, "T": 1E-4} ) for i in N_list]
+    runs = [solver_parameters(common, {"N": i, "dt": 1E-6, "T": 1E-5} ) for i in N_list]
 
     results = []
 

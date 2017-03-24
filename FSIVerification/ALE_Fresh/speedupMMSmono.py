@@ -135,11 +135,10 @@ for n in N:
         t = 0
         rtol = 1e-6; atol = 1e-6; max_it = 20; lmbda = 1
 
-        #up_sol = LUSolver() #Can leave argument
-        up_sol = LUSolver(A)
+        up_sol = LUSolver() #Can leave argument
+        #up_sol = LUSolver(A)
         up_sol.parameters["same_nonzero_pattern"] = True
         up_sol.parameters["reuse_factorization"] = False #Maby, maby not doesnt do mutch
-
 
         tic()
         while t < T:

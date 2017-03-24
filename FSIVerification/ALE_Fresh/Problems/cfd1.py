@@ -16,7 +16,7 @@ common = {"mesh": mesh_file,
           "v_deg": 2,    #Velocity degree
           "p_deg": 1,    #Pressure degree
           "d_deg": 2,    #Deformation degree
-          "T": 8,          # End time
+          "T": 0.5,          # End time
           "dt": 0.5,       # Time step
           "rho_f": 1.0E3,    #
           "mu_f": 1.,
@@ -87,6 +87,9 @@ class Inlet(Expression):
 		value[1] = 0
 	def value_shape(self):
 		return (2,)
+
+def initiate(**monolithic):
+    return {}
 
 def create_bcs(DVP, dvp_, n, k, Um, H, boundaries, Inlet, **semimp_namespace):
     inlet = Inlet()
