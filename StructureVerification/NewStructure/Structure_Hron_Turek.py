@@ -9,7 +9,7 @@ import sys
 
 mesh = Mesh("von_karman_street_FSI_structure.xml")
 mesh=refine(mesh)
-mesh=refine(mesh)
+#mesh=refine(mesh)
 
 for coord in mesh.coordinates():
     if coord[0]==0.6 and (0.199<=coord[1]<=0.2001): # to get the point [0.2,0.6] end of bar
@@ -58,23 +58,35 @@ u, d = split(ud)
 phi, psi = TestFunctions(W)
 ud0 = Function(W)
 u0, d0 = split(ud0)
+ud1 = Function(W)
+u1, d1 = split(ud1)
 
 BarLeftSide =  AutoSubDomain(lambda x: "on_boundary" and (( (x[0] - 0.2)*(x[0] - 0.2) + (x[1] - 0.2)*(x[1] - 0.2)  < 0.0505*0.0505 )  and x[1]>=0.19 and x[1]<=0.21 and x[0]>0.2 ))
 
 boundaries = FacetFunction("size_t",mesh)
 boundaries.set_all(0)
 BarLeftSide.mark(boundaries,1)
+domains = CellFunction("size_t",mesh)
+domains.set_all(1)
+dx = Measure("dx",subdomain_data=domains)
 
 #plot(boundaries,interactive=True)
 
 
-delta = 1
+delta = 1E10
+#imp = sys.argv[2]
+"""
 F_structure = (rho_s/k)*inner(u-u0,phi)*dx
 #F_structure += inner(P1(d,lamda_s,mu_s), grad(phi))*dx
 #F_structure += delta*((1.0/k)*inner(d-d0,psi)*dx - inner(u,psi)*dx)
 F_structure -= inner(g, phi)*dx #+ inner(f2, psi)*dx
 F_structure += inner(0.5*(P1(d,lamda_s,mu_s)+P1(d0,lamda_s,mu_s)), grad(phi))*dx
 F_structure += delta*((1.0/k)*inner(d-d0,psi)*dx - inner(0.5*(u+u0),psi)*dx)
+"""
+F_structure = (rho_s/k)*inner((3./2)*u - 2*u0 + (1./2)*u1,phi)*dx
+F_structure += 0.5*inner(P1(d0,lamda_s,mu_s)+P1((d + (3./2.)*k*u - (k/2.)*u0),lamda_s,mu_s), grad(phi))*dx
+F_structure += delta*((1.0/k)*inner(d-d0,psi)*dx - inner(0.5*(u+u0),psi)*dx)
+F_structure -= inner(g, phi)*dx #+ inner(f2, psi)*dx
 
 
 u_file = XDMFFile(mpi_comm_world(), "Structure_MMS_results/velocity.xdmf")
@@ -95,19 +107,23 @@ dis_y = []
 time_list = []
 t = 0
 T = 10
+#a = lhs(F_structure)
+#b = rhs(F_structure)
 while t <= T:
     time_list.append(t)
     print "Time: %.2f" %t
-    solve(F_structure == 0, ud, bcs,solver_parameters={"newton_solver": \
+
+    solve(F_structure == 0,  ud,bcs, solver_parameters={"newton_solver": \
     {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":100,"relaxation_parameter":1.0}})
     u, d = ud.split(True)
+    ud1.assign(ud0)
     ud0.assign(ud)
     #u0.assign(u_); d0.assign(d_)
 
     dis_x.append(d(coord)[0])
     dis_y.append(d(coord)[1])
-    print "x: ", d(coord)[0]
-    print "y: ", d(coord)[1]
+    #print "x: ", d(coord)[0]
+    #print "y: ", d(coord)[1]
     #plot(d,mode = "displacement")
     t += dt
 print "Dofs: ",W.dim(), "Cells:", mesh.num_cells()
@@ -116,13 +132,13 @@ title = plt.title("CSM 3 displacement of point A")
 plt.figure(1)
 #plt.title("Eulerian Mixed, schewed Crank-Nic")
 plt.plot(time_list,dis_x,);title; plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
-plt.axis([8, 10, -0.03, 0.005])
+plt.axis([0, 10, -0.03, 0.005])
 
 #plt.savefig("run_x.jpg")
 plt.show()
 plt.figure(2)
 #plt.title("Eulerian Mixed, schewed Crank-Nic")
 plt.plot(time_list,dis_y);title;plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
-plt.axis([8, 10, -0.14, 0.02])
+plt.axis([0, 10, -0.14, 0.02])
 #plt.savefig("run_y.jpg")
 plt.show()
