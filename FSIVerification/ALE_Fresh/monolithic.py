@@ -15,11 +15,12 @@ if args.refiner != None:
 vars().update(args.__dict__)
 
 # Import variationalform and solver
-from Fluidvariation.fluid_coupled import *
-from Structurevariation.CN_mixed import *
+#from Fluidvariation.fluid_coupled import *
+#from Structurevariation.CN_mixed import *
+from Fluidvariation.second_order import *
+from Structurevariation.second_order import *
 print args.solver
 exec("from Newtonsolver.%s import *" % args.solver)
-
 #Silence FEniCS output
 set_log_active(False)
 
@@ -67,7 +68,9 @@ for i in ["mumps", "superlu_dist", "default"]:
     if has_lu_solver_method(i):
         solver_method = i
 
-up_sol = LUSolver(mpi_comm_world(),solver_method)
+#up_sol = LUSolver(mpi_comm_world(),solver_method)
+up_sol = LUSolver(solver_method)
+
 #up_sol.parameters["same_nonzero_pattern"] = True
 #up_sol.parameters["reuse_factorization"] = True
 
@@ -80,9 +83,9 @@ while t <= T + 1e-8:
     if MPI.rank(mpi_comm_world()) == 0:
         print "Solving for timestep %g" % t
 
-    pre_solve(**vars())	
+    pre_solve(**vars())
     vars().update(newtonsolver(**vars()))
- 
+
     times = ["n-2", "n-1", "n"]
     for i, t_tmp in enumerate(times[:-1]):
     	dvp_[t_tmp].vector().zero()
