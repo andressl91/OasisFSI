@@ -1,0 +1,9 @@
+mu = 1.0 
+Um = 2.0 
+mesh = <Mesh of topological dimension 2 (triangles) with 14312 vertices and 26464 cells, ordered> 
+T = 12 
+v_deg = 2 
+p_deg = 1 
+H = 0.41 
+dt = 0.001 
+rho = 1000.0 

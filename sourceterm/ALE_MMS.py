@@ -1,4 +1,5 @@
 from fenics import *
+import mshr
 import numpy as np
 set_log_active(False)
 import argparse
@@ -40,6 +41,17 @@ I = Identity(2)
 
 def solver(N, dt, T):
     mesh = UnitSquareMesh(N, N)
+    #domain_geometry = mshr.Circle(dolfin.Point(0.0, 0.0), 1.0)
+    #mesh = mshr.generate_mesh(domain_geometry, N)
+
+    class Boundary(SubDomain):
+    	def inside(self, x, on_boundary):
+    		return on_boundary
+    boundary = Boundary()
+    bound = FacetFunction("size_t",mesh)
+    boundary.mark(bound,1)
+    #plot(bound, interactive=True)
+
     x = SpatialCoordinate(mesh)
 
     V = VectorFunctionSpace(mesh, "CG", 2)
@@ -50,7 +62,7 @@ def solver(N, dt, T):
     up = Function(W)
     u, p = split(up)
 
-    phi,gamma = TestFunctions(W)
+    phi, gamma = TestFunctions(W)
 
     up0 = Function(W)
     u0, p0 = split(up0)
@@ -61,22 +73,29 @@ def solver(N, dt, T):
     k = Constant(dt)
     t_step = dt
 
-    mu_f = 10
+    mu_f = 1
     rho_f = 1
-
+    """
     u_e = Expression(("sin(x[1])*cos(t)","sin(x[0])*cos(t)"), t = 0)
     p_e = Expression("2*sin(t)", t = 0)
-    w_e = Expression(("sin(x[1])*cos(t)","sin(x[0])*cos(t)"), t = 0)
-    d_e = Expression(("sin(x[1])*sin(t)","sin(x[0])*sin(t)"), t = 0)
+    w_e = Expression(("sin(x[1])*cos(t)","sin(x[0])*cos(t)"), t = dt)
+    d_e = Expression(("sin(x[1])*sin(t)","sin(x[0])*sin(t)"), t = dt)"""
+    u_e = Expression(("x[1]*x[1]*x[1]","x[0]*x[0]*x[0]"), t = 0)
+    p_e = Expression("x[0]*x[0]*x[0]*t", t = 0)
+    w_e = Expression(("x[1]*x[1]*x[1]","x[0]*x[0]*x[0]"), t = dt)
+    d_e = Expression(("x[1]*x[1]*x[1]*t","x[0]*x[0]*x[0]*t"), t = dt)
 
     w = interpolate(w_e,V)
     d = interpolate(d_e,V)
-    u0 = interpolate(u_e,V)
+    u0 = interpolate(u_e, V)
     t = Constant(dt)
-
+    """
     u_x = sin(x[1])*cos(t)
     u_y = sin(x[0])*cos(t)
-    p_c = 2*sin(t)
+    p_c = 2*sin(t)"""
+    u_x = x[1]*x[1]*x[1]
+    u_y = x[0]*x[0]*x[0]
+    p_c = x[0]*x[0]*x[0]*t
 
     u_vec = as_vector([u_x, u_y])
     w_vec = as_vector([u_x, u_y])
@@ -116,10 +135,10 @@ def solver(N, dt, T):
         F_fluid += inner(J_(d)*sigma_f_new(u,p,d,mu_f)*inv(F_(d)).T, grad(phi))*dx
         F_fluid -= inner(J_(d)*f, phi)*dx
 
-    u0 = interpolate(u_e, V)
-    p0 = interpolate(p_e, Q)
-    bcs = [DirichletBC(W.sub(0), u_e, "on_boundary"), \
-           DirichletBC(W.sub(1), p_e, "on_boundary")]
+
+
+    bcs = [DirichletBC(W.sub(0), u_e, bound,1), \
+           DirichletBC(W.sub(1), p_e, bound,1)]
     L2_u = []
     L2_p = []
 
@@ -131,18 +150,21 @@ def solver(N, dt, T):
         p_e.t = t_step
         d_e.t = t_step
         t.assign(t_step)
+        w = interpolate(w_e,V)
+        d = interpolate(d_e,V)
 
-        J = derivative(F_fluid, up, psi)
-        solve(F_fluid == 0, up, bcs,J=J,solver_parameters={"newton_solver": \
+        #J = derivative(F_fluid, up, psi)
+        solve(F_fluid == 0, up, bcs,solver_parameters={"newton_solver": \
         {"relative_tolerance": 1E-8,"absolute_tolerance":1E-8,"maximum_iterations":20,"relaxation_parameter":1.0}})
-        up0.assign(up)
-
+        u_, p_ = up.split(True)
+        u0.assign(u_)
+        #p0.assign(p_)
+        """
         if var_form == 0 :
             w.vector()[:] *= float(k)
             ALE.move(mesh,w)
-            mesh.bounding_box_tree().build(mesh)
+            mesh.bounding_box_tree().build(mesh)"""
 
-        u_, p_ = up.split(True)
 
         L2_u.append(errornorm(u_e, u_, norm_type="l2", degree_rise = 2))
         L2_p.append(errornorm(p_e, p_, norm_type="l2", degree_rise = 2))
@@ -158,9 +180,9 @@ def solver(N, dt, T):
 
 
 
-N = [12,14,16,18,22]
-dt = [0.000001]
-T = 0.0001
+N = [4,8,10,12,14]
+dt = [1.0E-7]
+T = 1.0E-6
 E_u = [];  E_p = []; h = []
 
 for n in N:
@@ -193,9 +215,9 @@ for i in range(len(E_p) - 1):
 """
 print "Checking Convergence in time"
 
-N = [16]
-dt = [0.005, 0.004, 0.002, 0.001]
-T = 0.04
+N = [64]
+dt = [0.00004, 0.00003, 0.00002, 0.00001]
+T = 0.0004
 E_u = [];  E_p = []; h = []
 for n in N:
     for t in dt:
@@ -221,4 +243,4 @@ print
 for i in range(len(E_p) - 1):
     r_p = np.log(E_p[i+1]/E_p[i]) / np.log(dt[i+1]/dt[i])
 
-    print "Convergence Pressure", r_u"""
+    print "Convergence Pressure", r_p"""

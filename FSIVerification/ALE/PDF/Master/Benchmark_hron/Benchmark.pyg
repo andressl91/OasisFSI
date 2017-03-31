@@ -1,3 +1,0 @@
-import sys
-print "This is a sample code"
-sys.exit(0)
