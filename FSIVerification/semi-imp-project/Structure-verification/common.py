@@ -14,6 +14,9 @@ def solver_parameters(common, d):
 
     # Update name of implementation and case path
     name = "Implicit" if tmp["E"] is None else tmp["E"].__name__
+    if d.has_key("coupling"):
+        if d["coupling"] == "center":
+            name = "center"
     case_path = path.join(rel_path, "results", tmp["space"], name, str(tmp["dt"]))
     tmp["name"] = name
     tmp["case_path"] = case_path

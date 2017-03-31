@@ -16,9 +16,11 @@ def solver_linear(G, d_, w_, wd_, bcs, T, dt, action=None, **namespace):
     b = assemble(L)
     t = 0
 
-    d_prec = PETScPreconditioner("default")
-    d_solver = PETScKrylovSolver("gmres", d_prec)
-    d_solver.prec = d_prec
+    #d_prec = PETScPreconditioner("default")
+    #d_solver = PETScKrylovSolver("gmres", d_prec)
+    #d_solver.parameters["monitor_convergence"] = True
+    #from IPython import embed; embed()
+    #d_solver.prec = d_prec
 
     # Solver loop
     while t < (T - dt*DOLFIN_EPS):
@@ -32,7 +34,8 @@ def solver_linear(G, d_, w_, wd_, bcs, T, dt, action=None, **namespace):
         for bc in bcs: bc.apply(A, b)
 
         # Solve
-        d_solver.solve(A, wd_["n"].vector(), b)
+        #d_solver.solve(A, wd_["n"].vector(), b)
+        solve(A, wd_["n"].vector(), b)
 
         # Update solution
         times = ["n-3", "n-2", "n-1", "n"]
@@ -53,10 +56,10 @@ def solver_nonlinear(G, d_, w_, wd_, bcs, T, dt, action=None, **namespace):
     solver_parameters = {"newton_solver": \
                           {"relative_tolerance": 1E-8,
                            "absolute_tolerance": 1E-8,
-                           "maximum_iterations": 100,
+                           "maximum_iterations": 100
+                           "relaxation_parameter": 0.9}}
                            #"krylov_solver": {"monitor_convergence": True},
                            #"linear_solver": {"monitor_convergence": True},
-                           "relaxation_parameter": 0.9}}
     t = 0
     while t < (T - dt*DOLFIN_EPS):
         solve(G == 0, wd_["n"], bcs, solver_parameters=solver_parameters)

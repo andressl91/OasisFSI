@@ -17,15 +17,15 @@ def problem_mix(T, dt, E, coupling, VV, boundaries, rho_s, lambda_, mu_s, f,
     # Functions, wd is for holding the solution
     d_ = {}; w_ = {}; wd_ = {}
     for time in ["n", "n-1", "n-2", "n-3"]:
-        if time == "n" and E not in [None, reference]:
-            tmp_wd = Function(VV)
-            wd_[time] = tmp_wd
-            wd = TrialFunction(VV)
-            w, d = split(wd)
-        else:
-            wd = Function(VV)
-            wd_[time] = wd
-            w, d = split(wd)
+        #if time == "n" and E not in [None, reference]:
+        #    tmp_wd = Function(VV)
+        #    wd_[time] = tmp_wd
+        #    wd = TrialFunction(VV)
+        #    w, d = split(wd)
+        #else:
+        wd = Function(VV)
+        wd_[time] = wd
+        w, d = split(wd)
 
         d_[time] = d
         w_[time] = w
@@ -50,15 +50,15 @@ def problem_mix(T, dt, E, coupling, VV, boundaries, rho_s, lambda_, mu_s, f,
     elif coupling == "exp":
         G += inner(d_["n"] - d_["n-1"] - k*w_["n-1"], phi)*dx
     elif coupling == "center":
-        G += innter(d_["n"] - d_["n-2"] - 2*k*w["n-1"], phi)*dx
+        G += inner(d_["n"] - d_["n-2"] - 2*k*w_["n-1"], phi)*dx
     else:
         print "The coupling %s is not implemented, 'CN', 'imp', and 'exp' are the only valid choices."
         sys.exit(0)
 
     # Solve
-    if E in [None, reference]:
-        solver_nonlinear(G, d_, w_, wd_, bcs, T, dt, **Solid_namespace)
-    else:
-        solver_linear(G, d_, w_, wd_, bcs, T, dt, **Solid_namespace)
+    #if E in [None, reference]:
+    solver_nonlinear(G, d_, w_, wd_, bcs, T, dt, **Solid_namespace)
+    #else:
+    #    solver_linear(G, d_, w_, wd_, bcs, T, dt, **Solid_namespace)
 
 # TODO: Implement a version with only d
