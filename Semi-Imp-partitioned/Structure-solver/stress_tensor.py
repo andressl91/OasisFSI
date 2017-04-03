@@ -93,3 +93,10 @@ def cn_before_ab_higher_order(d_, w_, k):
                 * grad(d_["n"])) + (grad(d_["n-1"]).T*grad(d_["n-1"])))
 
     return 0.5*E
+
+def ab_on_F(d_, w_, k):
+    F1 = grad(1.5*d_["n-1"] - 0.5*d_["n-2"]) - Identity(2)
+    F2 = 0.5*grad(d_["n"] + d_["n-1"])
+    E = F1.T*F2 - I
+
+    return 0.5*E

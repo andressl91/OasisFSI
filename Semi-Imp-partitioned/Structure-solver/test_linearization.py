@@ -12,7 +12,7 @@ from common import *
 from weak_form import *
 
 # Set output from FEniCS
-#set_log_active(False)
+set_log_active(False)
 
 # Set ut problem
 mesh = Mesh(path.join(rel_path, "mesh", "von_karman_street_FSI_structure_refine2.xml"))
@@ -63,9 +63,9 @@ def action(wd_, t):
 # TODO: Add options to chose solver and change solver parameters
 common = {"space": "mixedspace",
           "E": None,         # Full implicte, not energy conservative
-          "T": 10,          # End time
-          "dt": 0.011,       # Time step
-          "coupling": "CN", # Coupling between d and w
+          "T": 1,            # End time
+          "dt": 0.001,       # Time step
+          "coupling": "CN",  # Coupling between d and w
           "init": False      # Solve "exact" three first timesteps
           }
 
@@ -84,18 +84,19 @@ ab_before_cn = solver_parameters(common, {"E": ab_before_cn})
 ab_before_cn_higher_order = solver_parameters(common, {"E": ab_before_cn_higher_order})
 cn_before_ab = solver_parameters(common, {"E": cn_before_ab})
 cn_before_ab_higher_order = solver_parameters(common, {"E": cn_before_ab_higher_order})
+#transposed_alone = solver_parameters(common, {"E": })
 
 # Solution set-ups to simulate
-runs = [imp] #, imp]
-        #ref] #,
-        #imp] #,
-        #exp] #,
-        #naive_lin,
-        #naive_ab,
-        #ab_before_cn,
-        #ab_before_cn_higher_order,
-        #cn_before_ab,
-        #cn_before_ab_higher_order]
+runs = [ref,
+        imp,
+        exp,
+        center,
+        naive_lin,
+        naive_ab,
+        ab_before_cn,
+        ab_before_cn_higher_order,
+        cn_before_ab,
+        cn_before_ab_higher_order]
 #runs = [exp]
 results = []
 for r in runs:
@@ -124,20 +125,20 @@ for r in runs:
     # Start simulation
     vars().update(r)
     t0 = timer.time()
-    try:
-        if r["space"] == "mixedspace":
-            problem_mix(**vars())
-        elif r["space"] == "singlespace":
-            problem_single()
-        else:
-            print ("Problem type %s is not implemented, only mixedspace "
-                    + "and singlespace are valid options") % r["space"]
-            sys.exit(0)
-    except Exception as e:
-        print "Problems for solver", r["name"]
-        print "Unexpected error:", sys.exc_info()[0]
-        print e
-        print "Move on the the next solver"
+    #try:
+    if r["space"] == "mixedspace":
+        problem_mix(**vars())
+    elif r["space"] == "singlespace":
+        problem_single()
+    else:
+        print ("Problem type %s is not implemented, only mixedspace "
+                + "and singlespace are valid options") % r["space"]
+        sys.exit(0)
+    #except Exception as e:
+    #    print "Problems for solver", r["name"]
+    #    print "Unexpected error:", sys.exc_info()[0]
+    #    print e
+    #    print "Move on the the next solver"
     r["number_of_cores"] = MPI.max(mpi_comm_world(), MPI.rank(mpi_comm_world())) + 1
     r["solution_time"] = MPI.sum(mpi_comm_world(), timer.time() - t0) / (r["number_of_cores"])
 
