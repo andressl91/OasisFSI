@@ -14,7 +14,8 @@ def solver_setup(F_fluid_linear, F_fluid_nonlinear, \
 
 
 def newtonsolver(F, Jac, bcs, \
-                dvp_, dvp_res, up_sol, rtol, atol, max_it, **monolithic):
+                dvp_, up_sol, dvp_res, rtol, atol, max_it, T, t, **monolithic):
+
     Iter      = 0
     residual   = 1
     rel_res    = residual
@@ -36,3 +37,5 @@ def newtonsolver(F, Jac, bcs, \
             print "Newton iteration %d: r (atol) = %.3e (tol = %.3e), r (rel) = %.3e (tol = %.3e) " \
         % (Iter, residual, atol, rel_res, rtol)
         Iter += 1
+
+    return dict(t=t)

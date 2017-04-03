@@ -1,15 +1,8 @@
 from dolfin import *
 import numpy as np
 import matplotlib.pyplot as plt
-"""
-from Utils.argpar import *
+import cPickle
 
-args = parse()
-v_deg = args.v_deg
-p_deg = args.p_deg
-d_deg = args.d_deg
-dt = args.dt
-"""
 mesh_file = Mesh("Mesh/fluid_new.xml")
 #mesh_file = refine(mesh_file)
 #Parameters for each numerical case
@@ -94,14 +87,14 @@ class Inlet(Expression):
 inlet = Inlet(Um)
 
 def initiate(dvp_, **monolithic):
-    f = File("u.pvd")
-    hdf = HDF5File(mpi_comm_world(),"./FSI_fresh_checkpoints/FSI-3/P-2/dt-0.05/dvpFile.h5", "r")
-    print hdf.has_dataset("/dvp9")
-    hdf.read(dvp_["n-1"], "/dvp9")
-    print "Type: ",type(dvp_["n-1"])
-    d, u, p = dvp_["n-1"].split(True)
-    f << u
-    #plot(u, interactive=True)
+    d, v, p = dvp_["n"].split(True)
+    times  = cPickle.load(open("./FSI_fresh_results/FSI-3/P-2/dt-0.001/times.cpickle"))
+    f = HDF5File(mesh.mpi_comm(), "./FSI_fresh_results/FSI-3/P-2/dt-0.001/velocity.h5", "r")
+    u_file = File("./Results/u.pvd")
+    for ind, t in enumerate(times):
+        f.read(v.vector(), "/values_{}".format(ind+1), True)
+        u_file << f
+    print "onde"
     return {}
 
 def create_bcs(DVP, dvp_, n, k, Um, H, boundaries, inlet, **semimp_namespace):
@@ -129,70 +122,13 @@ def create_bcs(DVP, dvp_, n, k, Um, H, boundaries, inlet, **semimp_namespace):
     return dict(bcs = bcs, inlet = inlet)
 
 def pre_solve(t, dvp_, inlet, **semimp_namespace):
-    if t < 2:
-        inlet.t = t
-    else:
-        inlet.t = 2
-
-    return dict(inlet = inlet)
+    return {}
 
 
 def after_solve(t, dvp_, counter, step, **semimp_namespace):
-    d = dvp_["n"].sub(0, deepcopy=True)
-    v = dvp_["n"].sub(1, deepcopy=True)
-    p = dvp_["n"].sub(2, deepcopy=True)
-    #d, v, p = dvp_["n"].split(True)
-    #if counter%step ==0:
-        #u_file << v
-        #d_file << d
-        #p_file << p
-        #dvp_file << dvp_["n"]
-        #hdf.write(dvp_["n-1"].vector(), "/step%g" % t)
-
-    def F_(U):
-    	return (Identity(len(U)) + grad(U))
-
-    def J_(U):
-    	return det(F_(U))
-
-    def sigma_f_new(v, p, d, mu_f):
-    	return -p*Identity(len(v)) + mu_f*(grad(v)*inv(F_(d)) + inv(F_(d)).T*grad(v).T)
-
-    #Fx = -assemble((sigma_f_new(v, p, d, mu_f)*n)[0]*ds(6))
-    #Fy = -assemble((sigma_f_new(v, p, d, mu_f)*n)[1]*ds(6))
-    #Fx += -assemble(((-p("-")*Identity(len(v)) + mu_f*(grad(v)("-")*inv(F_(d("-"))) + inv(F_(d("-"))).T*grad(v)("-").T))*n('-'))[0]*dS(5))
-    #Fy += -assemble(((-p("-")*Identity(len(v)) + mu_f*(grad(v)("-")*inv(F_(d("-"))) + inv(F_(d("-"))).T*grad(v)("-").T))*n('-'))[1]*dS(5))
-    Dr = -assemble((sigma_f_new(v,p,d,mu_f)*n)[0]*ds(6))
-    Li = -assemble((sigma_f_new(v,p,d,mu_f)*n)[1]*ds(6))
-    Dr += -assemble((sigma_f_new(v("-"),p("-"),d("-"),mu_f)*n("-"))[0]*dS(5))
-    Li += -assemble((sigma_f_new(v("-"),p("-"),d("-"),mu_f)*n("-"))[1]*dS(5))
-    Drag_list.append(Dr)
-    Lift_list.append(Li)
-
-    print "LIFT = %g,  DRAG = %g" % (Li, Dr)
-
-    dsx = d(coord)[0]
-    dsy = d(coord)[1]
-    dis_x.append(dsx)
-    dis_y.append(dsy)
-    print "dis_x/dis_y : %g %g "%(dsx,dsy)
 
     return {}
 
 def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list, **semimp_namespace):
     print "DONE"
-    """
-    time_list = np.linspace(0,T,T/dt+1)
-    plt.plot(time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
-    #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
-    plt.show()
-    plt.plot(time_list,dis_y);plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
-    #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_y.png")
-    plt.show()
-    plt.plot(time_list,Drag);plt.ylabel("Drag");plt.xlabel("Time");plt.grid();
-    #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/drag.png")
-    plt.show()
-    plt.plot(time_list,Lift);plt.ylabel("Lift");plt.xlabel("Time");plt.grid();
-    #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/lift.png")
-    plt.show()
-    """
+    return {}

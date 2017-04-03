@@ -1,5 +1,6 @@
 from dolfin import *
 import numpy as np
+
 """
 from Utils.argpar import *
 
@@ -72,6 +73,9 @@ dx = Measure("dx", subdomain_data = domains)
 #plot(domains,interactive = True)
 dx_f = dx(1, subdomain_data = domains)
 dx_s = dx(2, subdomain_data = domains)
+
+print "N integral", assemble(n("+")[1]*dS(5))
+
 dis_x = []
 dis_y = []
 Drag_list = []
@@ -162,21 +166,48 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, **semimp_names
 
     return {}
 
-def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list, **semimp_namespace):
+def post_process(dvp_, mu_f, lamda_s, mu_s, mesh_file, boundaries,T,dt,dis_x,dis_y, Drag_list,Lift_list, **semimp_namespace):
     print "End time ", toc()
-    """
-    time_list = np.linspace(0,T,T/dt+1)
-    plt.plot(time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
-    #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
-    plt.show()
-    plt.plot(time_list,dis_y);plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
-    #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_y.png")
-    plt.show()
-    plt.plot(time_list,Drag);plt.ylabel("Drag");plt.xlabel("Time");plt.grid();
-    #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/drag.png")
-    plt.show()
-    plt.plot(time_list,Lift);plt.ylabel("Lift");plt.xlabel("Time");plt.grid();
-    #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/lift.png")
-    plt.show()
-    """
+
+    def F_(U):
+    	return (Identity(len(U)) + grad(U))
+
+    def J_(U):
+    	return det(F_(U))
+
+    def E(U):
+    	return 0.5*(F_(U).T*F_(U) - Identity(len(U)))
+
+    def S(U,lamda_s,mu_s):
+        I = Identity(len(U))
+        return 2*mu_s*E(U) + lamda_s*tr(E(U))*I
+
+    def Piola1(U,lamda_s,mu_s):
+    	return F_(U)*S(U,lamda_s,mu_s)
+
+    def sigma_f_new(v, p, d, mu_f):
+    	return -p*Identity(len(v)) + mu_f*(grad(v)*inv(F_(d)) + inv(F_(d)).T*grad(v).T)
+
+    d, v, p = dvp_["n"].split(True)
+
+    #print -assemble(dot(sigma_f_new(v("-"),p("-"),d("-"),mu_f),n("-"))*dS(5))
+
+    F_Dr = assemble((sigma_f_new(v("-"),p("-"),d("-"),mu_f)*n("+"))[0]*dS(5))
+    F_Li = assemble((sigma_f_new(v("-"),p("-"),d("-"),mu_f)*n("+"))[1]*dS(5))
+    print
+    print "F_Dr", F_Dr
+    print "F_Li", F_Li
+    print
+    S_Dr = assemble((Piola1(d("+"),lamda_s, mu_s)*n("-"))[0]*dS(5))
+    S_Li = assemble((Piola1(d("+"),lamda_s, mu_s)*n("-"))[1]*dS(5))
+
+    print "S_Dr", S_Dr
+    print "S_Li", S_Li
+    print
+    print "DRAG_DIFF", np.abs(assemble((sigma_f_new(v("-"),p("-"),d("-"),mu_f)*n("+"))[0]*dS(5))) - \
+                    np.abs(assemble((Piola1(d("+"),lamda_s, mu_s)*n("-"))[0]*dS(5)))
+
+    print "LIFT_DIFF", np.abs(assemble((sigma_f_new(v("-"),p("-"),d("-"),mu_f)*n("+"))[1]*dS(5))) - \
+                    np.abs(assemble((Piola1(d("+"),lamda_s, mu_s)*n("-"))[1]*dS(5)))
+    print
     return {}

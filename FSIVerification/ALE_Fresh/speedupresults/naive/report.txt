@@ -1,0 +1,10 @@
+Speedup test
+
+        problem naive
+ dis_x = 0.000024
+ dis_y = -0.000156
+ Drag = 17.766921
+ Lift = -2.656544
+Mean iteration time = 45.940138
+ Total Runtime of timeloop = 137.970475
+ 

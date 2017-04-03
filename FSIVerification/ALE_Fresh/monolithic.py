@@ -12,17 +12,24 @@ if args.refiner != None:
     for i in range(args.refiner):
         mesh = refine(mesh)
 
-vars().update(args.__dict__)
+update_variables = {}
+
+#Update argparser input, due to how files are made in problemfiles
+for key in args.__dict__:
+    if args.__dict__[key] != None:
+        update_variables[key] = args.__dict__[key]
+
+vars().update(update_variables)
+
 
 # Import variationalform and solver
-#from Fluidvariation.fluid_coupled import *
-#from Structurevariation.CN_mixed import *
-from Fluidvariation.second_order import *
-from Structurevariation.second_order import *
 print args.solver
+exec("from Fluidvariation.%s import *" % args.fluidvari)
+exec("from Structurevariation.%s import *" % args.solidvari)
+exec("from Extrapolation.%s import *" % args.extravari)
 exec("from Newtonsolver.%s import *" % args.solver)
 #Silence FEniCS output
-set_log_active(False)
+#set_log_active(False)
 
 #Domains
 D = VectorFunctionSpace(mesh_file, "CG", d_deg)
@@ -70,7 +77,6 @@ for i in ["mumps", "superlu_dist", "default"]:
 
 #up_sol = LUSolver(mpi_comm_world(),solver_method)
 up_sol = LUSolver(solver_method)
-
 #up_sol.parameters["same_nonzero_pattern"] = True
 #up_sol.parameters["reuse_factorization"] = True
 

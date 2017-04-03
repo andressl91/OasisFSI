@@ -1,5 +1,6 @@
 from dolfin import *
 import numpy as np
+import cPickle
 """
 from Utils.argpar import *
 
@@ -16,18 +17,21 @@ common = {"mesh": mesh_file,
           "v_deg": 2,    #Velocity degree
           "p_deg": 1,    #Pressure degree
           "d_deg": 2,    #Deformation degree
-          "T": 8,          # End time
-          "dt": 0.5,       # Time step
+          "T": 20,          # End time
+          "dt": 0.001,       # Time step
           "rho_f": 1.0E3,    #
           "mu_f": 1.,
           "rho_s" : Constant(1.0E3),
-          "mu_s" : Constant(0.5E6),
+          "mu_s" : Constant(2.0E6),
           "nu_s" : Constant(0.4),
-          "Um" : 0.2,
+          "Um" : 1.7,
           "D" : 0.1,
           "H" : 0.41,
-          "L" : 2.5
+          "L" : 2.5,
+          "step" : 20,
+          "checkpoint": False
      }
+
 
 vars().update(common)
 lamda_s = nu_s*2*mu_s/(1 - 2.*nu_s)
@@ -76,6 +80,7 @@ dis_x = []
 dis_y = []
 Drag_list = []
 Lift_list = []
+time_steps = []
 #Fluid properties
 
 class Inlet(Expression):
@@ -122,15 +127,30 @@ def pre_solve(t, inlet, **semimp_namespace):
 
     return dict(inlet = inlet)
 
-def initiate(**monolithic):
+def initiate(dt, v_deg, **monolithic):
     tic()
-    return {}
+    #open("./FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.h5", "a").close()
+    h5_u = HDF5File(mesh.mpi_comm(), "./FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.h5", "w")
+    h5_d = HDF5File(mesh.mpi_comm(), "./FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/deformation.h5", "w")
+    return dict(h5_u=h5_u, h5_d=h5_d)
 
-def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, **semimp_namespace):
-    #d = dvp_["n"].sub(0, deepcopy=True)
-    #v = dvp_["n"].sub(1, deepcopy=True)
-    #p = dvp_["n"].sub(2, deepcopy=True)
+def after_solve(t, dt, step, counter, time_steps, dvp_, h5_d, h5_u, n,coord,dis_x,dis_y,Drag_list,Lift_list, **semimp_namespace):
+
     d, v, p = dvp_["n"].split(True)
+
+    if counter%step ==0:
+        #h5_u << v
+        #h5_d << d
+        #h5_d.write(d)
+        #h5_u.write(v)
+
+        time_steps.append(t)
+        h5_u.write(v, "/values_{}".format(len(time_steps)))
+        h5_d.write(d, "/values_{}".format(len(time_steps)))
+
+        #dvp_file << dvp_["n"]
+        #dvp_file.write(dvp_["n"], "dvp%g"%t)
+
 
     def F_(U):
     	return (Identity(len(U)) + grad(U))
@@ -162,21 +182,41 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, **semimp_names
 
     return {}
 
-def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list, **semimp_namespace):
+def post_process(DVP, T,time_steps, h5_u, h5_d, v_deg, d_deg, dt,dis_x,dis_y, Drag_list,Lift_list, **semimp_namespace):
+    #open("./FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/time_steps.cpickle", "w+").close()
+    h5_u.close()
+    h5_d.close()
     print "End time ", toc()
+    """
+    cPickle.dump(time_steps, open("./FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/times.cpickle", "w"))
+    #if MPI.rank(mpi_comm_world()) == 0:
+    time_steps  = cPickle.load(open("./FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/times.cpickle"))
+    f_v = HDF5File(mesh.mpi_comm(),"./FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.h5", "r")
+    f_d = HDF5File(mesh.mpi_comm(),"./FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.h5", "r")
+    file_v = File("./FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/u.pvd")
+    file_d = File("./FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/d.pvd")
+
+    d = Function(DVP.sub(0).collapse())
+    v = Function(DVP.sub(1).collapse())
+    for ind, t in enumerate(time_steps):
+        f_v.read(v, "/values_{}".format(ind+1))
+        f_d.read(d, "/values_{}".format(ind+1))
+        file_v << (v,t)
+        file_d << (d,t)
+        #plot(u, title="u_{}".format(t))
+        """
     """
     time_list = np.linspace(0,T,T/dt+1)
     plt.plot(time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
-    #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
+    #plt.savefig("FSI_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
     plt.show()
     plt.plot(time_list,dis_y);plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
-    #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_y.png")
+    #plt.savefig("FSI_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_y.png")
     plt.show()
     plt.plot(time_list,Drag);plt.ylabel("Drag");plt.xlabel("Time");plt.grid();
-    #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/drag.png")
+    #plt.savefig("FSI_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/drag.png")
     plt.show()
     plt.plot(time_list,Lift);plt.ylabel("Lift");plt.xlabel("Time");plt.grid();
-    #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/lift.png")
+    #plt.savefig("FSI_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/lift.png")
     plt.show()
     """
-    return {}

@@ -1,14 +1,8 @@
 from dolfin import *
 import numpy as np
-"""
-from Utils.argpar import *
+import time as time_
+import os
 
-args = parse()
-v_deg = args.v_deg
-p_deg = args.p_deg
-d_deg = args.d_deg
-dt = args.dt
-"""
 mesh_file = Mesh("Mesh/fluid_new.xml")
 #mesh_file = refine(mesh_file)
 #Parameters for each numerical case
@@ -35,8 +29,9 @@ lamda_s = nu_s*2*mu_s/(1 - 2.*nu_s)
 
 for coord in mesh.coordinates():
     if coord[0]==0.6 and (0.199<=coord[1]<=0.2001): # to get the point [0.2,0.6] end of bar
-        print coord
-        break
+        if MPI.rank(mpi_comm_world()) == 0:
+            print coord
+            break
 # BOUNDARIES
 
 #NOS = AutoSubDomain(lambda x: "on_boundary" and( near(x[1],0) or near(x[1], 0.41)))
@@ -76,7 +71,7 @@ dis_x = []
 dis_y = []
 Drag_list = []
 Lift_list = []
-#Fluid properties
+# Fluid properties
 
 class Inlet(Expression):
     def __init__(self, Um):
@@ -89,6 +84,9 @@ class Inlet(Expression):
     	return (2,)
 
 inlet = Inlet(Um)
+
+# Newton data
+Newton_iteration_time = []
 
 def create_bcs(DVP, dvp_, n, k, Um, H, boundaries, Inlet, **semimp_namespace):
     #Fluid velocity conditions
@@ -120,16 +118,15 @@ def pre_solve(t, inlet, **semimp_namespace):
     else:
         inlet.t = 2
 
-    return dict(inlet = inlet)
+    tic()
+    return dict(inlet=inlet)
 
 def initiate(**monolithic):
-    tic()
-    return {}
+    start_clock = time_.time()
+    return dict(start_clock=start_clock)
 
-def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, **semimp_namespace):
-    #d = dvp_["n"].sub(0, deepcopy=True)
-    #v = dvp_["n"].sub(1, deepcopy=True)
-    #p = dvp_["n"].sub(2, deepcopy=True)
+def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, Newton_iteration_time, **semimp_namespace):
+    Newton_iteration_time.append(toc())
     d, v, p = dvp_["n"].split(True)
 
     def F_(U):
@@ -141,42 +138,46 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, **semimp_names
     def sigma_f_new(v, p, d, mu_f):
     	return -p*Identity(len(v)) + mu_f*(grad(v)*inv(F_(d)) + inv(F_(d)).T*grad(v).T)
 
-    #Fx = -assemble((sigma_f_new(v, p, d, mu_f)*n)[0]*ds(6))
-    #Fy = -assemble((sigma_f_new(v, p, d, mu_f)*n)[1]*ds(6))
-    #Fx += -assemble(((-p("-")*Identity(len(v)) + mu_f*(grad(v)("-")*inv(F_(d("-"))) + inv(F_(d("-"))).T*grad(v)("-").T))*n('-'))[0]*dS(5))
-    #Fy += -assemble(((-p("-")*Identity(len(v)) + mu_f*(grad(v)("-")*inv(F_(d("-"))) + inv(F_(d("-"))).T*grad(v)("-").T))*n('-'))[1]*dS(5))
     Dr = -assemble((sigma_f_new(v,p,d,mu_f)*n)[0]*ds(6))
     Li = -assemble((sigma_f_new(v,p,d,mu_f)*n)[1]*ds(6))
     Dr += -assemble((sigma_f_new(v("-"),p("-"),d("-"),mu_f)*n("-"))[0]*dS(5))
     Li += -assemble((sigma_f_new(v("-"),p("-"),d("-"),mu_f)*n("-"))[1]*dS(5))
     Drag_list.append(Dr)
     Lift_list.append(Li)
-
-    print "LIFT = %g,  DRAG = %g" % (Li, Dr)
+    if MPI.rank(mpi_comm_world()) == 0:
+        print "LIFT = %g,  DRAG = %g" % (Li, Dr)
 
     dsx = d(coord)[0]
     dsy = d(coord)[1]
     dis_x.append(dsx)
     dis_y.append(dsy)
-    print "dis_x/dis_y : %g %g "%(dsx,dsy)
+    if MPI.rank(mpi_comm_world()) == 0:
+        print "dis_x/dis_y : %g %g "%(dsx,dsy)
 
     return {}
 
-def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list, **semimp_namespace):
-    print "End time ", toc()
-    """
-    time_list = np.linspace(0,T,T/dt+1)
-    plt.plot(time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
-    #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
-    plt.show()
-    plt.plot(time_list,dis_y);plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
-    #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_y.png")
-    plt.show()
-    plt.plot(time_list,Drag);plt.ylabel("Drag");plt.xlabel("Time");plt.grid();
-    #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/drag.png")
-    plt.show()
-    plt.plot(time_list,Lift);plt.ylabel("Lift");plt.xlabel("Time");plt.grid();
-    #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/lift.png")
-    plt.show()
-    """
+def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list,Newton_iteration_time, \
+                start_clock, args, **semimp_namespace):
+    end_clock = time_.time()
+    stop = end_clock - start_clock
+    if MPI.rank(mpi_comm_world()) == 0:
+        print Newton_iteration_time
+        print "END TIME", stop
+
+    if MPI.rank(mpi_comm_world()) == 0:
+        print "THINGS WENT SMOOOTH for solver = %s" % args.solver
+        route = "./speedupresults/%s" % args.solver
+        if os.path.isdir(route) == False:
+            os.mkdir(route)
+        solver = args.solver
+
+        d_x = dis_x[-1]; d_y = dis_y[-1]
+        drag_ = Drag_list[-1]; lift_ = Lift_list[-1]
+        f = open(route + "/report.txt", 'w')
+        f.write("""Speedup test\n
+        problem %(solver)s\n dis_x = %(d_x)f\n dis_y = %(d_y)f\n Drag = %(drag_)f\n Lift = %(lift_)f\n""" % vars())
+        f.write("""Mean iteration time = %f\n """ % np.mean(Newton_iteration_time))
+        f.write("""Total Runtime of timeloop = %f\n """ % stop)
+        f.close()
+
     return {}

@@ -10,14 +10,11 @@ def solver_setup(F_fluid_linear, F_fluid_nonlinear, \
     chi = TrialFunction(DVP)
     Jac = derivative(F, dvp_["n"], chi)
 
-    A = assemble(Jac)
-    b = None
-
-    return dict(F=F, Jac=Jac, A=A, b=b)
+    return dict(F=F, Jac=Jac)
 
 
-def newtonsolver(F, Jac, bcs, A, b, \
-                dvp_, dvp_res, up_sol, rtol, atol, max_it, **monolithic):
+def newtonsolver(F, Jac, bcs, \
+                dvp_, up_sol, dvp_res, rtol, atol, max_it, T, t, **monolithic):
     Iter      = 0
     residual   = 1
     rel_res    = residual
@@ -25,10 +22,10 @@ def newtonsolver(F, Jac, bcs, A, b, \
 
     while rel_res > rtol and residual > atol and Iter < max_it:
         if Iter % 10 == 0:
-            A = assemble(Jac, tensor=A)
+            A = assemble(Jac)
             A.ident_zeros()
 
-        b = assemble(-F, tensor=b)
+        b = assemble(-F)
 
         [bc.apply(A, b, dvp_["n"].vector()) for bc in bcs]
         up_sol.solve(A, dvp_res.vector(), b)
@@ -41,3 +38,5 @@ def newtonsolver(F, Jac, bcs, A, b, \
             print "Newton iteration %d: r (atol) = %.3e (tol = %.3e), r (rel) = %.3e (tol = %.3e) " \
         % (Iter, residual, atol, rel_res, rtol)
         Iter += 1
+
+    return dict(t=t)
