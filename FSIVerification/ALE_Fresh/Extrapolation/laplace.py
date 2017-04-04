@@ -7,6 +7,6 @@ MPI, mpi_comm_world
 def extrapolate_setup(d_, phi, dx_f, F_fluid_linear, F_solid_linear, **semimp_namespace):
 
     F_extrapolate =  inner(grad(d_["n"]), grad(phi))*dx_f
-    F_solid_linear += F_extrapolate
+    F_fluid_linear += F_extrapolate
 
-    return dict(F_fluid_linear=F_fluid_linear, F_solid_linear=F_solid_linear)
+    return dict(F_fluid_linear=F_fluid_linear)
