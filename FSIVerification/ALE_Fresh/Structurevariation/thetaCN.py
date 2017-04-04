@@ -25,8 +25,8 @@ def A_E(d, v,  lamda_s, mu_s, rho_s, delta, psi, phi, dx_s):
 
 
 def structure_setup(d_, v_, p_, phi, psi, gamma, dS, mu_f, n,\
-            dx_s, dx_f, mu_s, rho_s, lamda_s, k, mesh_file, **semimp_namespace):
-	theta = 1./2
+            dx_s, dx_f, mu_s, rho_s, lamda_s, k, mesh_file, theta, **semimp_namespace):
+	#theta = 1./2
 	delta = 1E8
 	#J = theta*J_(d_["n"]) + (1 - theta)*J_(d_["n-1"])
 	A_T =  rho_s/k*inner(v_["n"] - v_["n-1"], psi)*dx_s + delta*(rho_s/k)*inner(d_["n"] - d_["n-1"], phi)*dx_s
@@ -39,6 +39,7 @@ def structure_setup(d_, v_, p_, phi, psi, gamma, dS, mu_f, n,\
 
 	"""
 	A_T =  rho_s/k*inner(v_["n"] - v_["n-1"], psi)*dx_s + delta*(rho_s/k)*inner(d_["n"] - d_["n-1"], phi)*dx_s
+	
 	F_solid_nonlinear = theta*A_E(d_["n"], v_["n"], lamda_s, mu_s, rho_s, delta, psi, phi, dx_s) \
 					  +  (1 - theta)*A_E(d_["n-1"], v_["n-1"], lamda_s, mu_s, rho_s, delta, psi, phi, dx_s)
 

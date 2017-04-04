@@ -16,6 +16,7 @@ def parse():
     group.add_argument("-p_deg",    type=int, help="Set degree of pressure                   --> Default=1", default=1)
     group.add_argument("-v_deg",    type=int, help="Set degree of velocity                   --> Default=2", default=2)
     group.add_argument("-d_deg",    type=int, help="Set degree of deformation                --> Default=1", default=2)
+    group.add_argument("-theta",        type=float,  help="Skew Cranc-Nic                             --> Default=None", default=1/2.)
     group.add_argument("-T",        type=float,  help="Set end time                             --> Default=None", default=None)
     group.add_argument("-dt",       type=float,  help="Set timestep                             --> Default=None", default=None)
     group.add_argument("-r", "--refiner",   action="count", help="Mesh-refiner using built-in FEniCS method refine(Mesh)")

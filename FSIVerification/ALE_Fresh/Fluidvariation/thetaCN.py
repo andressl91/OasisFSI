@@ -19,9 +19,9 @@ def A_E(J, v, d, rho_f, mu_f, psi, dx_f):
         + inner(J*sigma_f_u(v, d, mu_f)*inv(F_(d)).T, grad(psi))*dx_f
 
 
-def fluid_setup(v_, p_, d_, n, psi, gamma, dx_f, ds, mu_f, rho_f, k, v_deg, **semimp_namespace):
+def fluid_setup(v_, p_, d_, n, psi, gamma, dx_f, ds, mu_f, rho_f, k, dt, v_deg, theta, **semimp_namespace):
 
-	theta = 1./2
+	#heta = Constant(1 + dt)
 	#J_theta = theta*J_(d_["n"]) + (1 - theta)*J_(d_["n-1"])
 	A_T = rho_f/k*inner(v_["n"] - v_["n-1"], psi)*dx_f \
 	    - rho_f*inner(J_(d_["n"])*grad(v_["n"])*inv(F_(d_["n"]))*(((d_["n"]-d_["n-1"])/k)), psi)*dx_f

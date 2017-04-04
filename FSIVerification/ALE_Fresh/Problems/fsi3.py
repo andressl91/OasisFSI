@@ -104,7 +104,7 @@ else:
 
 def initiate(v_deg, dt, **semimp_namespace):
 
-return {:}
+    return {}
 
 def create_bcs(DVP, dvp_, n, k, Um, H, boundaries, inlet, **semimp_namespace):
     print "Create bcs"
@@ -149,8 +149,8 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_fil
         #d_file << d
         #p_file << p
         #p_file.write(p)
-        #d_file.write(d)
-        #u_file.write(v)
+        d_file.write(d)
+        u_file.write(v)
         #dvp_file << dvp_["n"]
         #dvp_file.write(dvp_["n"], "dvp%g"%t)
 
