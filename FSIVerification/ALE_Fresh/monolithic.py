@@ -61,7 +61,6 @@ t = 0
 
 vars().update(fluid_setup(**vars()))
 vars().update(structure_setup(**vars()))
-vars().update(extrapolate_setup(**vars()))
 vars().update(solver_setup(**vars()))
 vars().update(initiate(**vars()))
 vars().update(create_bcs(**vars()))
