@@ -10,7 +10,7 @@ common = {"mesh": mesh_file,
           "v_deg": 2,    #Velocity degree
           "p_deg": 1,    #Pressure degree
           "d_deg": 2,    #Deformation degree
-          "T": 20,          # End time
+          "T": 0.5,          # End time
           "dt": 0.01,       # Time step
           "rho_f": 1.0E3,    #
           "mu_f": 1.0,
@@ -21,7 +21,7 @@ common = {"mesh": mesh_file,
           "D" : 0.1,
           "H" : 0.41,
           "L" : 2.5,
-    	  "step" : 50,
+    	  "step" : 1,
           "checkpoint": False
           }
  #"checkpoint": "./FSI_fresh_checkpoints/FSI-3/P-2/dt-0.05/dvpFile.h5"
@@ -72,6 +72,7 @@ dis_x = []
 dis_y = []
 Drag_list = []
 Lift_list = []
+Time_list = []
 
 #Fluid properties
 
@@ -169,6 +170,7 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_fil
     Li += -assemble((sigma_f_new(v("-"),p("-"),d("-"),mu_f)*n("-"))[1]*dS(5))
     Drag_list.append(Dr)
     Lift_list.append(Li)
+    Time_list.append(t)
 
 
     dsx = d(coord)[0]
@@ -185,18 +187,19 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_fil
 def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list,dvp_file,**semimp_namespace):
     #dvp_file.close()
     time_list = np.linspace(0,T,T/dt+1)
+    plt.figure(1)
     plt.plot(time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
-    #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
-    plt.show()
+    plt.savefig("FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
+    plt.figure(2)
     plt.plot(time_list,dis_y);plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
-    #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_y.png")
-    plt.show()
-    plt.plot(time_list,Drag);plt.ylabel("Drag");plt.xlabel("Time");plt.grid();
-    #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/drag.png")
-    plt.show()
-    plt.plot(time_list,Lift);plt.ylabel("Lift");plt.xlabel("Time");plt.grid();
-    #plt.savefig("FSI_results/FSI-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/lift.png")
-    plt.show()
+    plt.savefig("FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_y.png")
+    plt.figure(3)
+    plt.plot(time_list,Drag_list);plt.ylabel("Drag");plt.xlabel("Time");plt.grid();
+    plt.savefig("FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/drag.png")
+    plt.figure(4)
+    plt.plot(time_list,Lift_list);plt.ylabel("Lift");plt.xlabel("Time");plt.grid();
+    plt.savefig("FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/lift.png")
+
     return {}
 
 def initiate(dvp_, checkpoint,t, **monolithic):
