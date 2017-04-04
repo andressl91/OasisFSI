@@ -37,10 +37,11 @@ def fluid_setup(v_, p_, d_, n, psi, gamma, dx_f, ds, mu_f, rho_f, k, v_deg, **se
 	F_fluid_nonlinear = lhs(F_fluid)
 	F_fluid_linear = rhs(F_fluid)
 	"""
-	F_fluid_nonlinear = A_T + theta*A_E(J_(d_["n"]), v_["n"], d_["n"], rho_f, mu_f, psi, dx_f)
+	F_fluid_nonlinear = A_T + theta*A_E(J_(d_["n"]), v_["n"], d_["n"], rho_f, mu_f, psi, dx_f) \
+					   + Constant(1 - theta)*A_E(J_(d_["n-1"]), v_["n-1"], d_["n-1"], rho_f, mu_f, psi, dx_f)
 
 
-	F_fluid_linear = Constant(1 - theta)*A_E(J_(d_["n-1"]), v_["n-1"], d_["n-1"], rho_f, mu_f, psi, dx_f)
+	F_fluid_linear = A_I + A_P
 
 	"""
 	F_fluid_nonlinear = A_T + theta*A_E(J_(d_["n"]), v_["n"], d_["n"], rho_f, mu_f, psi, dx_f) \

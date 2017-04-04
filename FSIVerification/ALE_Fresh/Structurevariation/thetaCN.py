@@ -39,7 +39,8 @@ def structure_setup(d_, v_, p_, phi, psi, gamma, dS, mu_f, n,\
 
 	"""
 	A_T =  rho_s/k*inner(v_["n"] - v_["n-1"], psi)*dx_s + delta*(rho_s/k)*inner(d_["n"] - d_["n-1"], phi)*dx_s
-	F_solid_nonlinear = A_T
+	F_solid_nonlinear = theta*A_E(d_["n"], v_["n"], lamda_s, mu_s, rho_s, delta, psi, phi, dx_s) \
+					  +  (1 - theta)*A_E(d_["n-1"], v_["n-1"], lamda_s, mu_s, rho_s, delta, psi, phi, dx_s)
 
 	F_solid_linear = A_T
 	"""
