@@ -1,15 +1,7 @@
 from dolfin import *
 import numpy as np
 import cPickle
-"""
-from Utils.argpar import *
 
-args = parse()
-v_deg = args.v_deg
-p_deg = args.p_deg
-d_deg = args.d_deg
-dt = args.dt
-"""
 mesh_file = Mesh("Mesh/fluid_new.xml")
 #mesh_file = refine(mesh_file)
 #Parameters for each numerical case
@@ -24,7 +16,7 @@ common = {"mesh": mesh_file,
           "rho_s" : Constant(1.0E3),
           "mu_s" : Constant(2.0E6),
           "nu_s" : Constant(0.4),
-          "Um" : 1.7,
+          "Um" : 2.0,
           "D" : 0.1,
           "H" : 0.41,
           "L" : 2.5,

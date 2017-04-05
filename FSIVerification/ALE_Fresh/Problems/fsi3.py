@@ -10,8 +10,8 @@ common = {"mesh": mesh_file,
           "v_deg": 2,    #Velocity degree
           "p_deg": 1,    #Pressure degree
           "d_deg": 2,    #Deformation degree
-          "T": 0.5,          # End time
-          "dt": 0.01,       # Time step
+          "T": 0.002,          # End time
+          "dt": 0.001,       # Time step
           "rho_f": 1.0E3,    #
           "mu_f": 1.0,
           "rho_s" : Constant(1.0E3),
@@ -88,24 +88,31 @@ class Inlet(Expression):
 
 inlet = Inlet(Um)
 
-u_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.xdmf")
-d_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/d.xdmf")
-p_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/pressure.xdmf")
+
 #dvp_file = XDMFFile(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.xdmf")
 
-for tmp_t in [u_file, d_file, p_file]:
-    tmp_t.parameters["flush_output"] = True
-    tmp_t.parameters["multi_file"] = 0
-    tmp_t.parameters["rewrite_function_mesh"] = False
+
 if checkpoint == "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5":
     sys.exit(0)
 else:
     dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
 
 
-def initiate(v_deg, dt, **semimp_namespace):
+def initiate(v_deg, dt, dvp_, **semimp_namespace):
+    u_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.xdmf")
+    d_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/d.xdmf")
+    p_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/pressure.xdmf")
+    for tmp_t in [u_file, d_file, p_file]:
+        tmp_t.parameters["flush_output"] = True
+        tmp_t.parameters["multi_file"] = 0
+        tmp_t.parameters["rewrite_function_mesh"] = False
 
-    return {}
+    d, v, p = dvp_["n-1"].split(True)
+
+    d_file.write(d)
+    u_file.write(v)
+
+    return dict(u_file=u_file, d_file=d_file, p_file=p_file)
 
 def create_bcs(DVP, dvp_, n, k, Um, H, boundaries, inlet, **semimp_namespace):
     print "Create bcs"
@@ -142,7 +149,8 @@ def pre_solve(t, inlet, **semimp_namespace):
     return dict(inlet = inlet)
 
 
-def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_file,u_file,p_file,d_file, **semimp_namespace):
+def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,\
+                counter,dvp_file,u_file,p_file,d_file, **semimp_namespace):
 
     d, v, p = dvp_["n"].split(True)
     if counter%step ==0:
@@ -184,34 +192,20 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,counter,dvp_fil
     return {}
 
 
-def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list,dvp_file,**semimp_namespace):
+def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list, Time_list, dvp_file,**semimp_namespace):
     #dvp_file.close()
-    time_list = np.linspace(0,T,T/dt+1)
+    #time_list = np.linspace(0,T,T/dt+1)
     plt.figure(1)
-    plt.plot(time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
+    plt.plot(Time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
     plt.savefig("FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
     plt.figure(2)
-    plt.plot(time_list,dis_y);plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
+    plt.plot(Time_list,dis_y);plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
     plt.savefig("FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_y.png")
     plt.figure(3)
-    plt.plot(time_list,Drag_list);plt.ylabel("Drag");plt.xlabel("Time");plt.grid();
+    plt.plot(Time_list,Drag_list);plt.ylabel("Drag");plt.xlabel("Time");plt.grid();
     plt.savefig("FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/drag.png")
     plt.figure(4)
-    plt.plot(time_list,Lift_list);plt.ylabel("Lift");plt.xlabel("Time");plt.grid();
+    plt.plot(Time_list,Lift_list);plt.ylabel("Lift");plt.xlabel("Time");plt.grid();
     plt.savefig("FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/lift.png")
 
     return {}
-
-def initiate(dvp_, checkpoint,t, **monolithic):
-    print checkpoint
-    if checkpoint != False:
-        f = File("u.pvd")
-        hdf = HDF5File(mpi_comm_world(), checkpoint, "r")
-        print hdf.has_dataset("/dvp40")
-        hdf.read(dvp_["n-1"], "/dvp40")
-        t = 2.0
-        #print "Type: ",type(dvp_["n-1"])
-        #d, u, p = dvp_["n-1"].split(True)
-        #f << u
-       	#plot(u, interactive=True)
-    return dict(t=t)
