@@ -107,10 +107,6 @@ def initiate(v_deg, dt, dvp_, **semimp_namespace):
         tmp_t.parameters["multi_file"] = 0
         tmp_t.parameters["rewrite_function_mesh"] = False
 
-    d, v, p = dvp_["n-1"].split(True)
-
-    d_file.write(d)
-    u_file.write(v)
 
     return dict(u_file=u_file, d_file=d_file, p_file=p_file)
 
