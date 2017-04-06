@@ -6,6 +6,7 @@ def parse():
      formatter_class=RawTextHelpFormatter, \
       epilog="############################################################################\n"
       "Example --> python monolithic.py -problem fsi1 -T 10 -dt 0.5\n"
+      "CSM example python monolithic.py -fluidvari nofluid -solidvari csm -extravari alfa -solver nofluid -problem csm1 -T 10 -dt 0.2 -theta 1"
       "############################################################################")
     group = parser.add_argument_group('Parameters')
     group.add_argument("-problem",  help="Set problem to solve                     --> Default=fsi1", default="fsi1")
