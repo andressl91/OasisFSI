@@ -39,11 +39,9 @@ def structure_setup(d_, v_, p_, phi, psi, gamma, dS, mu_f, n,\
 	"""
 
 	F_solid_linear = rho_s/k*inner(v_["n"] - v_["n-1"], psi)*dx_s \
-				   + Constant(1 - theta)*(inner(Piola1(d_["n-1"], lamda_s, mu_s), grad(psi))*dx_s \
-	               + delta*(1/k)*inner(d_["n"] - d_["n-1"], phi)*dx_s
-   				   - delta*Constant(theta)*inner(v_["n"], phi)*dx_s \
-				   - delta*Constant(1 - theta)*inner(v_["n-1"], phi)*dx_s) \
+	               + delta*(1/k)*inner(d_["n"] - d_["n-1"], phi)*dx_s \
+   				   - delta*inner(Constant(theta)*v_["n"] + Constant(1 - theta)*v_["n-1"], phi)*dx_s
 
-	F_solid_nonlinear = Constant(theta)*inner(Piola1(d_["n"], lamda_s, mu_s), grad(psi))*dx_s
+	F_solid_nonlinear = inner(Piola1(Constant(theta)*d_["n"] + Constant(1 - theta)*d_["n-1"], lamda_s, mu_s), grad(psi))*dx_s
 
 	return dict(F_solid_linear = F_solid_linear, F_solid_nonlinear = F_solid_nonlinear)
