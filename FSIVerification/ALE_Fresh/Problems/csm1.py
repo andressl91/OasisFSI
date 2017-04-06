@@ -15,16 +15,16 @@ common = {"mesh": mesh_file,
           "rho_f": 1.0E3,    #
           "mu_f": 1.0,
           "rho_s" : Constant(1.0E3),
-          "mu_s" : Constant(2.0E6),
+          "mu_s" : Constant(0.5E6),
           "nu_s" : Constant(0.4),
-          "Um" : 2.0,
+          "Um" : 0.0,
           "D" : 0.1,
           "H" : 0.41,
           "L" : 2.5,
     	  "step" : 1,
           "checkpoint": False
           }
- #"checkpoint": "./FSI_fresh_checkpoints/FSI-3/P-2/dt-0.05/dvpFile.h5"
+ #"checkpoint": "./FSI_fresh_checkpoints/CSM-1/P-2/dt-0.05/dvpFile.h5"
 vars().update(common)
 lamda_s = nu_s*2*mu_s/(1 - 2.*nu_s)
 #plot(mesh, interactive=True)
@@ -75,34 +75,21 @@ Lift_list = []
 Time_list = []
 Det_list = []
 
-#Fluid properties
 
-class Inlet(Expression):
-    def __init__(self, Um):
-        self.t = 0
-        self.Um = Um
-    def eval(self, value, x):
-    	value[0] = 0.5*(1-np.cos(self.t*np.pi/2))*1.5*self.Um*x[1]*(H-x[1])/((H/2.0)**2)
-    	value[1] = 0
-    def value_shape(self):
-    	return (2,)
-
-inlet = Inlet(Um)
+#dvp_file = XDMFFile(mpi_comm_world(), "FSI_fresh_checkpoints/CSM-1/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.xdmf")
 
 
-#dvp_file = XDMFFile(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.xdmf")
-
-
-if checkpoint == "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5":
+if checkpoint == "FSI_fresh_checkpoints/CSM-1/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5":
     sys.exit(0)
 else:
-    dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
+    dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/CSM-1/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
 
 
 def initiate(v_deg, dt, dvp_, **semimp_namespace):
-    u_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.xdmf")
-    d_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/d.xdmf")
-    p_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/pressure.xdmf")
+
+    u_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/CSM-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.xdmf")
+    d_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/CSM-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/d.xdmf")
+    p_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/CSM-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/pressure.xdmf")
     for tmp_t in [u_file, d_file, p_file]:
         tmp_t.parameters["flush_output"] = True
         tmp_t.parameters["multi_file"] = 0
@@ -111,11 +98,12 @@ def initiate(v_deg, dt, dvp_, **semimp_namespace):
 
     return dict(u_file=u_file, d_file=d_file, p_file=p_file)
 
-def create_bcs(DVP, dvp_, n, k, Um, H, boundaries, inlet, **semimp_namespace):
+def create_bcs(DVP, dvp_, n, k, Um, H, boundaries,  **semimp_namespace):
     print "Create bcs"
     #Fluid velocity conditions
-    u_inlet  = DirichletBC(DVP.sub(1), inlet, boundaries, 3)
+    u_inlet  = DirichletBC(DVP.sub(1), ((0.0, 0.0)), boundaries, 3)
     u_wall   = DirichletBC(DVP.sub(1), ((0.0, 0.0)), boundaries, 2)
+    u_outlet = DirichletBC(DVP.sub(1), ((0.0, 0.0)), boundaries, 4)
     u_circ   = DirichletBC(DVP.sub(1), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
     u_barwall= DirichletBC(DVP.sub(1), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
 
@@ -126,24 +114,16 @@ def create_bcs(DVP, dvp_, n, k, Um, H, boundaries, inlet, **semimp_namespace):
     d_circle  = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 6)
     d_barwall = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
 
-    #Pressure Conditions
-    p_out = DirichletBC(DVP.sub(2), 0, boundaries, 4)
 
     #Assemble boundary conditions
-    bcs = [u_inlet, u_wall, u_circ, u_barwall,\
-           d_wall, d_inlet, d_outlet, d_circle,d_barwall,\
-           p_out]
+    bcs = [u_barwall,\
+           d_wall, d_inlet, d_outlet, d_circle,d_barwall]
 
-    return dict(bcs = bcs, inlet = inlet)
+    return dict(bcs = bcs)
 
 
-def pre_solve(t, inlet, **semimp_namespace):
-    if t < 2:
-        inlet.t = t
-    else:
-        inlet.t = 2
-
-    return dict(inlet = inlet)
+def pre_solve(**semimp_namespace):
+    return {}
 
 
 def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, Det_list,\
@@ -173,21 +153,12 @@ def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, Det_li
     Det = project(J_(d), P)
     Det_list.append((Det.vector().array()).min())
 
-    Dr = -assemble((sigma_f_new(v,p,d,mu_f)*n)[0]*ds(6))
-    Li = -assemble((sigma_f_new(v,p,d,mu_f)*n)[1]*ds(6))
-    Dr += -assemble((sigma_f_new(v("-"),p("-"),d("-"),mu_f)*n("-"))[0]*dS(5))
-    Li += -assemble((sigma_f_new(v("-"),p("-"),d("-"),mu_f)*n("-"))[1]*dS(5))
-    Drag_list.append(Dr)
-    Lift_list.append(Li)
     Time_list.append(t)
-
-
     dsx = d(coord)[0]
     dsy = d(coord)[1]
     dis_x.append(dsx)
     dis_y.append(dsy)
     if MPI.rank(mpi_comm_world()) == 0:
-        print "LIFT = %g,  DRAG = %g" % (Li, Dr)
         print "dis_x/dis_y : %g %g "%(dsx,dsy)
 
     return {}
@@ -199,18 +170,12 @@ def post_process(T,dt,Det_list,dis_x,dis_y, Drag_list,Lift_list, Time_list, dvp_
     print Det_list
     plt.figure(1)
     plt.plot(Time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
-    plt.savefig("FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
+    plt.savefig("FSI_fresh_results/CSM-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
     plt.figure(2)
     plt.plot(Time_list,dis_y);plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
-    plt.savefig("FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_y.png")
-    plt.figure(3)
-    plt.plot(Time_list,Drag_list);plt.ylabel("Drag");plt.xlabel("Time");plt.grid();
-    plt.savefig("FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/drag.png")
-    plt.figure(4)
-    plt.plot(Time_list,Lift_list);plt.ylabel("Lift");plt.xlabel("Time");plt.grid();
-    plt.savefig("FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/lift.png")
+    plt.savefig("FSI_fresh_results/CSM-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_y.png")
     plt.figure(5)
     plt.plot(Time_list,Det_list);plt.ylabel("Min_Det(F)");plt.xlabel("Time");plt.grid();
-    plt.savefig("FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/Min_J.png")
+    plt.savefig("FSI_fresh_results/CSM-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/Min_J.png")
 
     return {}

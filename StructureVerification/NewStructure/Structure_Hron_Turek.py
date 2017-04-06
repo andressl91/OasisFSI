@@ -18,7 +18,7 @@ for coord in mesh.coordinates():
 
 
 # SOLID PARAMETERS
-CSM = 3
+CSM = 1
 Pr = 0.4
 mu_s = [0.5, 2.0, 0.5][CSM-1]*1e6
 rho_s = [1.0, 1.0, 1.0][CSM-1]*1e3
@@ -75,6 +75,14 @@ dx = Measure("dx",subdomain_data=domains)
 
 delta = 1E10
 #imp = sys.argv[2]
+
+F_structure = (rho_s/k)*inner(u-u0,phi)*dx
+#F_structure += inner(P1(d,lamda_s,mu_s), grad(phi))*dx
+#F_structure += delta*((1.0/k)*inner(d-d0,psi)*dx - inner(u,psi)*dx)
+F_structure -= inner(g, phi)*dx #+ inner(f2, psi)*dx
+F_structure += inner(P1(d,lamda_s,mu_s), grad(phi))*dx
+F_structure += delta*((1.0/k)*inner(d-d0,psi)*dx - inner(u,psi)*dx)
+
 """
 F_structure = (rho_s/k)*inner(u-u0,phi)*dx
 #F_structure += inner(P1(d,lamda_s,mu_s), grad(phi))*dx
@@ -83,11 +91,12 @@ F_structure -= inner(g, phi)*dx #+ inner(f2, psi)*dx
 F_structure += inner(0.5*(P1(d,lamda_s,mu_s)+P1(d0,lamda_s,mu_s)), grad(phi))*dx
 F_structure += delta*((1.0/k)*inner(d-d0,psi)*dx - inner(0.5*(u+u0),psi)*dx)
 """
+"""
 F_structure = (rho_s/k)*inner((3./2)*u - 2*u0 + (1./2)*u1,phi)*dx
 F_structure += 0.5*inner(P1(d0,lamda_s,mu_s)+P1((d + (3./2.)*k*u - (k/2.)*u0),lamda_s,mu_s), grad(phi))*dx
 F_structure += delta*((1.0/k)*inner(d-d0,psi)*dx - inner(0.5*(u+u0),psi)*dx)
 F_structure -= inner(g, phi)*dx #+ inner(f2, psi)*dx
-
+"""
 
 u_file = XDMFFile(mpi_comm_world(), "Structure_MMS_results/velocity.xdmf")
 d_file = XDMFFile(mpi_comm_world(), "Structure_MMS_results/d.xdmf")
@@ -119,7 +128,7 @@ while t <= T:
     ud1.assign(ud0)
     ud0.assign(ud)
     #u0.assign(u_); d0.assign(d_)
-
+    d_file.write(d)
     dis_x.append(d(coord)[0])
     dis_y.append(d(coord)[1])
     #print "x: ", d(coord)[0]
@@ -134,11 +143,11 @@ plt.figure(1)
 plt.plot(time_list,dis_x,);title; plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
 plt.axis([0, 10, -0.03, 0.005])
 
-#plt.savefig("run_x.jpg")
+plt.savefig("run_x.jpg")
 plt.show()
 plt.figure(2)
 #plt.title("Eulerian Mixed, schewed Crank-Nic")
 plt.plot(time_list,dis_y);title;plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
 plt.axis([0, 10, -0.14, 0.02])
-#plt.savefig("run_y.jpg")
-plt.show()
+plt.savefig("run_y.jpg")
+#plt.show()
