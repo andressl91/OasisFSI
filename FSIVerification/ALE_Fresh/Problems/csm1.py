@@ -85,7 +85,10 @@ else:
     dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/CSM-1/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
 
 
-def initiate(v_deg, dt, dvp_, **semimp_namespace):
+def initiate(F_solid_linear, rho_s, psi, dx_s, v_deg, dt, dvp_, **semimp_namespace):
+
+    #gravity = Constant((0, -2*rho_s))
+    #F_solid_linear -= inner(gravity, psi)*dx_s
 
     u_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/CSM-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.xdmf")
     d_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/CSM-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/d.xdmf")
@@ -96,7 +99,7 @@ def initiate(v_deg, dt, dvp_, **semimp_namespace):
         tmp_t.parameters["rewrite_function_mesh"] = False
 
 
-    return dict(u_file=u_file, d_file=d_file, p_file=p_file)
+    return dict(u_file=u_file, d_file=d_file, p_file=p_file, F_solid_linear=F_solid_linear)
 
 def create_bcs(DVP, dvp_, n, k, Um, H, boundaries,  **semimp_namespace):
     print "Create bcs"
@@ -165,9 +168,6 @@ def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, Det_li
 
 
 def post_process(T,dt,Det_list,dis_x,dis_y, Drag_list,Lift_list, Time_list, dvp_file,**semimp_namespace):
-    #dvp_file.close()
-    #time_list = np.linspace(0,T,T/dt+1)
-    print Det_list
     plt.figure(1)
     plt.plot(Time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
     plt.savefig("FSI_fresh_results/CSM-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
