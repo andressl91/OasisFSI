@@ -73,6 +73,7 @@ dis_y = []
 Drag_list = []
 Lift_list = []
 Time_list = []
+Det_list = []
 
 #Fluid properties
 
@@ -145,7 +146,7 @@ def pre_solve(t, inlet, **semimp_namespace):
     return dict(inlet = inlet)
 
 
-def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,\
+def after_solve(t, P, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, Det_list,\
                 counter,dvp_file,u_file,p_file,d_file, **semimp_namespace):
 
     d, v, p = dvp_["n"].split(True)
@@ -168,6 +169,9 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,\
     def sigma_f_new(v, p, d, mu_f):
         return -p*Identity(len(v)) + mu_f*(grad(v)*inv(F_(d)) + inv(F_(d)).T*grad(v).T)
 
+    Det = project(J_(d), P)
+    Det_list.append(min(Det.vector().array()))
+
     Dr = -assemble((sigma_f_new(v,p,d,mu_f)*n)[0]*ds(6))
     Li = -assemble((sigma_f_new(v,p,d,mu_f)*n)[1]*ds(6))
     Dr += -assemble((sigma_f_new(v("-"),p("-"),d("-"),mu_f)*n("-"))[0]*dS(5))
@@ -188,9 +192,10 @@ def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,\
     return {}
 
 
-def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list, Time_list, dvp_file,**semimp_namespace):
+def post_process(T,dt,Det_list,dis_x,dis_y, Drag_list,Lift_list, Time_list, dvp_file,**semimp_namespace):
     #dvp_file.close()
     #time_list = np.linspace(0,T,T/dt+1)
+    print Det_list
     plt.figure(1)
     plt.plot(Time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
     plt.savefig("FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
@@ -203,5 +208,8 @@ def post_process(T,dt,dis_x,dis_y, Drag_list,Lift_list, Time_list, dvp_file,**se
     plt.figure(4)
     plt.plot(Time_list,Lift_list);plt.ylabel("Lift");plt.xlabel("Time");plt.grid();
     plt.savefig("FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/lift.png")
+    plt.figure(5)
+    plt.plot(Time_list,Det_list);plt.ylabel("Min_Det(F)");plt.xlabel("Time");plt.grid();
+    plt.savefig("FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/Min_J.png")
 
     return {}
