@@ -28,7 +28,7 @@ common = {"mesh": mesh_file,
 vars().update(common)
 lamda_s = nu_s*2*mu_s/(1 - 2.*nu_s)
 #plot(mesh, interactive=True)
-
+sebb = 69
 for coord in mesh.coordinates():
     if coord[0]==0.6 and (0.199<=coord[1]<=0.2001): # to get the point [0.2,0.6] end of bar
         print coord
@@ -141,7 +141,7 @@ def create_bcs(DVP, dvp_, n, k, Um, H, boundaries,  **semimp_namespace):
 
 
     #Assemble boundary conditions
-    bcs = [u_barwall,\
+    bcs = [u_wall, u_inlet, u_circ, u_barwall,\
            d_wall, d_inlet, d_outlet, d_circle,d_barwall]
 
     return dict(bcs = bcs)
