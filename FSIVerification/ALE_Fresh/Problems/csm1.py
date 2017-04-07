@@ -10,8 +10,8 @@ common = {"mesh": mesh_file,
           "v_deg": 2,    #Velocity degree
           "p_deg": 1,    #Pressure degree
           "d_deg": 2,    #Deformation degree
-          "T": 0.002,          # End time
-          "dt": 0.001,       # Time step
+          "T": 10.0,          # End time
+          "dt": 0.1,       # Time step
           "rho_f": 1.0E3,    #
           "mu_f": 1.0,
           "rho_s" : Constant(1.0E3),
@@ -74,6 +74,8 @@ Drag_list = []
 Lift_list = []
 Time_list = []
 Det_list = []
+Det_list_mean = []
+Det_list_max = []
 
 
 #dvp_file = XDMFFile(mpi_comm_world(), "FSI_fresh_checkpoints/CSM-1/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.xdmf")
@@ -85,28 +87,48 @@ else:
     dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/CSM-1/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
 
 
-def initiate(F_solid_linear, rho_s, psi, dx_s, v_deg, dt, dvp_, **semimp_namespace):
+def initiate(F_solid_linear, mesh_file, rho_s, psi, extype, dx_s, v_deg, dt, P, dvp_, **semimp_namespace):
 
     #gravity = Constant((0, -2*rho_s))
     #F_solid_linear -= inner(gravity, psi)*dx_s
+    def F_(U):
+        return  grad(U)
 
-    u_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/CSM-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.xdmf")
-    d_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/CSM-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/d.xdmf")
-    p_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/CSM-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/pressure.xdmf")
-    for tmp_t in [u_file, d_file, p_file]:
+    def J_(U):
+        return det(F_(U))
+
+    u_file = XDMFFile(mpi_comm_world(), "CSM_results/CSM-1/"+str(extype) +"/dt-"+str(dt)+"/velocity.xdmf")
+    d_file = XDMFFile(mpi_comm_world(), "CSM_results/CSM-1/"+str(extype) +"/dt-"+str(dt)+"/d.xdmf")
+    det_file = XDMFFile(mpi_comm_world(), "CSM_results/CSM-1/"+str(extype) +"/dt-"+str(dt)+"/det.xdmf")
+    for tmp_t in [u_file, d_file, det_file]:
         tmp_t.parameters["flush_output"] = True
         tmp_t.parameters["multi_file"] = 0
         tmp_t.parameters["rewrite_function_mesh"] = False
 
+    d, v, p = dvp_["n"].split(True)
+    d_file.write(d)
+    u_file.write(v)
 
-    return dict(u_file=u_file, d_file=d_file, p_file=p_file, F_solid_linear=F_solid_linear)
+
+    #dg = FunctionSpace(mesh_file, "DG", 0)
+    det_func = Function(P)
+    Det = project(J_(d), P)
+    det_func.vector().zero()
+    det_func.vector().axpy(1, Det.vector())
+    det_func.rename("det", "det")
+    det_file.write(det_func)
+    Det_list.append((det_func.vector().array()).min())
+    Det_list_max.append((det_func.vector().array()).max())
+    Det_list_mean.append(np.mean(det_func.vector().array()))
+
+    return dict(u_file=u_file, d_file=d_file, det_file=det_file,F_solid_linear=F_solid_linear, det_func=det_func)
 
 def create_bcs(DVP, dvp_, n, k, Um, H, boundaries,  **semimp_namespace):
     print "Create bcs"
     #Fluid velocity conditions
     u_inlet  = DirichletBC(DVP.sub(1), ((0.0, 0.0)), boundaries, 3)
     u_wall   = DirichletBC(DVP.sub(1), ((0.0, 0.0)), boundaries, 2)
-    u_outlet = DirichletBC(DVP.sub(1), ((0.0, 0.0)), boundaries, 4)
+    #u_outlet = DirichletBC(DVP.sub(1), ((0.0, 0.0)), boundaries, 4)
     u_circ   = DirichletBC(DVP.sub(1), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
     u_barwall= DirichletBC(DVP.sub(1), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
 
@@ -129,8 +151,8 @@ def pre_solve(**semimp_namespace):
     return {}
 
 
-def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, Det_list,\
-                counter,dvp_file,u_file,p_file,d_file, **semimp_namespace):
+def after_solve(t, det_func, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, Det_list,\
+                det_file, Det_list_max, Det_list_mean, counter,dvp_file,u_file,d_file, **semimp_namespace):
 
     d, v, p = dvp_["n"].split(True)
     if counter%step ==0:
@@ -144,7 +166,7 @@ def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, Det_li
         #dvp_file.write(dvp_["n"], "dvp%g"%t)
 
     def F_(U):
-        return (Identity(len(U)) + grad(U))
+        return grad(U)
 
     def J_(U):
         return det(F_(U))
@@ -154,7 +176,13 @@ def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, Det_li
 
     #Det = project(J_(d), DVP.sub(0).collapse())
     Det = project(J_(d), P)
-    Det_list.append((Det.vector().array()).min())
+    det_func.vector().zero()
+    det_func.vector().axpy(1, Det.vector())
+    det_func.rename("det", "det")
+    det_file.write(det_func)
+    Det_list.append((det_func.vector().array()).min())
+    Det_list_max.append((det_func.vector().array()).max())
+    Det_list_mean.append(np.mean(det_func.vector().array()))
 
     Time_list.append(t)
     dsx = d(coord)[0]
@@ -167,15 +195,22 @@ def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, Det_li
     return {}
 
 
-def post_process(T,dt,Det_list,dis_x,dis_y, Drag_list,Lift_list, Time_list, dvp_file,**semimp_namespace):
+def post_process(T, Det_list_mean, Det_list_max, extype,dt,Det_list,dis_x,dis_y, Drag_list,Lift_list, Time_list, dvp_file,**semimp_namespace):
     plt.figure(1)
     plt.plot(Time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
-    plt.savefig("FSI_fresh_results/CSM-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
+    plt.savefig("CSM_results/CSM-1/"+str(extype) +"/dt-"+str(dt)+"/dis_x.png")
     plt.figure(2)
     plt.plot(Time_list,dis_y);plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
-    plt.savefig("FSI_fresh_results/CSM-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_y.png")
+    plt.savefig("CSM_results/CSM-1/"+str(extype) +"/dt-"+str(dt)+"/dis_y.png")
     plt.figure(5)
+    Time_list = [0] + Time_list
     plt.plot(Time_list,Det_list);plt.ylabel("Min_Det(F)");plt.xlabel("Time");plt.grid();
-    plt.savefig("FSI_fresh_results/CSM-1/P-"+str(v_deg) +"/dt-"+str(dt)+"/Min_J.png")
+    plt.savefig("CSM_results/CSM-1/"+str(extype) +"/dt-"+str(dt)+"/Min_J.png")
+    plt.figure(3)
+    plt.plot(Time_list,Det_list_mean);plt.ylabel("Mean_Det(F)");plt.xlabel("Time");plt.grid();
+    plt.savefig("CSM_results/CSM-1/"+str(extype) +"/dt-"+str(dt)+"/Mean_J.png")
+    plt.figure(4)
+    plt.plot(Time_list,Det_list_max);plt.ylabel("Max_Det(F)");plt.xlabel("Time");plt.grid();
+    plt.savefig("CSM_results/CSM-1/"+str(extype) +"/dt-"+str(dt)+"/Max_J.png")
 
     return {}
