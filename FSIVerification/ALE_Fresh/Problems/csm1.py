@@ -92,7 +92,7 @@ def initiate(F_solid_linear, mesh_file, rho_s, psi, extype, dx_s, v_deg, dt, P, 
     #gravity = Constant((0, -2*rho_s))
     #F_solid_linear -= inner(gravity, psi)*dx_s
     def F_(U):
-        return  grad(U)
+        return Identity(len(U)) +  grad(U)
 
     def J_(U):
         return det(F_(U))
@@ -139,10 +139,12 @@ def create_bcs(DVP, dvp_, n, k, Um, H, boundaries,  **semimp_namespace):
     d_circle  = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 6)
     d_barwall = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
 
+    p_outlet  = DirichletBC(DVP.sub(2), (0.0), boundaries, 4)
 
     #Assemble boundary conditions
     bcs = [u_wall, u_inlet, u_circ, u_barwall,\
-           d_wall, d_inlet, d_outlet, d_circle,d_barwall]
+           d_wall, d_inlet, d_outlet, d_circle,d_barwall,\
+           p_outlet]
 
     return dict(bcs = bcs)
 
@@ -166,7 +168,7 @@ def after_solve(t, det_func, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_li
         #dvp_file.write(dvp_["n"], "dvp%g"%t)
 
     def F_(U):
-        return grad(U)
+        return Identity(len(U)) +  grad(U)
 
     def J_(U):
         return det(F_(U))

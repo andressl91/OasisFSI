@@ -36,7 +36,7 @@ D = VectorFunctionSpace(mesh_file, "CG", d_deg)
 V = VectorFunctionSpace(mesh_file, "CG", v_deg)
 P = FunctionSpace(mesh_file, "CG", p_deg)
 
-DVP = MixedFunctionSpace([D, V, P])
+DVP = MixedFunctionSpace([D, V, P, D])
 
 # Define coefficients
 k = Constant(dt)
@@ -45,18 +45,19 @@ n = FacetNormal(mesh_file)
 
 # Create functions
 
-dvp_ = {}; d_ = {}; v_ = {}; p_ = {}
+dvp_ = {}; d_ = {}; v_ = {}; p_ = {}; w_ = {}
 
 for time in ["n", "n-1", "n-2"]:
     dvp = Function(DVP)
     dvp_[time] = dvp
-    d, v, p = split(dvp)
+    d, v, p, w = split(dvp)
 
     d_[time] = d
     v_[time] = v
     p_[time] = p
+    w_[time] = w
 
-phi, psi, gamma = TestFunctions(DVP)
+phi, psi, gamma, beta = TestFunctions(DVP)
 t = 0
 
 vars().update(fluid_setup(**vars()))

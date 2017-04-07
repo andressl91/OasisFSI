@@ -4,7 +4,7 @@ from numpy import isnan
 def solver_setup(F_fluid_linear, F_fluid_nonlinear, \
                  F_solid_linear, F_solid_nonlinear, DVP, dvp_, **monolithic):
     F_lin = F_fluid_linear + F_solid_linear
-    F_nonlin = F_solid_nonlinear + F_fluid_nonlinear 
+    F_nonlin = F_solid_nonlinear + F_fluid_nonlinear
     F = F_lin + F_nonlin
 
     chi = TrialFunction(DVP)

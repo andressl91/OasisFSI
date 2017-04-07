@@ -100,6 +100,8 @@ else:
 
 
 def initiate(v_deg, dt, dvp_, **semimp_namespace):
+
+
     u_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.xdmf")
     d_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/d.xdmf")
     p_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/pressure.xdmf")
@@ -149,7 +151,10 @@ def pre_solve(t, inlet, **semimp_namespace):
 def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, Det_list,\
                 counter,dvp_file,u_file,p_file,d_file, **semimp_namespace):
 
-    d, v, p = dvp_["n"].split(True)
+    d = dvp_["n"].sub(0, deepcopy=True)
+    v = dvp_["n"].sub(1, deepcopy=True)
+    p = dvp_["n"].sub(2, deepcopy=True)
+    #d, v, p = dvp_["n"].split(True)
     if counter%step ==0:
         #u_file << v
         #d_file << d
