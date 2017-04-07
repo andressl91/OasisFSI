@@ -36,27 +36,49 @@ D = VectorFunctionSpace(mesh_file, "CG", d_deg)
 V = VectorFunctionSpace(mesh_file, "CG", v_deg)
 P = FunctionSpace(mesh_file, "CG", p_deg)
 
-DVP = MixedFunctionSpace([D, V, P])
 
 # Define coefficients
 k = Constant(dt)
 n = FacetNormal(mesh_file)
 #nu = Constant(mu_f/rho_f)
 
-# Create functions
 
-dvp_ = {}; d_ = {}; v_ = {}; p_ = {}
+if args.extravari == "biharmonic":
+    print "Biharmonic"
+    DVP = MixedFunctionSpace([D, V, P, D])
 
-for time in ["n", "n-1", "n-2"]:
-    dvp = Function(DVP)
-    dvp_[time] = dvp
-    d, v, p = split(dvp)
+    dvp_ = {}; d_ = {}; v_ = {}; p_ = {}; w_ = {}
 
-    d_[time] = d
-    v_[time] = v
-    p_[time] = p
+    for time in ["n", "n-1", "n-2"]:
+        dvp = Function(DVP)
+        dvp_[time] = dvp
+        d, v, p, w = split(dvp)
 
-phi, psi, gamma = TestFunctions(DVP)
+        d_[time] = d
+        v_[time] = v
+        p_[time] = p
+        w_[time] = w
+
+    phi, psi, gamma, beta = TestFunctions(DVP)
+
+else :
+    DVP = MixedFunctionSpace([D, V, P])
+
+    # Create functions
+
+    dvp_ = {}; d_ = {}; v_ = {}; p_ = {}
+
+    for time in ["n", "n-1", "n-2"]:
+        dvp = Function(DVP)
+        dvp_[time] = dvp
+        d, v, p = split(dvp)
+
+        d_[time] = d
+        v_[time] = v
+        p_[time] = p
+
+    phi, psi, gamma = TestFunctions(DVP)
+
 t = 0
 
 vars().update(fluid_setup(**vars()))
