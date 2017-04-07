@@ -11,7 +11,7 @@ def extrapolate_setup(F_fluid_linear, extype, mesh_file, d_, w_, phi, gamma, bet
     def J_(U):
     	return det(F_(U))
 
-    alfa_u = 1
+    alfa_u = 0.01
     F_ext1 = alfa_u*inner(w_["n"], beta)*dx_f - alfa_u*inner(grad(d_["n"]), grad(beta))*dx_f
     F_ext2 = alfa_u*inner(grad(w_["n"]), grad(phi))*dx_f
     F_fluid_linear += F_ext1 + F_ext2

@@ -97,30 +97,47 @@ def create_bcs(DVP, dvp_, n, k, Um, H, boundaries, Inlet, **semimp_namespace):
     u_circ   = DirichletBC(DVP.sub(1), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
     u_barwall= DirichletBC(DVP.sub(1), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
 
-    #displacement conditions:
-    d_wall    = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 2)
-    d_inlet   = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 3)
-    d_outlet  = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 4)
-    d_circle  = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 6)
-    d_barwall = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
-
     #Pressure Conditions
     p_out = DirichletBC(DVP.sub(2), 0, boundaries, 4)
 
-    #Assemble boundary conditions
-    bcs = [u_inlet, u_wall, u_circ, u_barwall,\
-           d_wall, d_inlet, d_outlet, d_circle,d_barwall,\
-           p_out]
-    """
-    if DVP.num_sub_spaces == 4:
-        w_wall    = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 2)
-        w_inlet   = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 3)
-        w_outlet  = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 4)
-        w_circle  = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 6)
-        w_barwall = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
-        for i in [w_wall, w_in]
+    bcs = [u_inlet, u_wall, u_circ, u_barwall, p_out]
 
-    """
+    #Second type of BC
+    print DVP.num_sub_spaces()
+    if DVP.num_sub_spaces() == 4:
+        print "IFTEST sb = 4"
+        w_wall    = DirichletBC(DVP.sub(0).sub(1), (0.0), boundaries, 2)
+        w_inlet   = DirichletBC(DVP.sub(0).sub(0), (0.0), boundaries, 3)
+        w_outlet  = DirichletBC(DVP.sub(0).sub(0), (0.0), boundaries, 4)
+        w_circle  = DirichletBC(DVP.sub(0).sub(1), (0.0), boundaries, 6)
+        w_barwall = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
+
+        d_wall    = DirichletBC(DVP.sub(0).sub(1), (0.0), boundaries, 2)
+        d_inlet   = DirichletBC(DVP.sub(0).sub(0), (0.0), boundaries, 3)
+        d_outlet  = DirichletBC(DVP.sub(0).sub(0), (0.0), boundaries, 4)
+        d_circle  = DirichletBC(DVP.sub(0).sub(1), (0.0), boundaries, 6)
+        d_barwall = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 7)
+
+        for i in [w_wall, w_inlet, w_outlet, w_circle, w_barwall, \
+                  d_wall, d_inlet, d_outlet, d_circle, d_barwall]:
+            bcs.append(i)
+    #Ordinary BC
+    else:
+        print "Ordinary BC"
+        #displacement conditions:
+        d_wall    = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 2)
+        d_inlet   = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 3)
+        d_outlet  = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 4)
+        d_circle  = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 6)
+        d_barwall = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
+        for i in [d_wall, d_inlet, d_outlet, d_circle, d_barwall]:
+            bcs.append(i)
+
+
+
+
+
+
 
     return dict(bcs = bcs, inlet = inlet)
 
