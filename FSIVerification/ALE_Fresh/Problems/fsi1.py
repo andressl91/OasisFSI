@@ -111,6 +111,16 @@ def create_bcs(DVP, dvp_, n, k, Um, H, boundaries, Inlet, **semimp_namespace):
     bcs = [u_inlet, u_wall, u_circ, u_barwall,\
            d_wall, d_inlet, d_outlet, d_circle,d_barwall,\
            p_out]
+    """
+    if DVP.num_sub_spaces == 4:
+        w_wall    = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 2)
+        w_inlet   = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 3)
+        w_outlet  = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 4)
+        w_circle  = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 6)
+        w_barwall = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
+        for i in [w_wall, w_in]
+
+    """
 
     return dict(bcs = bcs, inlet = inlet)
 

@@ -100,6 +100,10 @@ else:
 
 
 def initiate(v_deg, dt, dvp_, **semimp_namespace):
+    d = dvp_["n"].sub(0, deepcopy=True)
+    v = dvp_["n"].sub(1, deepcopy=True)
+    p = dvp_["n"].sub(2, deepcopy=True)
+    
     u_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.xdmf")
     d_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/d.xdmf")
     p_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/pressure.xdmf")
