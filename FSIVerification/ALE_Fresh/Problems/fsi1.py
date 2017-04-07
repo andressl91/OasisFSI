@@ -127,10 +127,10 @@ def initiate(**monolithic):
     return {}
 
 def after_solve(t, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, **semimp_namespace):
-    #d = dvp_["n"].sub(0, deepcopy=True)
-    #v = dvp_["n"].sub(1, deepcopy=True)
-    #p = dvp_["n"].sub(2, deepcopy=True)
-    d, v, p = dvp_["n"].split(True)
+    d = dvp_["n"].sub(0, deepcopy=True)
+    v = dvp_["n"].sub(1, deepcopy=True)
+    p = dvp_["n"].sub(2, deepcopy=True)
+    #d, v, p = dvp_["n"].split(True)
 
     def F_(U):
     	return (Identity(len(U)) + grad(U))
