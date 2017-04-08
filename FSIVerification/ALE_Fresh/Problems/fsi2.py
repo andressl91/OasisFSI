@@ -10,21 +10,21 @@ common = {"mesh": mesh_file,
           "v_deg": 2,    #Velocity degree
           "p_deg": 1,    #Pressure degree
           "d_deg": 2,    #Deformation degree
-          "T": 0.002,          # End time
-          "dt": 0.001,       # Time step
+          "T": 30,          # End time
+          "dt": 0.01,       # Time step
           "rho_f": 1.0E3,    #
           "mu_f": 1.0,
-          "rho_s" : Constant(1.0E3),
-          "mu_s" : Constant(2.0E6),
+          "rho_s" : Constant(10.0E3),
+          "mu_s" : Constant(0.5E6),
           "nu_s" : Constant(0.4),
-          "Um" : 2.0,
+          "Um" : 1.0,
           "D" : 0.1,
           "H" : 0.41,
           "L" : 2.5,
     	  "step" : 1,
           "checkpoint": False
           }
- #"checkpoint": "./FSI_fresh_checkpoints/FSI-3/P-2/dt-0.05/dvpFile.h5"
+ #"checkpoint": "./FSI_fresh_checkpoints/FSI-2/P-2/dt-0.05/dvpFile.h5"
 vars().update(common)
 lamda_s = nu_s*2*mu_s/(1 - 2.*nu_s)
 #plot(mesh, interactive=True)
@@ -90,21 +90,21 @@ class Inlet(Expression):
 inlet = Inlet(Um)
 
 
-#dvp_file = XDMFFile(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.xdmf")
+#dvp_file = XDMFFile(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-2/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.xdmf")
 
 
-if checkpoint == "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5":
+if checkpoint == "FSI_fresh_checkpoints/FSI-2/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5":
     sys.exit(0)
 else:
-    dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
+    dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-2/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
 
 
 def initiate(v_deg, dt, dvp_, args, **semimp_namespace):
 
 
-    u_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.xdmf")
-    d_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/d.xdmf")
-    p_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/pressure.xdmf")
+    u_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-2/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.xdmf")
+    d_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-2/P-"+str(v_deg) +"/dt-"+str(dt)+"/d.xdmf")
+    p_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-2/P-"+str(v_deg) +"/dt-"+str(dt)+"/pressure.xdmf")
     for tmp_t in [u_file, d_file, p_file]:
         tmp_t.parameters["flush_output"] = True
         tmp_t.parameters["multi_file"] = 0
@@ -204,18 +204,18 @@ def post_process(T,dt,Det_list,dis_x,dis_y, Drag_list,Lift_list, Time_list, dvp_
     print Det_list
     plt.figure(1)
     plt.plot(Time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
-    plt.savefig("FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
+    plt.savefig("FSI_fresh_results/FSI-2/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_x.png")
     plt.figure(2)
     plt.plot(Time_list,dis_y);plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
-    plt.savefig("FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_y.png")
+    plt.savefig("FSI_fresh_results/FSI-2/P-"+str(v_deg) +"/dt-"+str(dt)+"/dis_y.png")
     plt.figure(3)
     plt.plot(Time_list,Drag_list);plt.ylabel("Drag");plt.xlabel("Time");plt.grid();
-    plt.savefig("FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/drag.png")
+    plt.savefig("FSI_fresh_results/FSI-2/P-"+str(v_deg) +"/dt-"+str(dt)+"/drag.png")
     plt.figure(4)
     plt.plot(Time_list,Lift_list);plt.ylabel("Lift");plt.xlabel("Time");plt.grid();
-    plt.savefig("FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/lift.png")
+    plt.savefig("FSI_fresh_results/FSI-2/P-"+str(v_deg) +"/dt-"+str(dt)+"/lift.png")
     plt.figure(5)
     plt.plot(Time_list,Det_list);plt.ylabel("Min_Det(F)");plt.xlabel("Time");plt.grid();
-    plt.savefig("FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/Min_J.png")
+    plt.savefig("FSI_fresh_results/FSI-2/P-"+str(v_deg) +"/dt-"+str(dt)+"/Min_J.png")
 
     return {}
