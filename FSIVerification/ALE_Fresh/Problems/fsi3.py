@@ -99,19 +99,22 @@ else:
     dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
 
 
-def initiate(v_deg, dt, dvp_, args, **semimp_namespace):
+def initiate(v_deg, dt, theta, dvp_, args, **semimp_namespace):
+    if args.extravari == "alfa":
+        path =  "FSI_fresh_results/FSI-3/"+str(args.extravari) +"_"+ str(args.extype) +"/dt-"+str(dt)+"_theta-"+str(theta)
+    if args.extravari == "biharmonic":
+        path = "FSI_fresh_results/FSI-3/"+str(args.extravari) +"/dt-"+str(dt)+"_theta-"+str(theta)
 
-
-    u_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/velocity.xdmf")
-    d_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/d.xdmf")
-    p_file = XDMFFile(mpi_comm_world(), "FSI_fresh_results/FSI-3/P-"+str(v_deg) +"/dt-"+str(dt)+"/pressure.xdmf")
+    u_file = XDMFFile(mpi_comm_world(), path + "/velocity.xdmf")
+    d_file = XDMFFile(mpi_comm_world(), path + "/d.xdmf")
+    p_file = XDMFFile(mpi_comm_world(), path + "/pressure.xdmf")
     for tmp_t in [u_file, d_file, p_file]:
         tmp_t.parameters["flush_output"] = True
         tmp_t.parameters["multi_file"] = 0
         tmp_t.parameters["rewrite_function_mesh"] = False
 
 
-    return dict(u_file=u_file, d_file=d_file, p_file=p_file)
+    return dict(u_file=u_file, d_file=d_file, p_file=p_file, path=path)
 
 def create_bcs(DVP, dvp_, n, k, Um, H, boundaries, inlet, **semimp_namespace):
     print "Create bcs"
@@ -198,9 +201,24 @@ def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, Det_li
     return {}
 
 
-def post_process(T,dt,Det_list,dis_x,dis_y, Drag_list,Lift_list, Time_list, dvp_file,**semimp_namespace):
+def post_process(path,T,dt,Det_list,dis_x,dis_y, Drag_list,Lift_list, Time_list,\
+                args, v_deg, p_deg, d_deg, dvp_file,**semimp_namespace):
     #dvp_file.close()
     #time_list = np.linspace(0,T,T/dt+1)
+    theta = args.theta
+    f_scheme = args.fluidvari
+    s_scheme = args.solidvari
+    e_scheme = args.extravari
+    f = open(path+"/report.txt", 'w')
+    f.write("""FSI3 EXPERIMENT
+    T = %(T)g\ndt = %(dt)g\nv_deg = %(d_deg)g\nv_deg = %(v_deg)g\np_deg = %(p_deg)g\n
+theta = %(theta)s\nf_vari = %(f_scheme)s\ns_vari = %(s_scheme)s\ne_vari = %(e_scheme)s""" % vars())
+    #f.write("""Runtime = %f """ % fintime)
+    f.close()
+
+    np.savetxt(path + '/Lift.txt', Lift_list, delimiter=',')
+    np.savetxt(path + '/Drag.txt', Drag_list, delimiter=',')
+    np.savetxt(path + '/Time.txt', Time_list, delimiter=',')
     print Det_list
     plt.figure(1)
     plt.plot(Time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();

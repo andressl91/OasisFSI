@@ -13,6 +13,7 @@ def parse():
     group.add_argument("-fluidvari",  help="Set variationalform for fluid                    --> Default=fluid_coupled", default="fluid_coupled")
     group.add_argument("-solidvari",  help="Set variationalform for solid                 --> Default=CN_mixed", default="CN_mixed")
     group.add_argument("-extravari",  help="Set variationalform for extrapolation                 --> Default=alfa", default="alfa")
+    group.add_argument("-tag",  help="tag name for storing file                --> Default=alfa", default="tag")
     group.add_argument("-solver",   help="Set type of solver to be used            --> Default=newtonsolver", default="newtonsolver")
     group.add_argument("-p_deg",    type=int, help="Set degree of pressure                   --> Default=1", default=1)
     group.add_argument("-v_deg",    type=int, help="Set degree of velocity                   --> Default=2", default=2)
