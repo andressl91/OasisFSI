@@ -122,6 +122,6 @@ while t <= T + 1e-8:
     vars().update(after_solve(**vars()))
     counter +=1
 
-print "TIME SPENT!!!", toc()
+simtime = toc()
 
 post_process(**vars())

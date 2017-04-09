@@ -202,7 +202,7 @@ def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, Det_li
 
 
 def post_process(path,T,dt,Det_list,dis_x,dis_y, Drag_list,Lift_list, Time_list,\
-                args, v_deg, p_deg, d_deg, dvp_file,**semimp_namespace):
+                args, simtime,v_deg, p_deg, d_deg, dvp_file,**semimp_namespace):
     #dvp_file.close()
     #time_list = np.linspace(0,T,T/dt+1)
     theta = args.theta
@@ -212,7 +212,7 @@ def post_process(path,T,dt,Det_list,dis_x,dis_y, Drag_list,Lift_list, Time_list,
     f = open(path+"/report.txt", 'w')
     f.write("""FSI3 EXPERIMENT
     T = %(T)g\ndt = %(dt)g\nv_deg = %(d_deg)g\nv_deg = %(v_deg)g\np_deg = %(p_deg)g\n
-theta = %(theta)s\nf_vari = %(f_scheme)s\ns_vari = %(s_scheme)s\ne_vari = %(e_scheme)s""" % vars())
+theta = %(theta)s\nf_vari = %(f_scheme)s\ns_vari = %(s_scheme)s\ne_vari = %(e_scheme)s\n time = %(simtime)g""" % vars())
     #f.write("""Runtime = %f """ % fintime)
     f.close()
 
