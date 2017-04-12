@@ -13,7 +13,8 @@ def extrapolate_setup(F_fluid_linear, extype, mesh_file, d_, phi, gamma, dx_f, *
     def eps(U):
         return 0.5*(grad(U) + grad(U).T)
     def STVK(U, alfa_mu, alfa_lam):
-        return F_(U)*(alfa_lam*tr(eps(U))*Identity(len(U)) + 2.0*alfa_mu*eps(U))
+        return alfa_lam*tr(eps(U))*Identity(len(U)) + 2.0*alfa_mu*eps(U)
+        #return F_(U)*(alfa_lam*tr(eps(U))*Identity(len(U)) + 2.0*alfa_mu*eps(U))
 
     alfa = 1.0 # holder value if linear is chosen
     if extype == "det":
@@ -28,7 +29,9 @@ def extrapolate_setup(F_fluid_linear, extype, mesh_file, d_, phi, gamma, dx_f, *
 
     if extype == "linear":
         hmin = mesh_file.hmin()
-        alfa_lam = hmin*hmin ; alfa_mu = hmin*hmin 
+        #alfa_lam =  1./(J_(d_["n"]))
+        #alfa_mu = 0.49
+        alfa_lam = hmin*hmin ; alfa_mu = hmin*hmin
         print "linear extrapolation !!"
         F_extrapolate = inner(STVK(d_["n"],alfa_mu,alfa_lam) , grad(phi))*dx_f
 
