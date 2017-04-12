@@ -26,6 +26,7 @@ common = {"mesh": mesh_file,
           }
  #"checkpoint": "./FSI_fresh_checkpoints/CSM-1/P-2/dt-0.05/dvpFile.h5"
 vars().update(common)
+print "GALA"
 lamda_s = nu_s*2*mu_s/(1 - 2.*nu_s)
 #plot(mesh, interactive=True)
 sebb = 69
