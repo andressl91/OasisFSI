@@ -112,7 +112,12 @@ def initiate(v_deg, dt, theta, dvp_, args, **semimp_namespace):
         tmp_t.parameters["flush_output"] = True
         tmp_t.parameters["multi_file"] = 0
         tmp_t.parameters["rewrite_function_mesh"] = False
-
+    d = dvp_["n"].sub(0, deepcopy=True)
+    v = dvp_["n"].sub(1, deepcopy=True)
+    p = dvp_["n"].sub(2, deepcopy=True)
+    #p_file.write(p)
+    #d_file.write(d)
+    #u_file.write(v)
 
     return dict(u_file=u_file, d_file=d_file, p_file=p_file, path=path)
 
@@ -221,7 +226,7 @@ theta = %(theta)s\nf_vari = %(f_scheme)s\ns_vari = %(s_scheme)s\ne_vari = %(e_sc
     np.savetxt(path + '/Time.txt', Time_list, delimiter=',')
     np.savetxt(path + '/dis_x.txt', dis_x, delimiter=',')
     np.savetxt(path + '/dis_y.txt', dis_y, delimiter=',')
-    
+
     plt.figure(1)
     plt.plot(Time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
     plt.savefig(path + "/dis_x.png")
