@@ -84,7 +84,8 @@ else:
     dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/CSM-1/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
 
 
-def initiate(t, F_solid_linear, args, theta, mesh_file, rho_s, psi, extype, dx_s, v_deg, dt, P, dvp_, Time_list, Det_list,**semimp_namespace):
+def initiate(t, T, F_solid_linear, args, theta, mesh_file, rho_s, psi, extype, \
+            dx_s, d_deg, p_deg, v_deg, dt, P, dvp_, Time_list, Det_list,**semimp_namespace):
 
     #gravity = Constant((0, -2*rho_s))
     #F_solid_linear -= inner(gravity, psi)*dx_s
@@ -109,6 +110,9 @@ def initiate(t, F_solid_linear, args, theta, mesh_file, rho_s, psi, extype, dx_s
 
     d = dvp_["n"].sub(0, deepcopy=True)
     v = dvp_["n"].sub(1, deepcopy=True)
+
+    #d_file << d
+    #u_file << v
     d_file.write(d)
     u_file.write(v)
 
@@ -126,10 +130,20 @@ def initiate(t, F_solid_linear, args, theta, mesh_file, rho_s, psi, extype, dx_s
 
     Det_list.append((det_func.vector().array()).min())
 
+    theta = args.theta
+    f_scheme = args.fluidvari
+    s_scheme = args.solidvari
+    e_scheme = args.extravari
+    f = open(path+"/report.txt", 'w')
+    f.write("""CSM4 EXPERIMENT
+    T = %(T)g\ndt = %(dt)g\nv_deg = %(d_deg)g\nv_deg = %(v_deg)g\np_deg = %(p_deg)g\n
+theta = %(theta)s\nf_vari = %(f_scheme)s\ns_vari = %(s_scheme)s\ne_vari = %(e_scheme)s\n""" % vars())
+    #f.write("""Runtime = %f """ % fintime)
+    f.close()
 
     return dict(u_file=u_file, d_file=d_file, det_func=det_func, path=path)
 
-def create_bcs(DVP, dvp_, n, k, args, Um, H, boundaries,  **semimp_namespace):
+def create_bcs(DVP, args, dvp_, n, k, Um, H, boundaries,  **semimp_namespace):
 
     #Fluid velocity conditions
     u_inlet  = DirichletBC(DVP.sub(1), ((0.0, 0.0)), boundaries, 3)
@@ -142,7 +156,6 @@ def create_bcs(DVP, dvp_, n, k, args, Um, H, boundaries,  **semimp_namespace):
     #Assemble boundary conditions
     bcs = [u_wall, u_inlet, u_circ, u_barwall,\
            p_outlet]
-
 
     #if DVP.num_sub_spaces() == 4:
     if args.bitype == "bc1":
@@ -171,6 +184,7 @@ def create_bcs(DVP, dvp_, n, k, args, Um, H, boundaries,  **semimp_namespace):
                   d_wall, d_inlet, d_outlet, d_circle, d_barwall]:
             bcs.append(i)
 
+
     return dict(bcs = bcs)
 
 
@@ -178,7 +192,7 @@ def pre_solve(**semimp_namespace):
     return {}
 
 
-def after_solve(t, det_func, P, DVP, dvp_, n,coord,dis_x,dis_y, Det_list,\
+def after_solve(t, path, det_func, P, DVP, dvp_, n,coord,dis_x,dis_y, Det_list,\
                 counter,dvp_file,u_file,d_file, **semimp_namespace):
 
     d = dvp_["n"].sub(0, deepcopy=True)
@@ -216,28 +230,16 @@ def after_solve(t, det_func, P, DVP, dvp_, n,coord,dis_x,dis_y, Det_list,\
     if MPI.rank(mpi_comm_world()) == 0:
         print "dis_x/dis_y : %g %g "%(dsx,dsy)
 
-    return {}
-
-
-def post_process(path,T,dt,Det_list,dis_x,dis_y, Time_list,\
-                    args, v_deg, p_deg, d_deg, **semimp_namespace):
-
-    theta = args.theta
-    f_scheme = args.fluidvari
-    s_scheme = args.solidvari
-    e_scheme = args.extravari
-    f = open(path+"/report.txt", 'w')
-    f.write("""FSI3 EXPERIMENT
-    T = %(T)g\ndt = %(dt)g\nv_deg = %(d_deg)g\nv_deg = %(v_deg)g\np_deg = %(p_deg)g\n
-theta = %(theta)s\nf_vari = %(f_scheme)s\ns_vari = %(s_scheme)s\ne_vari = %(e_scheme)s\n""" % vars())
-    #f.write("""Runtime = %f """ % fintime)
-    f.close()
-
     np.savetxt(path + '/time.txt', Time_list, delimiter=',')
     np.savetxt(path + '/dis_x.txt', dis_x, delimiter=',')
     np.savetxt(path + '/dis_y.txt', dis_y, delimiter=',')
     np.savetxt(path + '/min_J.txt', Det_list, delimiter=',')
 
+    return {}
+
+
+def post_process(path,T,dt,Det_list,dis_x,dis_y, Time_list,\
+                    args, v_deg, p_deg, d_deg, **semimp_namespace):
     plt.figure(1)
     plt.plot(Time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
     plt.savefig(path + "/dis_x.png")
