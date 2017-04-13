@@ -125,12 +125,12 @@ def initiate(v_deg, dt, theta, dvp_, args, **semimp_namespace):
     v = dvp_["n-1"].sub(1, deepcopy=True)
     p = dvp_["n-1"].sub(2, deepcopy=True)
     #p_file.write(p)
-    #d_file.write(d)
-    #u_file.write(v)
+    d_file.write(d)
+    u_file.write(v)
 
     return dict(u_file=u_file, d_file=d_file, p_file=p_file, path=path)
 
-def create_bcs(DVP, dvp_, n, k, Um, H, boundaries, inlet, **semimp_namespace):
+def create_bcs(DVP, args, dvp_, n, k, Um, H, boundaries, inlet, **semimp_namespace):
     print "Create bcs"
     #Fluid velocity conditions
     u_inlet  = DirichletBC(DVP.sub(1), inlet, boundaries, 3)
@@ -138,20 +138,39 @@ def create_bcs(DVP, dvp_, n, k, Um, H, boundaries, inlet, **semimp_namespace):
     u_circ   = DirichletBC(DVP.sub(1), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
     u_barwall= DirichletBC(DVP.sub(1), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
 
-    #displacement conditions:
-    d_wall    = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 2)
-    d_inlet   = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 3)
-    d_outlet  = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 4)
-    d_circle  = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 6)
-    d_barwall = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
-
     #Pressure Conditions
-    p_out = DirichletBC(DVP.sub(2), 0, boundaries, 4)
+    p_outlet  = DirichletBC(DVP.sub(2), (0.0), boundaries, 4)
 
     #Assemble boundary conditions
-    bcs = [u_inlet, u_wall, u_circ, u_barwall,\
-           d_wall, d_inlet, d_outlet, d_circle,d_barwall,\
-           p_out]
+    bcs = [u_wall, u_inlet, u_circ, u_barwall,\
+           p_outlet]
+
+    #if DVP.num_sub_spaces() == 4:
+    if args.bitype == "bc1":
+        d_wall    = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 2)
+        d_inlet   = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 3)
+        d_outlet  = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 4)
+        d_circle  = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 6)
+        d_barwall = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
+        for i in [d_wall, d_inlet, d_outlet, d_circle, d_barwall]:
+            bcs.append(i)
+
+    if args.bitype == "bc2":
+        w_wall    = DirichletBC(DVP.sub(0).sub(1), (0.0), boundaries, 2)
+        w_inlet   = DirichletBC(DVP.sub(0).sub(0), (0.0), boundaries, 3)
+        w_outlet  = DirichletBC(DVP.sub(0).sub(0), (0.0), boundaries, 4)
+        w_circle  = DirichletBC(DVP.sub(0).sub(1), (0.0), boundaries, 6)
+        w_barwall = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
+
+        d_wall    = DirichletBC(DVP.sub(0).sub(1), (0.0), boundaries, 2)
+        d_inlet   = DirichletBC(DVP.sub(0).sub(0), (0.0), boundaries, 3)
+        d_outlet  = DirichletBC(DVP.sub(0).sub(0), (0.0), boundaries, 4)
+        d_circle  = DirichletBC(DVP.sub(0).sub(1), (0.0), boundaries, 6)
+        d_barwall = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 7)
+
+        for i in [w_wall, w_inlet, w_outlet, w_circle, w_barwall, \
+                  d_wall, d_inlet, d_outlet, d_circle, d_barwall]:
+            bcs.append(i)
 
     return dict(bcs = bcs, inlet = inlet)
 
@@ -173,12 +192,12 @@ def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, Det_li
     p = dvp_["n"].sub(2, deepcopy=True)
     #d, v, p = dvp_["n"].split(True)
     if counter%step ==0:
-        u_file << v
-        d_file << d
+        #u_file << v
+        #d_file << d
         #p_file << p
         #p_file.write(p)
-        #d_file.write(d)
-        #u_file.write(v)
+        d_file.write(d)
+        u_file.write(v)
         #dvp_file << dvp_["n"]
         #dvp_file.write(dvp_["n"], "dvp%g"%t)
 
