@@ -11,7 +11,7 @@ def extrapolate_setup(F_fluid_linear, extype, mesh_file, d_, phi, gamma, dx_f, *
     def J_(U):
     	return det(F_(U))
     def eps(U):
-        return 0.5*(grad(U) + grad(U).T)
+        return 0.5*(grad(U)*inv(F_(U)) + inv(F_(U)).T*grad(U).T)
     def STVK(U, alfa_mu, alfa_lam):
         return alfa_lam*tr(eps(U))*Identity(len(U)) + 2.0*alfa_mu*eps(U)
         #return F_(U)*(alfa_lam*tr(eps(U))*Identity(len(U)) + 2.0*alfa_mu*eps(U))
@@ -29,14 +29,13 @@ def extrapolate_setup(F_fluid_linear, extype, mesh_file, d_, phi, gamma, dx_f, *
 
     if extype == "linear":
         hmin = mesh_file.hmin()
-
-        E_y =  1./(J_(d_["n"]))
-        nu = -0.2 #(-1, 0.5)
-        alfa_lam = nu*E_y / ((1. + nu)*(1. - 2.*nu))
-        alfa_mu = E_y/(2.*(1. + nu))
-        #alfa_lam = hmin*hmin ; alfa_mu = hmin*hmin
-
-        F_extrapolate = inner(STVK(d_["n"],alfa_mu,alfa_lam) , grad(phi))*dx_f
+        #E_y =  1./(J_(d_["n"]))
+        #nu = -0.2 #(-1, 0.5)
+        #alfa_lam = nu*E_y / ((1. + nu)*(1. - 2.*nu))
+        #alfa_mu = E_y/(2.*(1. + nu))
+        alfa_lam = hmin*hmin ; alfa_mu = hmin*hmin
+        F_extrapolate = inner(J_(d_["n"])*STVK(d_["n"],alfa_mu,alfa_lam)*inv(F_(d_["n"])).T, grad(phi))*dx_f
+        #F_extrapolate = inner(STVK(d_["n"],alfa_mu,alfa_lam) , grad(phi))*dx_f
 
     F_fluid_linear += F_extrapolate
 
