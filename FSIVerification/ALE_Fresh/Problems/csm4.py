@@ -10,8 +10,8 @@ common = {"mesh": mesh_file,
           "v_deg": 2,    #Velocity degree
           "p_deg": 1,    #Pressure degree
           "d_deg": 2,    #Deformation degree
-          "T": 10.0,          # End time
-          "dt": 0.1,       # Time step
+          "T": 0.002,          # End time
+          "dt": 0.001,       # Time step
           "rho_f": 1.0E3,    #
           "mu_f": 1.0,
           "rho_s" : Constant(1.0E3),
@@ -24,8 +24,8 @@ common = {"mesh": mesh_file,
     	  "step" : 1,
           "checkpoint": False
           }
- #"checkpoint": "./FSI_fresh_checkpoints/CSM-1/P-2/dt-0.05/dvpFile.h5"
-g = 2
+ #"checkpoint": "./FSI_fresh_checkpoints/CSM-4/P-2/dt-0.05/dvpFile.h5"
+g = 4
 vars().update(common)
 lamda_s = nu_s*2*mu_s/(1 - 2.*nu_s)
 #plot(mesh, interactive=True)
@@ -75,13 +75,13 @@ Lift_list = []
 Time_list = []
 Det_list = []
 
-#dvp_file = XDMFFile(mpi_comm_world(), "FSI_fresh_checkpoints/CSM-1/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.xdmf")
+#dvp_file = XDMFFile(mpi_comm_world(), "FSI_fresh_checkpoints/CSM-4/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.xdmf")
 
 
-if checkpoint == "FSI_fresh_checkpoints/CSM-1/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5":
+if checkpoint == "FSI_fresh_checkpoints/CSM-4/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5":
     sys.exit(0)
 else:
-    dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/CSM-1/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
+    dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/CSM-4/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
 
 
 def initiate(t, F_solid_linear, args, theta, mesh_file, rho_s, psi, extype, dx_s, v_deg, dt, P, dvp_, Time_list, Det_list,**semimp_namespace):
@@ -95,9 +95,9 @@ def initiate(t, F_solid_linear, args, theta, mesh_file, rho_s, psi, extype, dx_s
         return det(F_(U))
 
     if args.extravari == "alfa":
-        path = "CSM_results/CSM-1/"+str(args.extravari) +"_"+ str(args.extype) +"/dt-"+str(dt)+"_theta-"+str(theta)
+        path = "CSM_results/CSM-4/"+str(args.extravari) +"_"+ str(args.extype) +"/dt-"+str(dt)+"_theta-"+str(theta)
     if args.extravari == "biharmonic":
-        path = "CSM_results/CSM-1/"+str(args.extravari) +"/dt-"+str(dt)+"_theta-"+str(theta)
+        path = "CSM_results/CSM-4/"+str(args.extravari) +"/dt-"+str(dt)+"_theta-"+str(theta)
 
     u_file = XDMFFile(mpi_comm_world(), path + "/velocity.xdmf")
     d_file = XDMFFile(mpi_comm_world(), path + "/d.xdmf")
@@ -211,7 +211,7 @@ def post_process(path,T,dt,Det_list,dis_x,dis_y, Time_list,\
     s_scheme = args.solidvari
     e_scheme = args.extravari
     f = open(path+"/report.txt", 'w')
-    f.write("""CSM1 EXPERIMENT
+    f.write("""CSM4 EXPERIMENT
     T = %(T)g\ndt = %(dt)g\nv_deg = %(d_deg)g\nv_deg = %(v_deg)g\np_deg = %(p_deg)g\n
 theta = %(theta)s\nf_vari = %(f_scheme)s\ns_vari = %(s_scheme)s\ne_vari = %(e_scheme)s\n""" % vars())
     #f.write("""Runtime = %f """ % fintime)
