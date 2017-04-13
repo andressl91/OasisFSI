@@ -94,10 +94,10 @@ def initiate(t, F_solid_linear, args, theta, mesh_file, rho_s, psi, extype, dx_s
     def J_(U):
         return det(F_(U))
 
-        if args.extravari == "alfa":
-            path = "CSM_results/CSM-1/"+str(args.extravari) +"_"+ str(args.extype) +"/dt-"+str(dt)+"_theta-"+str(theta)
-        if args.extravari == "biharmonic":
-            path = "CSM_results/CSM-1/"+str(args.extravari) +"_" + str(args.bitype)+ "/dt-"+str(dt)+"_theta-"+str(theta)
+    if args.extravari == "alfa":
+        path = "CSM_results/CSM-1/"+str(args.extravari) +"_"+ str(args.extype) +"/dt-"+str(dt)+"_theta-"+str(theta)
+    if args.extravari == "biharmonic":
+        path = "CSM_results/CSM-1/"+str(args.extravari) +"_" + str(args.bitype)+ "/dt-"+str(dt)+"_theta-"+str(theta)
 
     u_file = XDMFFile(mpi_comm_world(), path + "/velocity.xdmf")
     d_file = XDMFFile(mpi_comm_world(), path + "/d.xdmf")
