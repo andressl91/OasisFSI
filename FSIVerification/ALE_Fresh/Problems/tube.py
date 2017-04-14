@@ -141,12 +141,12 @@ def after_solve(t, P, DVP, dvp_, n, Det_list,\
     p = dvp_["n"].sub(2, deepcopy=True)
     #d, v, p = dvp_["n"].split(True)
     if counter%step ==0:
-        u_file << v
-        d_file << d
-        p_file << p
-        #p_file.write(p)
-        #d_file.write(d)
-        #u_file.write(v)
+        #u_file << v
+        #d_file << d
+        #p_file << p
+        p_file.write(p)
+        d_file.write(d)
+        u_file.write(v)
         #dvp_file << dvp_["n"]
         #dvp_file.write(dvp_["n"], "dvp%g"%t)
     #plot(p,interactive=True)
