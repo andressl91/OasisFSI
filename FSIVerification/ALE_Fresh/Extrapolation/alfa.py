@@ -1,6 +1,6 @@
 from dolfin import Constant, inner, inv, dot, grad, det, Identity,\
 solve, lhs, rhs, assemble, DirichletBC, div, sym, tr, norm, \
-MPI, mpi_comm_world
+MPI, mpi_comm_world, CellVolume
 #from semi_implicit import *
 
 
@@ -31,9 +31,11 @@ def extrapolate_setup(F_fluid_linear, extype, mesh_file, d_, phi, gamma, dx_f, *
         hmin = mesh_file.hmin()
         #E_y =  1./(J_(d_["n"]))
         #nu = -0.2 #(-1, 0.5)
-        #alfa_lam = nu*E_y / ((1. + nu)*(1. - 2.*nu))
-        #alfa_mu = E_y/(2.*(1. + nu))
-        alfa_lam = hmin*hmin ; alfa_mu = hmin*hmin
+        E_y = 1./CellVolume(mesh_file)
+        nu = 0.25
+        alfa_lam = nu*E_y / ((1. + nu)*(1. - 2.*nu))
+        alfa_mu = E_y/(2.*(1. + nu))
+        #alfa_lam = hmin*hmin ; alfa_mu = hmin*hmin
         F_extrapolate = inner(J_(d_["n"])*STVK(d_["n"],alfa_mu,alfa_lam)*inv(F_(d_["n"])).T, grad(phi))*dx_f
         #F_extrapolate = inner(STVK(d_["n"],alfa_mu,alfa_lam) , grad(phi))*dx_f
 
