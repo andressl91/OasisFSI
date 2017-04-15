@@ -102,7 +102,7 @@ else:
 def initiate(v_deg, dt, theta, dvp_, args, **semimp_namespace):
     if args.extravari == "alfa":
         path =  "FSI_fresh_results/FSI-3/"+str(args.extravari) +"_"+ str(args.extype) +"/dt-"+str(dt)+"_theta-"+str(theta)
-    if args.extravari == "biharmonic":
+    if args.extravari == "biharmonic" or args.extravari == "laplace":
         path = "FSI_fresh_results/FSI-3/"+str(args.extravari)+"_"+ str(args.bitype) +"/dt-"+str(dt)+"_theta-"+str(theta)
 
     u_file = XDMFFile(mpi_comm_world(), path + "/velocity.xdmf")
