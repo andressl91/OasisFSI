@@ -99,11 +99,12 @@ else:
     dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
 
 
-def initiate(v_deg, dt, theta, dvp_, args, **semimp_namespace):
+def initiate(P, v_deg, dt, theta, dvp_, args, Det_list, **semimp_namespace):
     if args.extravari == "alfa":
         path =  "FSI_fresh_results/FSI-3/"+str(args.extravari) +"_"+ str(args.extype) +"/dt-"+str(dt)+"_theta-"+str(theta)
-    if args.extravari == "biharmonic" or args.extravari == "laplace":
+    if args.extravari == "biharmonic" or args.extravari == "laplace" or args.extravari == "elastic":
         path = "FSI_fresh_results/FSI-3/"+str(args.extravari)+"_"+ str(args.bitype) +"/dt-"+str(dt)+"_theta-"+str(theta)
+
 
     u_file = XDMFFile(mpi_comm_world(), path + "/velocity.xdmf")
     d_file = XDMFFile(mpi_comm_world(), path + "/d.xdmf")
@@ -176,8 +177,8 @@ def pre_solve(t, inlet, **semimp_namespace):
     return dict(inlet = inlet)
 
 
-def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, Det_list,\
-                counter,dvp_file,u_file,p_file,d_file, **semimp_namespace):
+def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,\
+                Det_list, counter,dvp_file,u_file,p_file,d_file, **semimp_namespace):
 
     d = dvp_["n"].sub(0, deepcopy=True)
     v = dvp_["n"].sub(1, deepcopy=True)
@@ -214,6 +215,12 @@ def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, Det_li
     Lift_list.append(Li)
     Time_list.append(t)
 
+    det_func = Function(P)
+    Det = project(J_(d), P)
+    det_func.vector().zero()
+    det_func.vector().axpy(1, Det.vector())
+    Det_list.append((det_func.vector().array()).min())
+
 
     dsx = d(coord)[0]
     dsy = d(coord)[1]
@@ -241,6 +248,7 @@ theta = %(theta)s\nf_vari = %(f_scheme)s\ns_vari = %(s_scheme)s\ne_vari = %(e_sc
     #f.write("""Runtime = %f """ % fintime)
     f.close()
 
+    np.savetxt(path + '/Min_J.txt', Det_list, delimiter=',')
     np.savetxt(path + '/Lift.txt', Lift_list, delimiter=',')
     np.savetxt(path + '/Drag.txt', Drag_list, delimiter=',')
     np.savetxt(path + '/Time.txt', Time_list, delimiter=',')
@@ -259,8 +267,8 @@ theta = %(theta)s\nf_vari = %(f_scheme)s\ns_vari = %(s_scheme)s\ne_vari = %(e_sc
     plt.figure(4)
     plt.plot(Time_list,Lift_list);plt.ylabel("Lift");plt.xlabel("Time");plt.grid();
     plt.savefig(path + "/lift.png")
-    plt.figure(5)
-    plt.plot(Time_list,Det_list);plt.ylabel("Min_Det(F)");plt.xlabel("Time");plt.grid();
-    plt.savefig(path + "/Min_J.png")
+    #plt.figure(5)
+    #plt.plot(Time_list,Det_list);plt.ylabel("Min_Det(F)");plt.xlabel("Time");plt.grid();
+    #plt.savefig(path + "/Min_J.png")
 
     return {}
