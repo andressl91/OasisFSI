@@ -103,6 +103,9 @@ def initiate(v_deg, dt, theta, dvp_, args, **semimp_namespace):
       path =  "FSI_fresh_results/FSI-2/"+str(args.extravari) +"_"+ str(args.extype) +"/dt-"+str(dt)+"_theta-"+str(theta)
   if args.extravari == "biharmonic":
       path = "FSI_fresh_results/FSI-2/"+str(args.extravari) +"/dt-"+str(dt)+"_theta-"+str(theta)
+  else:
+      path = "FSI_fresh_results/FSI-2/"+str(args.extravari) +"/dt-"+str(dt)+"_theta-"+str(theta)
+
 
   u_file = XDMFFile(mpi_comm_world(), path + "/velocity.xdmf")
   d_file = XDMFFile(mpi_comm_world(), path + "/d.xdmf")
