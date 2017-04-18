@@ -98,7 +98,9 @@ else:
   dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-2/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
 
 
-def initiate(v_deg, dt, theta, dvp_, args, **semimp_namespace):
+def initiate(v_deg, dt, theta, dvp_, DVP, args,mesh_file, **semimp_namespace):
+  print "Dofs: ",DVP.dim(), "Cells:", mesh_file.num_cells()
+
   if args.extravari == "alfa":
       path =  "FSI_fresh_results/FSI-2/"+str(args.extravari) +"_"+ str(args.extype) +"/dt-"+str(dt)+"_theta-"+str(theta)
   if args.extravari == "biharmonic":
