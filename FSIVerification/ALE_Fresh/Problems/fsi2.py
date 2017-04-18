@@ -127,8 +127,8 @@ def initiate(v_deg, dt, theta, dvp_, DVP, args,mesh_file, **semimp_namespace):
   v = dvp_["n-1"].sub(1, deepcopy=True)
   p = dvp_["n-1"].sub(2, deepcopy=True)
   #p_file.write(p)
-  d_file.write(d)
-  u_file.write(v)
+  #d_file.write(d)
+  #u_file.write(v)
   return dict(u_file=u_file, d_file=d_file, p_file=p_file, path=path)
 
 def create_bcs(DVP, args, dvp_, n, k, Um, H, boundaries, inlet, **semimp_namespace):
