@@ -100,7 +100,7 @@ else:
 
 def initiate(v_deg, dt, theta, dvp_, DVP, args,mesh_file, **semimp_namespace):
   print "Dofs: ",DVP.dim(), "Cells:", mesh_file.num_cells()
-  if args.refiner = None:
+  if args.refiner == None:
       if args.extravari == "alfa":
           path =  "FSI_fresh_results/FSI-2/"+str(args.extravari) +"_"+ str(args.extype) +"/dt-"+str(dt)+"_theta-"+str(theta)
       if args.extravari == "biharmonic":
