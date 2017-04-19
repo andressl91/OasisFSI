@@ -241,13 +241,14 @@ def post_process(path,T,dt,Det_list,dis_x,dis_y, Drag_list,Lift_list, Time_list,
     f_scheme = args.fluidvari
     s_scheme = args.solidvari
     e_scheme = args.extravari
-    f = open(path+"/report.txt", 'w')
-    f.write("""FSI3 EXPERIMENT
-    T = %(T)g\ndt = %(dt)g\nv_deg = %(d_deg)g\nv_deg = %(v_deg)g\np_deg = %(p_deg)g\n
-theta = %(theta)s\nf_vari = %(f_scheme)s\ns_vari = %(s_scheme)s\ne_vari = %(e_scheme)s\n time = %(simtime)g""" % vars())
-    #f.write("""Runtime = %f """ % fintime)
-    f.close()
     if MPI.rank(mpi_comm_world()) == 0:
+
+        f = open(path+"/report.txt", 'w')
+        f.write("""FSI3 EXPERIMENT
+        T = %(T)g\ndt = %(dt)g\nv_deg = %(d_deg)g\nv_deg = %(v_deg)g\np_deg = %(p_deg)g\n
+    theta = %(theta)s\nf_vari = %(f_scheme)s\ns_vari = %(s_scheme)s\ne_vari = %(e_scheme)s\n time = %(simtime)g""" % vars())
+        #f.write("""Runtime = %f """ % fintime)
+        f.close()
         np.savetxt(path + '/Min_J.txt', Det_list, delimiter=',')
         np.savetxt(path + '/Lift.txt', Lift_list, delimiter=',')
         np.savetxt(path + '/Drag.txt', Drag_list, delimiter=',')
