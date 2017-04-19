@@ -3,8 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 
-
-refi = 1
+refi = 0
 mesh_file = Mesh("Mesh/fluid_new.xml")
 for i in range(refi):
     mesh_file = refine(mesh_file)
