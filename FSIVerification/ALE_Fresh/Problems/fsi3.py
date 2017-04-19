@@ -3,11 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 
-refi = 1
 mesh_file = Mesh("Mesh/fluid_new.xml")
-for i in range(refi):
-    mesh_file = refine(mesh_file)
-
 #mesh_file = refine(mesh_file)
 #Parameters for each numerical case
 common = {"mesh": mesh_file,
@@ -49,7 +45,7 @@ Barwall =  AutoSubDomain(lambda x: "on_boundary" and (( (x[0] - 0.2)*(x[0] - 0.2
 
 Allboundaries = DomainBoundary()
 
-boundaries = FacetFunction("size_t", mesh_file)
+boundaries = FacetFunction("size_t",mesh_file)
 boundaries.set_all(0)
 Allboundaries.mark(boundaries, 1)
 Wall.mark(boundaries, 2)
@@ -103,15 +99,11 @@ else:
     dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
 
 
-def initiate(P, v_deg, d_deg, p_deg, dt, theta, dvp_, args, Det_list, refi, **semimp_namespace):
-    exva = args.extravari
-    extype = args.extype
-    bitype = args.bitype
+def initiate(P, v_deg, dt, theta, dvp_, args, Det_list, **semimp_namespace):
     if args.extravari == "alfa":
-        path = "FSI_fresh_results/FSI-3/%(exva)s_%(extype)s/dt-%(dt)g_theta-%(theta)g/refine=%(refi)d_v_deg=%(v_deg)s_d_deg=%(d_deg)s_p_deg=%(p_deg)s " % vars()
+        path =  "FSI_fresh_results/FSI-3/"+str(args.extravari) +"_"+ str(args.extype) +"/dt-"+str(dt)+"_theta-"+str(theta)
     if args.extravari == "biharmonic" or args.extravari == "laplace" or args.extravari == "elastic":
-        path = "FSI_fresh_results/FSI-3/%(exva)s_%(bitype)s/dt-%(dt)g_theta-%(theta)g/refine=%(refi)d_v_deg=%(v_deg)s_d_deg=%(d_deg)s_p_deg=%(p_deg)s " % vars()
-        #path = "FSI_fresh_results/FSI-3/"+str(args.extravari)+"_"+ str(args.bitype) +"/dt-"+str(dt)+"_theta-"+str(theta)+"_refine="+str(refi)
+        path = "FSI_fresh_results/FSI-3/"+str(args.extravari)+"_"+ str(args.bitype) +"/dt-"+str(dt)+"_theta-"+str(theta)
 
 
     u_file = XDMFFile(mpi_comm_world(), path + "/velocity.xdmf")
@@ -125,8 +117,8 @@ def initiate(P, v_deg, d_deg, p_deg, dt, theta, dvp_, args, Det_list, refi, **se
     v = dvp_["n"].sub(1, deepcopy=True)
     p = dvp_["n"].sub(2, deepcopy=True)
     #p_file.write(p)
-    d_file.write(d)
-    u_file.write(v)
+    #d_file.write(d)
+    #u_file.write(v)
 
     return dict(u_file=u_file, d_file=d_file, p_file=p_file, path=path)
 
@@ -223,6 +215,13 @@ def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,\
     Lift_list.append(Li)
     Time_list.append(t)
 
+    det_func = Function(P)
+    Det = project(J_(d), P)
+    det_func.vector().zero()
+    det_func.vector().axpy(1, Det.vector())
+    Det_list.append((det_func.vector().array()).min())
+
+
     dsx = d(coord)[0]
     dsy = d(coord)[1]
     dis_x.append(dsx)
@@ -235,44 +234,41 @@ def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,\
 
 
 def post_process(path,T,dt,Det_list,dis_x,dis_y, Drag_list,Lift_list, Time_list,\
-                args, DVP, simtime,v_deg, p_deg, d_deg, dvp_file, refi, **semimp_namespace):
+                args, simtime,v_deg, p_deg, d_deg, dvp_file,**semimp_namespace):
     #dvp_file.close()
     #time_list = np.linspace(0,T,T/dt+1)
     theta = args.theta
     f_scheme = args.fluidvari
     s_scheme = args.solidvari
     e_scheme = args.extravari
-    dofs = DVP.dim()
-    cells = mesh_file.num_cells()
     f = open(path+"/report.txt", 'w')
     f.write("""FSI3 EXPERIMENT
     T = %(T)g\ndt = %(dt)g\nv_deg = %(d_deg)g\nv_deg = %(v_deg)g\np_deg = %(p_deg)g\n
-theta = %(theta)s\nf_vari = %(f_scheme)s\ns_vari = %(s_scheme)s\ne_vari = %(e_scheme)s\ntime = %(simtime)g
-refine = %(refi)s\nDOFS = %(dofs)d\nCELLS = %(cells)d""" % vars())
+theta = %(theta)s\nf_vari = %(f_scheme)s\ns_vari = %(s_scheme)s\ne_vari = %(e_scheme)s\n time = %(simtime)g""" % vars())
     #f.write("""Runtime = %f """ % fintime)
     f.close()
+    if MPI.rank(mpi_comm_world()) == 0:
+        np.savetxt(path + '/Min_J.txt', Det_list, delimiter=',')
+        np.savetxt(path + '/Lift.txt', Lift_list, delimiter=',')
+        np.savetxt(path + '/Drag.txt', Drag_list, delimiter=',')
+        np.savetxt(path + '/Time.txt', Time_list, delimiter=',')
+        np.savetxt(path + '/dis_x.txt', dis_x, delimiter=',')
+        np.savetxt(path + '/dis_y.txt', dis_y, delimiter=',')
 
-    np.savetxt(path + '/Min_J.txt', Det_list, delimiter=',')
-    np.savetxt(path + '/Lift.txt', Lift_list, delimiter=',')
-    np.savetxt(path + '/Drag.txt', Drag_list, delimiter=',')
-    np.savetxt(path + '/Time.txt', Time_list, delimiter=',')
-    np.savetxt(path + '/dis_x.txt', dis_x, delimiter=',')
-    np.savetxt(path + '/dis_y.txt', dis_y, delimiter=',')
-
-    plt.figure(1)
-    plt.plot(Time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
-    plt.savefig(path + "/dis_x.png")
-    plt.figure(2)
-    plt.plot(Time_list,dis_y);plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
-    plt.savefig(path + "/dis_y.png")
-    plt.figure(3)
-    plt.plot(Time_list,Drag_list);plt.ylabel("Drag");plt.xlabel("Time");plt.grid();
-    plt.savefig(path + "/drag.png")
-    plt.figure(4)
-    plt.plot(Time_list,Lift_list);plt.ylabel("Lift");plt.xlabel("Time");plt.grid();
-    plt.savefig(path + "/lift.png")
-    #plt.figure(5)
-    #plt.plot(Time_list,Det_list);plt.ylabel("Min_Det(F)");plt.xlabel("Time");plt.grid();
-    #plt.savefig(path + "/Min_J.png")
+        plt.figure(1)
+        plt.plot(Time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
+        plt.savefig(path + "/dis_x.png")
+        plt.figure(2)
+        plt.plot(Time_list,dis_y);plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
+        plt.savefig(path + "/dis_y.png")
+        plt.figure(3)
+        plt.plot(Time_list,Drag_list);plt.ylabel("Drag");plt.xlabel("Time");plt.grid();
+        plt.savefig(path + "/drag.png")
+        plt.figure(4)
+        plt.plot(Time_list,Lift_list);plt.ylabel("Lift");plt.xlabel("Time");plt.grid();
+        plt.savefig(path + "/lift.png")
+        #plt.figure(5)
+        #plt.plot(Time_list,Det_list);plt.ylabel("Min_Det(F)");plt.xlabel("Time");plt.grid();
+        #plt.savefig(path + "/Min_J.png")
 
     return {}
