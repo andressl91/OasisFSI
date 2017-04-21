@@ -105,9 +105,9 @@ def initiate(P, v_deg, d_deg, p_deg, dt, theta, dvp_, args, Det_list, refi, **se
     extype = args.extype
     bitype = args.bitype
     if args.extravari == "alfa":
-        path = "FSI_fresh_results/FSI-2/%(exva)s_%(extype)s/dt-%(dt)g_theta-%(theta)g/refine=%(refi)d_v_deg=%(v_deg)s_d_deg=%(d_deg)s_p_deg=%(p_deg)s " % vars()
+        path = "FSI_fresh_results/FSI-2/%(exva)s_%(extype)s/dt-%(dt)g_theta-%(theta)g/refine_%(refi)d_v_deg_%(v_deg)s_d_deg_%(d_deg)s_p_deg_%(p_deg)s" % vars()
     if args.extravari == "biharmonic" or args.extravari == "laplace" or args.extravari == "elastic":
-        path = "FSI_fresh_results/FSI-2/%(exva)s_%(bitype)s/dt-%(dt)g_theta-%(theta)g/refine=%(refi)d_v_deg=%(v_deg)s_d_deg=%(d_deg)s_p_deg=%(p_deg)s " % vars()
+        path = "FSI_fresh_results/FSI-2/%(exva)s_%(bitype)s/dt-%(dt)g_theta-%(theta)g/refine_%(refi)d_v_deg_%(v_deg)s_d_deg_%(d_deg)s_p_deg_%(p_deg)s" % vars()
         #path = "FSI_fresh_results/FSI-2/"+str(args.extravari)+"_"+ str(args.bitype) +"/dt-"+str(dt)+"_theta-"+str(theta)+"_refine="+str(refi)
 
 
