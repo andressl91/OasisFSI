@@ -3,6 +3,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 
+refi = 0
+mesh_file = Mesh("Mesh/fluid_new.xml")
+for i in range(refi):
+    mesh_file = refine(mesh_file)
+
 mesh_file = Mesh("Mesh/fluid_new.xml")
 #mesh_file = refine(mesh_file)
 #Parameters for each numerical case
@@ -99,11 +104,15 @@ else:
     dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
 
 
-def initiate(P, v_deg, dt, theta, dvp_, args, Det_list, **semimp_namespace):
+def initiate(P, v_deg, d_deg, p_deg, dt, theta, dvp_, args, Det_list, refi, mesh_file, **semimp_namespace):
+
+    exva = args.extravari
+    extype = args.extype
+    bitype = args.bitype
     if args.extravari == "alfa":
-        path =  "FSI_fresh_results/FSI-3/"+str(args.extravari) +"_"+ str(args.extype) +"/dt-"+str(dt)+"_theta-"+str(theta)
+        path = "FSI_fresh_results/FSI-3/%(exva)s_%(extype)s/dt-%(dt)g_theta-%(theta)g/refine_%(refi)d_v_deg_%(v_deg)s_d_deg_%(d_deg)s_p_deg_%(p_deg)s" % vars()
     if args.extravari == "biharmonic" or args.extravari == "laplace" or args.extravari == "elastic":
-        path = "FSI_fresh_results/FSI-3/"+str(args.extravari)+"_"+ str(args.bitype) +"/dt-"+str(dt)+"_theta-"+str(theta)
+        path = "FSI_fresh_results/FSI-3/%(exva)s_%(bitype)s/dt-%(dt)g_theta-%(theta)g/refine_%(refi)d_v_deg_%(v_deg)s_d_deg_%(d_deg)s_p_deg_%(p_deg)s" % vars()
 
 
     u_file = XDMFFile(mpi_comm_world(), path + "/velocity.xdmf")
