@@ -235,6 +235,23 @@ def post_process(path,T,dt,Det_list,dis_x,dis_y, Drag_list,Lift_list, Time_list,
     args, DVP, simtime,v_deg, p_deg, d_deg, dvp_file, refi, **semimp_namespace):
     #dvp_file.close()
     #time_list = np.linspace(0,T,T/dt+1)
+
+    #print mean and amplitude values
+    mean = 0.5*(np.max(dis_y[1300:1400]) + np.min(dis_y[1300:1400]))
+    amplitude = 0.5*(np.max(dis_y[1300:1400]) - np.min(dis_y[1300:1400]) )
+    print "dis_y: ",mean, "+", amplitude
+    mean = 0.5*(np.max(dis_x[1300:1400]) + np.min(dis_x[1300:1400]))
+    amplitude = 0.5*(np.max(dis_x[1300:1400]) - np.min(dis_x[1300:1400]) )
+    print "dis_x: ",mean, "+", amplitude
+    mean = 0.5*(np.max(Lift_list[1300:1400]) + np.min(Lift_list[1300:1400]))
+    amplitude = 0.5*(np.max(Lift_list[1300:1400]) - np.min(Lift_list[1300:1400]) )
+    print "Lift: ",mean, "+", amplitude
+    mean = 0.5*(np.max(Drag_list[1300:1400]) + np.min(Drag_list[1300:1400]))
+    amplitude = 0.5*(np.max(Drag_list[1300:1400]) - np.min(Drag_list[1300:1400]) )
+    print "Drag: ",mean, "+", amplitude
+
+
+
     theta = args.theta
     f_scheme = args.fluidvari
     s_scheme = args.solidvari
