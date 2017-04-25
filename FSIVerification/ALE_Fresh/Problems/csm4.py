@@ -10,8 +10,8 @@ common = {"mesh": mesh_file,
           "v_deg": 2,    #Velocity degree
           "p_deg": 1,    #Pressure degree
           "d_deg": 2,    #Deformation degree
-          "T": 0.002,          # End time
-          "dt": 0.001,       # Time step
+          "T": 10.0,          # End time
+          "dt": 0.1,       # Time step
           "rho_f": 1.0E3,    #
           "mu_f": 1.0,
           "rho_s" : Constant(1.0E3),
@@ -24,7 +24,7 @@ common = {"mesh": mesh_file,
     	  "step" : 1,
           "checkpoint": False
           }
- #"checkpoint": "./FSI_fresh_checkpoints/CSM-4/P-2/dt-0.05/dvpFile.h5"
+ #"checkpoint": "./FSI_fresh_checkpoints/CSM-1/P-2/dt-0.05/dvpFile.h5"
 g = 3
 vars().update(common)
 lamda_s = nu_s*2*mu_s/(1 - 2.*nu_s)
@@ -75,7 +75,7 @@ Lift_list = []
 Time_list = []
 Det_list = []
 
-#dvp_file = XDMFFile(mpi_comm_world(), "FSI_fresh_checkpoints/CSM-4/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.xdmf")
+#dvp_file = XDMFFile(mpi_comm_world(), "FSI_fresh_checkpoints/CSM-1/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.xdmf")
 
 
 if checkpoint == "FSI_fresh_checkpoints/CSM-4/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5":
@@ -97,13 +97,13 @@ def initiate(t, T, F_solid_linear, args, theta, mesh_file, rho_s, psi, extype, \
 
     if args.extravari == "alfa":
         path = "CSM_results/CSM-4/"+str(args.extravari) +"_"+ str(args.extype) +"/dt-"+str(dt)+"_theta-"+str(theta)
-    if args.extravari == "biharmonic":
+    else:
         path = "CSM_results/CSM-4/"+str(args.extravari) +"_" + str(args.bitype)+ "/dt-"+str(dt)+"_theta-"+str(theta)
 
     u_file = XDMFFile(mpi_comm_world(), path + "/velocity.xdmf")
     d_file = XDMFFile(mpi_comm_world(), path + "/d.xdmf")
-    p_file = XDMFFile(mpi_comm_world(), path + "/pressure.xdmf")
-    for tmp_t in [u_file, d_file, p_file]:
+
+    for tmp_t in [u_file, d_file]:
         tmp_t.parameters["flush_output"] = True
         tmp_t.parameters["multi_file"] = 0
         tmp_t.parameters["rewrite_function_mesh"] = False
@@ -129,17 +129,6 @@ def initiate(t, T, F_solid_linear, args, theta, mesh_file, rho_s, psi, extype, \
     dis_y.append(dsy)
 
     Det_list.append((det_func.vector().array()).min())
-
-    theta = args.theta
-    f_scheme = args.fluidvari
-    s_scheme = args.solidvari
-    e_scheme = args.extravari
-    f = open(path+"/report.txt", 'w')
-    f.write("""CSM4 EXPERIMENT
-    T = %(T)g\ndt = %(dt)g\nv_deg = %(d_deg)g\nv_deg = %(v_deg)g\np_deg = %(p_deg)g\n
-theta = %(theta)s\nf_vari = %(f_scheme)s\ns_vari = %(s_scheme)s\ne_vari = %(e_scheme)s\n""" % vars())
-    #f.write("""Runtime = %f """ % fintime)
-    f.close()
 
     return dict(u_file=u_file, d_file=d_file, det_func=det_func, path=path)
 
@@ -230,24 +219,28 @@ def after_solve(t, path, det_func, P, DVP, dvp_, n,coord,dis_x,dis_y, Det_list,\
     if MPI.rank(mpi_comm_world()) == 0:
         print "dis_x/dis_y : %g %g "%(dsx,dsy)
 
-    np.savetxt(path + '/time.txt', Time_list, delimiter=',')
-    np.savetxt(path + '/dis_x.txt', dis_x, delimiter=',')
-    np.savetxt(path + '/dis_y.txt', dis_y, delimiter=',')
-    np.savetxt(path + '/min_J.txt', Det_list, delimiter=',')
-
     return {}
 
 
 def post_process(path,T,dt,Det_list,dis_x,dis_y, Time_list,\
                     args, v_deg, p_deg, d_deg, **semimp_namespace):
-    plt.figure(1)
-    plt.plot(Time_list,dis_x); plt.ylabel("Displacement x");plt.xlabel("Time");plt.grid();
-    plt.savefig(path + "/dis_x.png")
-    plt.figure(2)
-    plt.plot(Time_list,dis_y);plt.ylabel("Displacement y");plt.xlabel("Time");plt.grid();
-    plt.savefig(path + "/dis_y.png")
-    plt.figure(3)
-    plt.plot(Time_list,Det_list);plt.ylabel("Min_Det(F)");plt.xlabel("Time");plt.grid();
-    plt.savefig(path + "/Min_J.png")
+
+    theta = args.theta
+    f_scheme = args.fluidvari
+    s_scheme = args.solidvari
+    e_scheme = args.extravari
+    if MPI.rank(mpi_comm_world()) == 0:
+
+        f = open(path+"/report.txt", 'w')
+        f.write("""CSM1 EXPERIMENT
+        T = %(T)g\ndt = %(dt)g\nv_deg = %(d_deg)g\nv_deg = %(v_deg)g\np_deg = %(p_deg)g\n
+    theta = %(theta)s\nf_vari = %(f_scheme)s\ns_vari = %(s_scheme)s\ne_vari = %(e_scheme)s\n""" % vars())
+        #f.write("""Runtime = %f """ % fintime)
+        f.close()
+        np.savetxt(path + '/Min_J.txt', Det_list, delimiter=',')
+        np.savetxt(path + '/Time.txt', Time_list, delimiter=',')
+        np.savetxt(path + '/dis_x.txt', dis_x, delimiter=',')
+        np.savetxt(path + '/dis_y.txt', dis_y, delimiter=',')
+
 
     return {}
