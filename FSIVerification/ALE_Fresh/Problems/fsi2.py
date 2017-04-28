@@ -190,12 +190,12 @@ def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,\
     p = dvp_["n"].sub(2, deepcopy=True)
     #d, v, p = dvp_["n"].split(True)
     if counter%step ==0:
-        #u_file << v
-        #d_file << d
+        u_file << v
+        d_file << d
         #p_file << p
         #p_file.write(p)
-        d_file.write(d)
-        u_file.write(v)
+        #d_file.write(d)
+        #u_file.write(v)
         #dvp_file << dvp_["n"]
         #dvp_file.write(dvp_["n"], "dvp%g"%t)
 
@@ -224,9 +224,17 @@ def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,\
     dsy = d(coord)[1]
     dis_x.append(dsx)
     dis_y.append(dsy)
+
+
     if MPI.rank(mpi_comm_world()) == 0:
         print "LIFT = %g,  DRAG = %g" % (Li, Dr)
         print "dis_x/dis_y : %g %g "%(dsx,dsy)
+        np.savetxt(path + '/Min_J.txt', Det_list, delimiter=',')
+        np.savetxt(path + '/Lift.txt', Lift_list, delimiter=',')
+        np.savetxt(path + '/Drag.txt', Drag_list, delimiter=',')
+        np.savetxt(path + '/Time.txt', Time_list, delimiter=',')
+        np.savetxt(path + '/dis_x.txt', dis_x, delimiter=',')
+        np.savetxt(path + '/dis_y.txt', dis_y, delimiter=',')
 
     return {}
 
