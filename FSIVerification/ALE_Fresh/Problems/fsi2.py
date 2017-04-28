@@ -183,7 +183,7 @@ def pre_solve(t, inlet, **semimp_namespace):
 
 
 def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,\
-                Det_list, counter,dvp_file,u_file,p_file,d_file, **semimp_namespace):
+                Det_list, counter,dvp_file,u_file,p_file,d_file,path, **semimp_namespace):
 
     d = dvp_["n"].sub(0, deepcopy=True)
     v = dvp_["n"].sub(1, deepcopy=True)
