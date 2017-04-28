@@ -229,12 +229,12 @@ def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,\
     if MPI.rank(mpi_comm_world()) == 0:
         print "LIFT = %g,  DRAG = %g" % (Li, Dr)
         print "dis_x/dis_y : %g %g "%(dsx,dsy)
-        np.savetxt(path + '/Min_J.txt', Det_list, delimiter=',')
-        np.savetxt(path + '/Lift.txt', Lift_list, delimiter=',')
-        np.savetxt(path + '/Drag.txt', Drag_list, delimiter=',')
-        np.savetxt(path + '/Time.txt', Time_list, delimiter=',')
-        np.savetxt(path + '/dis_x.txt', dis_x, delimiter=',')
-        np.savetxt(path + '/dis_y.txt', dis_y, delimiter=',')
+    np.savetxt(path + '/Min_J.txt', Det_list, delimiter=',')
+    np.savetxt(path + '/Lift.txt', Lift_list, delimiter=',')
+    np.savetxt(path + '/Drag.txt', Drag_list, delimiter=',')
+    np.savetxt(path + '/Time.txt', Time_list, delimiter=',')
+    np.savetxt(path + '/dis_x.txt', dis_x, delimiter=',')
+    np.savetxt(path + '/dis_y.txt', dis_y, delimiter=',')
 
     return {}
 
