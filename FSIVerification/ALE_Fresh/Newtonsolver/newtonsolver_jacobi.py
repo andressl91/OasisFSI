@@ -39,9 +39,11 @@ def newtonsolver(F, J_nonlinear, A_pre, A, b, bcs, \
         [bc.apply(dvp_["n"].vector()) for bc in bcs]
         rel_res = norm(dvp_res, 'l2')
         residual = b.norm('l2')
-        if isnan(rel_res) or isnan(residual):
-            print "type rel_res: ",type(rel_res)
-            t = T*T
+        if rel_res > 1e20 or residual > 1e20:
+            print "IN IF TEST"
+            t = T + 1
+            break
+
 
         if MPI.rank(mpi_comm_world()) == 0:
             print "Newton iteration %d: r (atol) = %.3e (tol = %.3e), r (rel) = %.3e (tol = %.3e) " \
