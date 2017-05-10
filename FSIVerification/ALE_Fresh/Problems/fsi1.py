@@ -11,7 +11,9 @@ p_deg = args.p_deg
 d_deg = args.d_deg
 dt = args.dt
 """
-mesh_file = Mesh("Mesh/fluid_new.xml")
+refi = 0
+mesh_name = "base0_nobl"
+mesh_file = Mesh("Mesh/" + mesh_name +".xml")
 #mesh_file = refine(mesh_file)
 #Parameters for each numerical case
 common = {"mesh": mesh_file,
@@ -108,11 +110,17 @@ else:
     dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-1/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
 
 
-def initiate(v_deg, dt, theta, dvp_, args, **semimp_namespace):
+def initiate(v_deg, d_deg, p_deg, dt, theta, dvp_, args, mesh_name, refi, **semimp_namespace):
+    exva = args.extravari
+    extype = args.extype
+    bitype = args.bitype
     if args.extravari == "alfa":
-        path =  "FSI_fresh_results/FSI-1/"+str(args.extravari) +"_"+ str(args.extype) +"/dt-"+str(dt)+"_theta-"+str(theta)
-    if args.extravari == "biharmonic":
-        path = "FSI_fresh_results/FSI-1/"+str(args.extravari) +"/dt-"+str(dt)+"_theta-"+str(theta)
+        path = "FSI_fresh_results/FSI-1/%(exva)s_%(extype)s/dt-%(dt)g_theta-%(theta)g/%(mesh_name)s_refine_%(refi)d_v_deg_%(v_deg)s_d_deg_%(d_deg)s_p_deg_%(p_deg)s" % vars()
+    if args.extravari == "biharmonic" or args.extravari == "laplace" or args.extravari == "elastic":
+        path = "FSI_fresh_results/FSI-1/%(exva)s_%(bitype)s/dt-%(dt)g_theta-%(theta)g/%(mesh_name)s_refine_%(refi)d_v_deg_%(v_deg)s_d_deg_%(d_deg)s_p_deg_%(p_deg)s" % vars()
+
+
+
 
     u_file = XDMFFile(mpi_comm_world(), path + "/velocity.xdmf")
     d_file = XDMFFile(mpi_comm_world(), path + "/d.xdmf")
@@ -127,6 +135,8 @@ def initiate(v_deg, dt, theta, dvp_, args, **semimp_namespace):
     #p_file.write(p)
     d_file.write(d)
     u_file.write(v)
+    #u_file << v
+    #d_file << d
 
     return dict(u_file=u_file, d_file=d_file, p_file=p_file, path=path)
 
@@ -214,14 +224,19 @@ def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, Det_li
     Det = project(J_(d), P)
     Det_list.append((Det.vector().array()).min())
 
+    """
     Dr = -assemble((sigma_f_new(v,p,d,mu_f)*n)[0]*ds(6))
     Li = -assemble((sigma_f_new(v,p,d,mu_f)*n)[1]*ds(6))
     Dr += -assemble((sigma_f_new(v("-"),p("-"),d("-"),mu_f)*n("-"))[0]*dS(5))
     Li += -assemble((sigma_f_new(v("-"),p("-"),d("-"),mu_f)*n("-"))[1]*dS(5))
+    """
+    Dr = -assemble((sigma_f_new(v,p,d,mu_f)*n)[0]*ds(6))
+    Li = -assemble((sigma_f_new(v,p,d,mu_f)*n)[1]*ds(6))
+    Dr += -assemble((sigma_f_new(v("+"),p("+"),d("+"),mu_f)*n("+"))[0]*dS(5))
+    Li += -assemble((sigma_f_new(v("+"),p("+"),d("+"),mu_f)*n("+"))[1]*dS(5))
     Drag_list.append(Dr)
     Lift_list.append(Li)
     Time_list.append(t)
-
 
     dsx = d(coord)[0]
     dsy = d(coord)[1]
@@ -235,7 +250,7 @@ def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, Det_li
 
 
 def post_process(path,T,dt,Det_list,dis_x,dis_y, Drag_list,Lift_list, Time_list,\
-                args, simtime,v_deg, p_deg, d_deg, dvp_file,**semimp_namespace):
+                mesh_name, args, simtime,v_deg, p_deg, d_deg, dvp_file,**semimp_namespace):
     #dvp_file.close()
     #time_list = np.linspace(0,T,T/dt+1)
     theta = args.theta

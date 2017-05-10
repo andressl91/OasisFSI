@@ -4,12 +4,12 @@ import matplotlib.pyplot as plt
 import sys
 
 refi = 0
-mesh_file = Mesh("Mesh/fluid_new.xml")
+#mesh_file = Mesh("Mesh/fluid_new.xml")
+mesh_name = "base0_nobl"
+mesh_file = Mesh("Mesh/" + mesh_name +".xml")
 for i in range(refi):
     mesh_file = refine(mesh_file)
 
-mesh_file = Mesh("Mesh/fluid_new.xml")
-#mesh_file = refine(mesh_file)
 #Parameters for each numerical case
 common = {"mesh": mesh_file,
           "v_deg": 2,    #Velocity degree
@@ -104,16 +104,15 @@ else:
     dvp_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/FSI-3/P-"+str(v_deg)+"/dt-"+str(dt)+"/dvpFile.h5", "w")
 
 
-def initiate(P, v_deg, d_deg, p_deg, dt, theta, dvp_, args, Det_list, refi, mesh_file, **semimp_namespace):
+def initiate(P, v_deg, d_deg, p_deg, dt, theta, dvp_, args, Det_list, refi, mesh_file, mesh_name, **semimp_namespace):
 
     exva = args.extravari
     extype = args.extype
     bitype = args.bitype
     if args.extravari == "alfa":
-        path = "FSI_fresh_results/FSI-3/%(exva)s_%(extype)s/dt-%(dt)g_theta-%(theta)g/refine_%(refi)d_v_deg_%(v_deg)s_d_deg_%(d_deg)s_p_deg_%(p_deg)s" % vars()
+        path = "FSI_fresh_results/FSI-3/%(exva)s_%(extype)s/dt-%(dt)g_theta-%(theta)g/%(mesh_name)s_refine_%(refi)d_v_deg_%(v_deg)s_d_deg_%(d_deg)s_p_deg_%(p_deg)s" % vars()
     if args.extravari == "biharmonic" or args.extravari == "laplace" or args.extravari == "elastic":
-        path = "FSI_fresh_results/FSI-3/%(exva)s_%(bitype)s/dt-%(dt)g_theta-%(theta)g/refine_%(refi)d_v_deg_%(v_deg)s_d_deg_%(d_deg)s_p_deg_%(p_deg)s" % vars()
-
+        path = "FSI_fresh_results/FSI-3/%(exva)s_%(bitype)s/dt-%(dt)g_theta-%(theta)g/%(mesh_name)s_refine_%(refi)d_v_deg_%(v_deg)s_d_deg_%(d_deg)s_p_deg_%(p_deg)s" % vars()
 
     u_file = XDMFFile(mpi_comm_world(), path + "/velocity.xdmf")
     d_file = XDMFFile(mpi_comm_world(), path + "/d.xdmf")
@@ -126,8 +125,8 @@ def initiate(P, v_deg, d_deg, p_deg, dt, theta, dvp_, args, Det_list, refi, mesh
     v = dvp_["n"].sub(1, deepcopy=True)
     p = dvp_["n"].sub(2, deepcopy=True)
     #p_file.write(p)
-    #d_file.write(d)
-    #u_file.write(v)
+    #d_file << d
+    #u_file << v
 
     return dict(u_file=u_file, d_file=d_file, p_file=p_file, path=path)
 
@@ -216,13 +215,20 @@ def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list,\
     Det = project(J_(d), P)
     Det_list.append((Det.vector().array()).min())
 
+    """
     Dr = -assemble((sigma_f_new(v,p,d,mu_f)*n)[0]*ds(6))
     Li = -assemble((sigma_f_new(v,p,d,mu_f)*n)[1]*ds(6))
     Dr += -assemble((sigma_f_new(v("-"),p("-"),d("-"),mu_f)*n("-"))[0]*dS(5))
     Li += -assemble((sigma_f_new(v("-"),p("-"),d("-"),mu_f)*n("-"))[1]*dS(5))
+    """
+    Dr = -assemble((sigma_f_new(v,p,d,mu_f)*n)[0]*ds(6))
+    Li = -assemble((sigma_f_new(v,p,d,mu_f)*n)[1]*ds(6))
+    Dr += -assemble((sigma_f_new(v("+"),p("+"),d("+"),mu_f)*n("+"))[0]*dS(5))
+    Li += -assemble((sigma_f_new(v("+"),p("+"),d("+"),mu_f)*n("+"))[1]*dS(5))
     Drag_list.append(Dr)
     Lift_list.append(Li)
     Time_list.append(t)
+
 
     det_func = Function(P)
     Det = project(J_(d), P)
@@ -250,8 +256,9 @@ def post_process(path,T,dt,Det_list,dis_x,dis_y, Drag_list,Lift_list, Time_list,
     f_scheme = args.fluidvari
     s_scheme = args.solidvari
     e_scheme = args.extravari
-    if MPI.rank(mpi_comm_world()) == 0:
 
+    if MPI.rank(mpi_comm_world()) == 0:
+        print "IN POSTPRO", path
         f = open(path+"/report.txt", 'w')
         f.write("""FSI3 EXPERIMENT
         T = %(T)g\ndt = %(dt)g\nv_deg = %(d_deg)g\nv_deg = %(v_deg)g\np_deg = %(p_deg)g\n
