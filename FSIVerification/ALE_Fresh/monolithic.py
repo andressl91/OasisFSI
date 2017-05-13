@@ -81,6 +81,17 @@ else :
 
 t = 0
 
+# Check for solvers in
+for i in ["mumps", "superlu_dist", "default"]:
+    if has_lu_solver_method(i):
+        solver_method = i
+
+#up_sol = LUSolver(mpi_comm_world(),solver_method)
+up_sol = LUSolver(solver_method)
+#up_sol.parameters["same_nonzero_pattern"] = True
+#up_sol.parameters["reuse_factorization"] = True
+
+
 vars().update(fluid_setup(**vars()))
 vars().update(structure_setup(**vars()))
 vars().update(extrapolate_setup(**vars()))
@@ -92,17 +103,6 @@ atol = 1e-6; rtol = 1e-6; max_it = 100; lmbda = 1.0
 
 dvp_res = Function(DVP)
 chi = TrialFunction(DVP)
-
-# Check for solvers in
-for i in ["mumps", "superlu_dist", "default"]:
-    if has_lu_solver_method(i):
-        solver_method = i
-
-#up_sol = LUSolver(mpi_comm_world(),solver_method)
-up_sol = LUSolver(solver_method)
-#up_sol.parameters["same_nonzero_pattern"] = True
-#up_sol.parameters["reuse_factorization"] = True
-
 
 counter = 0
 tic()
@@ -123,5 +123,5 @@ while t <= T + 1e-8:
     counter +=1
 
 simtime = toc()
-
+print "Total Simulation time %g" % simtime
 post_process(**vars())
