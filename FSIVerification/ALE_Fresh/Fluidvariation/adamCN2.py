@@ -29,10 +29,11 @@ def fluid_setup(v_, p_, d_, n, psi, gamma, dx_f, ds, mu_f, rho_f, k, dt, v_deg, 
 
     F_fluid_linear = rho_f/k*inner(J_theta*(v_["n"] - v_["n-1"]), psi)*dx_f
     F_fluid_nonlinear =  rho_f*inner(J_(d_cn)*grad(v_cn)*inv(F_(d_cn))* \
-                         (0.5*(3*v_["n-1"] - v_["n-2"]) -\
-                         (d_["n"]-d_["n-1"])/k), psi)*dx_f
+                         (0.5*(3*v_["n-1"] - v_["n-2"]) - \
+                         0.5/k*((3*d_["n-1"] - d_["n-2"]) - (3*d_["n-2"] - d_["n-3"]))), psi)*dx_f
+                        #(d_["n"]-d_["n-1"])/k), psi)*dx_f
 
-    F_fluid_nonlinear += inner(J_(d_["n"])*sigma_f_p(p_["n"], d_["n"])*inv(F_(d_["n"])).T, grad(psi))*dx_f
+    F_fluid_nonlinear += inner(J_(d_cn)*sigma_f_p(p_cn,d_cn)*inv(F_(d_cn)).T, grad(psi))*dx_f
     F_fluid_nonlinear += inner(J_(d_cn)*sigma_f_u(v_cn, d_cn, mu_f)*inv(F_(d_cn)).T, grad(psi))*dx_f
     #OrgF_fluid_nonlinear +=inner(div(J_(d_["n"])*inv(F_(d_["n"]))*v_["n"]), gamma)*dx_f
     F_fluid_nonlinear +=inner(div(J_(d_cn)*inv(F_(d_cn))*v_cn), gamma)*dx_f
