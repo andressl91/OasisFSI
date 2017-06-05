@@ -1,0 +1,10 @@
+Speedup test
+
+        problem newtonsolver
+ dis_x = 0.000026
+ dis_y = 0.000107
+ Drag = 14.741928
+ Lift = 0.450692
+Mean iteration time = 12.858463
+ Total Runtime of timeloop = 64.487754
+ 
