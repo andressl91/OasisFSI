@@ -25,10 +25,11 @@ def Fluid_extrapolation(F_extrapolate, DVP, dvp_, bcs_w, mesh_file, \
     solve(A, w_f.vector(), b)
 
     #Update deformation in mixedspace
-    d_n1 = dvp_["tilde"].sub(1, deepcopy=True)
+    d_n1 = dvp_["n-1"].sub(1, deepcopy=True)
     d = DVP.sub(0).dofmap().collapse(mesh_file)[1].values()
-    dvp_["n"].vector()[d] = d_n1.vector() + float(k)*w_f.vector()
-
+    dvp_["tilde"].vector()[d] = d_n1.vector() + float(k)*w_f.vector()
+    dvp_["n"].vector()[d]     = d_n1.vector() + float(k)*w_f.vector()
+    
     return dict(w_f=w_f, dvp_=dvp_)
 
 def Fluid_tentative(F_tentative, DVP, V, dvp_, v_tilde, bcs_tent, \
@@ -41,7 +42,7 @@ def Fluid_tentative(F_tentative, DVP, V, dvp_, v_tilde, bcs_tent, \
     A.ident_zeros()
     b = assemble(L)
     [bc.apply(A, b) for bc in bcs_tent]
-    
+
     print "Solving tentative velocity"
     solve(A, v_tilde.vector(), b)
 

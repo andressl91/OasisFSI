@@ -16,8 +16,8 @@ def S(U,lamda_s,mu_s):
     I = Identity(len(U))
     return 2*mu_s*E(U) + lamda_s*tr(E(U))*I
 
-def Piola1(U,lamda_s,mu_s):
-	return F_(U)*S(U,lamda_s,mu_s)
+def Piola1(U_tilde, U, lamda_s,mu_s):
+	return F_(U_tilde)*S(U,lamda_s,mu_s)
 
 
 def Structure_setup(d_, v_, p_, phi, psi, gamma, dS, mu_f, n,\
@@ -29,7 +29,7 @@ def Structure_setup(d_, v_, p_, phi, psi, gamma, dS, mu_f, n,\
 	# Stress tensor
 	#F_solid += 0.5*inner(Piola1(d_["n"], lamda_s, mu_s), grad(phi))*dx_s
 	#F_solid += 0.5*inner(Piola1(d_["n-1"], lamda_s, mu_s), grad(phi))*dx_s
-	F_solid_nonlinear = inner(Piola1(0.5*(d_["n"] + d_["n-1"]), lamda_s, mu_s), grad(psi))*dx_s
+	F_solid_nonlinear = inner(Piola1(0.5*(d_["tilde"] ,d_["n"] + d_["n-1"]), lamda_s, mu_s), grad(psi))*dx_s
 
 	#Deformation relation to velocity
 	F_solid_linear += delta*((1./k)*inner(d_["n"] - d_["n-1"],phi)*dx_s - inner(0.5*(v_["n"] + v_["n-1"]), phi)*dx_s)

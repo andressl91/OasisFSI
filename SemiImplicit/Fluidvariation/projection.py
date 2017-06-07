@@ -20,7 +20,7 @@ def D_U(d, v):
 def Fluid_tentative_variation(v_, p_, d_, dvp_, w, w_f, v_tilde_n1, \
 psi, beta, gamma, dx_f, mu_f, rho_f, k, dt, **semimp_namespace):
 
-	d_tent = dvp_["n"].sub(0, deepcopy=True)
+	d_tent = dvp_["tilde"].sub(0, deepcopy=True)
 	v_n1   = dvp_["n-1"].sub(1, deepcopy=True)
 
 	#Reuse of TrialFunction w, TestFunction beta
@@ -31,7 +31,8 @@ psi, beta, gamma, dx_f, mu_f, rho_f, k, dt, **semimp_namespace):
 	F_tentative = rho_f*inner(J_(d_tent)*grad(w)*inv(F_(d_tent)) \
 	             * (v_tilde_n1 - w_f), beta)*dx_f
 
-	F_tentative += 2*mu_f*J_(d_tent)*inner(D_U(d_tent, w), D_U(d_tent, beta))*dx_f
+	F_tentative += J_(d_tent)*inner(sigma_f_u(w, d_tent, mu_f), grad(beta))*dx_f
+	#F_tentative += 2*mu_f*J_(d_tent)*inner(D_U(d_tent, w), D_U(d_tent, beta))*dx_f
 
 	F_tentative -= inner(Constant((0, 0)), beta)*dx_f
 
@@ -45,6 +46,7 @@ def Fluid_correction_variation(v_, p_, d_, dvp_, psi, gamma, dx_f, \
     F_correction -= p_["n"]*J_(d_["n"])*inner(inv(F_(d_["n"])).T, grad(psi))*dx_f
     F_correction += J_(d_["n"])*inner(grad(v_["n"]), inv(F_(d_["n"])).T)*gamma*dx_f
 
-    F_correction += dot(v_["n"]("+") - \
+	#Use newly computed "n" from step 3.2m first time "tilde"
+    F_correction += J_(d_["n"]("+"))*dot(v_["n"]("+") - \
     (d_["n"]("-")-d_["n-1"]("-"))/k, n("+"))*gamma("+")*dS(5)
     return dict(F_correction=F_correction)
