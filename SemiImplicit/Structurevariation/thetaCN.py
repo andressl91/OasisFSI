@@ -16,14 +16,14 @@ def S(U,lamda_s,mu_s):
     I = Identity(len(U))
     return 2*mu_s*E(U) + lamda_s*tr(E(U))*I
 
-def Piola1(U_tilde, U,lamda_s,mu_s):
-	return F_(U_tilde)*S(U,lamda_s,mu_s)
+def Piola1(U,lamda_s,mu_s):
+	return F_(U)*S(U,lamda_s,mu_s)
 
 def sigma_f(p, u, d, mu_f):
     return  -p*Identity(len(u)) +\
 	        mu_f*(grad(u)*inv(F_(d)) + inv(F_(d)).T*grad(u).T)
 
-def Structure_setup(d_, v_, p_, phi, psi, gamma, dS, n, mu_f, v_tilde_n1, \
+def Structure_setup(dvp_, d_, v_, p_, phi, psi, gamma, dS, n, mu_f, v_tilde_n1, \
             dx_s, dx_f, mu_s, rho_s, lamda_s, k, mesh_file, theta, **semimp_namespace):
 
 	delta = 1E10
@@ -34,20 +34,33 @@ def Structure_setup(d_, v_, p_, phi, psi, gamma, dS, n, mu_f, v_tilde_n1, \
 	               + delta*(1./k)*inner(d_["n"] - d_["n-1"], phi)*dx_s \
    				   - delta*inner(Constant(theta)*v_["n"] + Constant(1 - theta)*v_["n-1"], phi)*dx_s
 
-	#F_solid_nonlinear = inner(Piola1(Constant(theta)*d_["n"] + Constant(1 - theta)*d_["n-1"], lamda_s, mu_s), grad(psi))*dx_s
-	F_solid_nonlinear = Constant(theta)*inner(Piola1(d_["n"], d_["n"], lamda_s, mu_s), grad(psi))*dx_s \
-	 			      + Constant(1 - theta)*inner(Piola1(d_["n-1"], d_["n-1"], lamda_s, mu_s), grad(psi))*dx_s
+	F_solid_nonlinear = inner(Piola1(Constant(theta)*d_["n"] + Constant(1 - theta)*d_["n-1"], lamda_s, mu_s), grad(psi))*dx_s
 
-	F_solid_nonlinear -= 1/2.*inner(J_(d_["n"]("+")) * \
-	sigma_f(p_["n"]("+"),v_["tilde"]("+"), d_["n"]("+"), mu_f) \
-	*inv(F_(d_["n"]("+"))).T*n("-"), phi("+"))*dS(5)
+	#F_solid_nonlinear = Constant(theta)*inner(Piola1(d_["n"], d_["n"], lamda_s, mu_s), grad(psi))*dx_s \
+	# 			      + Constant(1 - theta)*inner(Piola1(d_["n-1"], d_["n-1"], lamda_s, mu_s), grad(psi))*dx_s
 
-	F_solid_nonlinear -= 1/2.*inner(J_(d_["n-1"]("+")) * \
-	sigma_f(p_["n-1"]("+"),v_tilde_n1("+"), d_["n-1"]("+"), mu_f) \
-	*inv(F_(d_["n-1"]("+"))).T*n("-"), phi("+"))*dS(5)
+
+
+	#F_solid_nonlinear -= 1/2.*inner(J_(d_["n"]("-")) * \
+	#sigma_f(p_["n"]("+"),v_["tilde"]("+"), d_["n"]("-"), mu_f) \
+	#*inv(F_(d_["n"]("-"))).T*n("-"), psi("-"))*dS(5)
+
+	#F_solid_nonlinear -= 1/2.*inner(J_(d_["tilde"]("+")) * \
+	#sigma_f(p_["n"]("+"),v_["tilde"]("+"), d_["tilde"]("+"), mu_f) \
+	#*inv(F_(d_["tilde"]("+"))).T*n("-"), psi("-"))*dS(5)
+
+	#F_solid_nonlinear -= 1/2.*inner(J_(d_["n-1"]("+")) * \
+	#sigma_f(p_["n-1"]("+"),v_tilde_n1("+"), d_["n-1"]("+"), mu_f) \
+	#*inv(F_(d_["n-1"]("+"))).T*n("-"), psi("-"))*dS(5)
+
+	#F_solid_nonlinear -= inner(J_(d_["tilde"]("-")) * \
+	#sigma_f(p_["n"]("+"),v_["tilde"]("+"), d_["tilde"]("-"), mu_f) \
+	#*inv(F_(d_["tilde"]("-"))).T*n("-"), psi("-"))*dS(5)
 
 	#Org
-	#F_solid_nonlinear += inner((Piola1(d_["n"]("-"), lamda_s, mu_s) - \
-	#J_(d_["n"]("+"))*sigma_f(p_["n"]("+"),v_["tilde"]("+"), d_["n"]("+"), mu_f) \
-	#*inv(F_(d_["n"]("+"))).T)*n("-"), phi)*dS(5)
+	F_solid_nonlinear -= inner(J_(d_["n"]("-")) * \
+	sigma_f(p_["n"]("+"),v_["tilde"]("+"), d_["n"]("-"), mu_f) \
+	*inv(F_(d_["n"]("-"))).T*n("-"), psi("-"))*dS(5)
+
+
 	return dict(F_solid_linear = F_solid_linear, F_solid_nonlinear = F_solid_nonlinear)

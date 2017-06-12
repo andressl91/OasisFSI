@@ -1,15 +1,21 @@
 from dolfin import *
 
-def solver_setup(F_correction, F_solid_linear, \
+def solver_setup(F_correction, F_solid_linear, fluid_sol, solid_sol, \
                  F_solid_nonlinear, DVP, dvp_, **monolithic):
 
     F_solid = F_solid_linear + F_solid_nonlinear
 
-    chi = TrialFunction(DVP)
-    Jac_correction = derivative(F_correction, dvp_["n"], chi)
-    Jac_solid = derivative(F_solid, dvp_["n"], chi)
+    a = lhs(F_correction)
+    A_corr = assemble(a, keep_diagonal=True)
+    A_corr.ident_zeros()
+    fluid_sol.set_operator(A_corr)
 
-    return dict(Jac_correction=Jac_correction, Jac_solid=Jac_solid, F_solid=F_solid)
+    chi = TrialFunction(DVP)
+    Jac_solid = derivative(F_solid, dvp_["n"], chi)
+    solid_sol.parameters['reuse_factorization'] = True
+
+
+    return dict(A_corr=A_corr, Jac_solid=Jac_solid, fluid_sol=fluid_sol, F_solid=F_solid)
 
 def Fluid_extrapolation(F_extrapolate, DVP, dvp_, bcs_w, mesh_file, \
                         w_f, k, **semimp_namespace):
@@ -24,12 +30,15 @@ def Fluid_extrapolation(F_extrapolate, DVP, dvp_, bcs_w, mesh_file, \
     print "Solving fluid extrapolation"
     solve(A, w_f.vector(), b)
 
-    #Update deformation in mixedspace
-    d_n1 = dvp_["n-1"].sub(1, deepcopy=True)
     d = DVP.sub(0).dofmap().collapse(mesh_file)[1].values()
-    dvp_["tilde"].vector()[d] = d_n1.vector() + float(k)*w_f.vector()
-    dvp_["n"].vector()[d]     = d_n1.vector() + float(k)*w_f.vector()
-    
+    dvp_["n"].vector()[d] = w_f.vector()
+    #dvp_["tilde"].vector()[d] = w_f.vector()
+    #Update deformation in mixedspace
+    #d_n1 = dvp_["n-1"].sub(1, deepcopy=True)
+    #d = DVP.sub(0).dofmap().collapse(mesh_file)[1].values()
+    #dvp_["tilde"].vector()[d] = d_n1.vector() + float(k)*w_f.vector()
+    #dvp_["n"].vector()[d]     = d_n1.vector() + float(k)*w_f.vector()
+
     return dict(w_f=w_f, dvp_=dvp_)
 
 def Fluid_tentative(F_tentative, DVP, V, dvp_, v_tilde, bcs_tent, \
@@ -57,6 +66,61 @@ def Fluid_tentative(F_tentative, DVP, V, dvp_, v_tilde, bcs_tent, \
     return dict(v_tilde_n1=v_tilde_n1, v_tilde=v_tilde, dvp_=dvp_)
 
 
+def Fluid_correction(A_corr, F_correction, bcs_corr, \
+                dvp_, fluid_sol, T, t, **monolithic):
+
+    b = assemble(rhs(F_correction))
+    [bc.apply(A_corr, b) for bc in bcs_corr]
+
+    print "Solving correction velocity"
+    solve(A_corr, dvp_["n"].vector(), b)
+    #fluid_sol.solve(dvp_["n"].vector(), b)
+
+    return dict(t=t, dvp_=dvp_)
+
+def Solid_momentum(F_solid, Jac_solid, bcs_solid, \
+                dvp_, solid_sol, dvp_res, rtol, atol, max_it, T, t, **monolithic):
+
+    Iter      = 0
+    solid_residual   = 1
+    solid_rel_res    = solid_residual
+    lmbda = 1
+    print "Solid momentum\n"
+    while solid_rel_res > rtol and solid_residual > atol and Iter < max_it:
+
+        if Iter % 6  == 0:# or (last_rel_res < rel_res and last_residual < residual):
+            print "assebmling new JAC"
+            A = assemble(Jac_solid, keep_diagonal = True)
+            #A.axpy(1.0, A_pre, True)
+            A.ident_zeros()
+            [bc.apply(A) for bc in bcs_solid]
+            solid_sol.set_operator(A)
+
+        #A = assemble(Jac_solid, keep_diagonal=True)
+        #A.ident_zeros()
+
+        b = assemble(-F_solid)
+
+        [bc.apply(b, dvp_["n"].vector()) for bc in bcs_solid]
+        solid_sol.solve(dvp_res.vector(), b)
+
+        #[bc.apply(A, b, dvp_["n"].vector()) for bc in bcs_solid]
+        #solid_sol.solve(A, dvp_res.vector(), b)
+
+        dvp_["n"].vector().axpy(lmbda, dvp_res.vector())
+        [bc.apply(dvp_["n"].vector()) for bc in bcs_solid]
+        solid_rel_res = norm(dvp_res, 'l2')
+        solid_residual = b.norm('l2')
+
+        if MPI.rank(mpi_comm_world()) == 0:
+            print "Newton iteration %d: r (atol) = %.8e (tol = %.8e), r (rel) = %.3e (tol = %.3e) " \
+        % (Iter, solid_residual, atol, solid_rel_res, rtol)
+        Iter += 1
+
+    return dict(t=t, dvp_=dvp_, \
+    solid_rel_res=solid_rel_res, solid_residual=solid_residual)
+
+"""
 def Fluid_correction(F_correction, Jac_correction, bcs_corr, \
                 dvp_, fluid_sol, dvp_res, rtol, atol, max_it, T, t, **monolithic):
 
@@ -92,42 +156,5 @@ def Fluid_correction(F_correction, Jac_correction, bcs_corr, \
         % (Iter, fluid_residual, atol, fluid_rel_res, rtol)
         Iter += 1
 
-    return dict(fluid_rel_res=fluid_rel_res, fluid_residual=fluid_residual ,t=t)
-
-def Solid_momentum(F_solid, Jac_solid, bcs_solid, \
-                dvp_, solid_sol, dvp_res, rtol, atol, max_it, T, t, **monolithic):
-
-    Iter      = 0
-    solid_residual   = 1
-    solid_rel_res    = solid_residual
-    lmbda = 1
-    print "Solid momentum\n"
-    while solid_rel_res > rtol and solid_residual > atol and Iter < max_it:
-        if Iter % 6  == 0:# or (last_rel_res < rel_res and last_residual < residual):
-            print "assebmling new JAC"
-            A = assemble(Jac_solid, keep_diagonal = True)
-            #A.axpy(1.0, A_pre, True)
-            A.ident_zeros()
-            [bc.apply(A) for bc in bcs_solid]
-            solid_sol.set_operator(A)
-        #A = assemble(Jac_solid, keep_diagonal=True)
-        #A.ident_zeros()
-
-        b = assemble(-F_solid)
-
-        [bc.apply(b, dvp_["n"].vector()) for bc in bcs_solid]
-        #[bc.apply(A, b, dvp_["n"].vector()) for bc in bcs]
-
-        solid_sol.solve(dvp_res.vector(), b)
-        #solid_sol.solve(A, dvp_res.vector(), b)
-        dvp_["n"].vector().axpy(lmbda, dvp_res.vector())
-        [bc.apply(dvp_["n"].vector()) for bc in bcs_solid]
-        solid_rel_res = norm(dvp_res, 'l2')
-        solid_residual = b.norm('l2')
-
-        if MPI.rank(mpi_comm_world()) == 0:
-            print "Newton iteration %d: r (atol) = %.3e (tol = %.3e), r (rel) = %.3e (tol = %.3e) " \
-        % (Iter, solid_residual, atol, solid_rel_res, rtol)
-        Iter += 1
-
-    return dict(t=t, solid_rel_res=solid_rel_res, solid_residual=solid_residual)
+    return dict(fluid_
+"""
