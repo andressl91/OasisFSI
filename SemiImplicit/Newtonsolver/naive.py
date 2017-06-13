@@ -66,32 +66,43 @@ def Fluid_tentative(F_tentative, DVP, V, dvp_, v_tilde, bcs_tent, \
     return dict(v_tilde_n1=v_tilde_n1, v_tilde=v_tilde, dvp_=dvp_)
 
 
-def Fluid_correction(A_corr, F_correction, bcs_corr, \
+def Fluid_correction(mesh_file, DVP, A_corr, F_correction, bcs_corr, \
                 dvp_, fluid_sol, T, t, **monolithic):
 
     b = assemble(rhs(F_correction))
     [bc.apply(A_corr, b) for bc in bcs_corr]
 
+    dvp_sol = Function(DVP)
+
     print "Solving correction velocity"
-    solve(A_corr, dvp_["n"].vector(), b)
+    #solve(A_corr, dvp_["n"].vector(), b)
+
+    
+    solve(A_corr, dvp_sol.vector(), b)
+    _, vs, ps = dvp_sol.split(True)
+    v = DVP.sub(1).dofmap().collapse(mesh_file)[1].values()
+    p = DVP.sub(2).dofmap().collapse(mesh_file)[1].values()
+    dvp_["n"].vector()[v] = vs.vector()
+    dvp_["n"].vector()[p] = ps.vector()
+
     #fluid_sol.solve(dvp_["n"].vector(), b)
 
     return dict(t=t, dvp_=dvp_)
 
 def Solid_momentum(F_solid, Jac_solid, bcs_solid, \
-                dvp_, solid_sol, dvp_res, rtol, atol, max_it, T, t, **monolithic):
+                DVP, dvp_, solid_sol, dvp_res, rtol, atol, max_it, T, t, **monolithic):
 
     Iter      = 0
     solid_residual   = 1
     solid_rel_res    = solid_residual
     lmbda = 1
     print "Solid momentum\n"
+
     while solid_rel_res > rtol and solid_residual > atol and Iter < max_it:
 
         if Iter % 6  == 0:# or (last_rel_res < rel_res and last_residual < residual):
             print "assebmling new JAC"
             A = assemble(Jac_solid, keep_diagonal = True)
-            #A.axpy(1.0, A_pre, True)
             A.ident_zeros()
             [bc.apply(A) for bc in bcs_solid]
             solid_sol.set_operator(A)
@@ -113,9 +124,16 @@ def Solid_momentum(F_solid, Jac_solid, bcs_solid, \
         solid_residual = b.norm('l2')
 
         if MPI.rank(mpi_comm_world()) == 0:
-            print "Newton iteration %d: r (atol) = %.8e (tol = %.8e), r (rel) = %.3e (tol = %.3e) " \
+            print "Newton iteration %d: r (atol) = %.8e (tol = %.3e), r (rel) = %.3e (tol = %.3e) " \
         % (Iter, solid_residual, atol, solid_rel_res, rtol)
         Iter += 1
+
+    #_, vs, ps = dvp_sol.split(True)
+    #v = DVP.sub(1).dofmap().collapse(mesh_file)[1].values()
+    #p = DVP.sub(2).dofmap().collapse(mesh_file)[1].values()
+    #dvp_["n"].vector()[v] = vs.vector()
+    #dvp_["n"].vector()[p] = ps.vector()
+
 
     return dict(t=t, dvp_=dvp_, \
     solid_rel_res=solid_rel_res, solid_residual=solid_residual)
