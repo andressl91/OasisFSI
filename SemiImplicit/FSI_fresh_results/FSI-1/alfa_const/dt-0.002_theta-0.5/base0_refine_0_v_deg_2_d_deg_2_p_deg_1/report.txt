@@ -1,0 +1,12 @@
+FSI3 EXPERIMENT
+    T = 0.1
+dt = 0.002
+v_deg = 2
+v_deg = 2
+p_deg = 1
+
+theta = 0.5
+f_vari = thetaCN
+s_vari = thetaCN
+e_vari = alfa
+ time = 73.6865

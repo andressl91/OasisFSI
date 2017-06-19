@@ -33,7 +33,6 @@ from Extrapolation.alfa import *
 
 #set_log_active(False)
 
-
 # Define coefficients
 k = Constant(dt)
 n = FacetNormal(mesh_file)
@@ -57,13 +56,14 @@ for time in ["n", "n-1", "n-2", "tilde"]:
     p_[time] = p
 
 
-w = TrialFunction(D) #Mesh velocity
-beta = TestFunction(D)
-w_f = Function(D) #Mesh velocity solution file
+w = TrialFunction(DVP.sub(0).collapse()) #Mesh velocity
+beta = TestFunction(DVP.sub(0).collapse())
+w_f = Function(DVP.sub(0).collapse()) #Mesh velocity solution file
 
-v_tilde = Function(V)
-v_tilde_n1 = Function(V)
+v_tilde_n1 = Function(DVP.sub(1).collapse())
+v_tilde = Function(DVP.sub(1).collapse())
 
+d_s, v_f, p_f = TrialFunctions(DVP)
 phi, psi, gamma = TestFunctions(DVP)
 
 t = 0
@@ -89,6 +89,8 @@ atol = 1e-6; rtol = 1e-6; max_it = 100; lmbda = 1.0
 dvp_res = Function(DVP)
 chi = TrialFunction(DVP)
 
+assigner = FunctionAssigner(DVP.sub(2), P)
+
 counter = 0
 tic()
 while t <= T + 1e-8:
@@ -102,15 +104,16 @@ while t <= T + 1e-8:
     vars().update(Fluid_extrapolation(**vars()))
     vars().update(Fluid_tentative(**vars()))
 
-    fluid_residual_last = 1
-    fluid_rel_res_last  = fluid_residual_last
-    solid_residual_last = 1
-    solid_rel_res_last  = solid_residual_last
+    #solid_residual_last = 1
+    #solid_rel_res_last  = solid_residual_last
 
     test = 0
-    while 2 > test:
+    print "BEFORE IT", norm(dvp_["n"].sub(2), "l2")
+    while 5  > test:
         vars().update(Fluid_correction(**vars()))
         vars().update(Solid_momentum(**vars()))
+        print "IT = %d" % test, norm(dvp_["n"].sub(2), "l2")
+
         test += 1
         print "BIG ITERATION NUMBER %d" % test
 

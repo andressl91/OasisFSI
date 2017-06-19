@@ -22,10 +22,11 @@ def Fluid_tentative_variation(v_, p_, d_, dvp_, w, w_f, v_tilde_n1, \
 psi, beta, gamma, dx_f, mu_f, rho_f, k, dt, **semimp_namespace):
 
 	d_tent = dvp_["tilde"].sub(0, deepcopy=True)
-
-	v_n1   = dvp_["n-1"].sub(1, deepcopy=True)
 	d_n = dvp_["tilde"].sub(0, deepcopy=True)
 	d_n1 = dvp_["n-1"].sub(0, deepcopy=True)
+
+	v_n1   = dvp_["n-1"].sub(1, deepcopy=True)
+
 
 	#Reuse of TrialFunction w, TestFunction beta
 	#used in extrapolation assuming same degree

@@ -50,18 +50,12 @@ def Fluid_tentative(F_tentative, VP, vp_, bcs_tent, \
     print "Solving tentative velocity"
     solve(A, vp_["tilde"].vector(), b)
 
-    #Update tentative n-1 vector
 
-
-    #Convert solution into mixedspacefunction
-    #v = DVP.sub(1).dofmap().collapse(mesh_file)[1].values()
-    #dvp_["tilde"].vector()[v] = v_tilde.vector()
-    #assign(dvp_["n"].sub(0), dvp_["n-1"].sub(0))
     return dict(vp_=vp_)
 
 
 def Fluid_correction(mesh_file, VP, A_corr, F_correction, bcs_corr, \
-                vp_, fluid_sol, T, t, **monolithic):
+                vp_, dw_, fluid_sol, T, t, **monolithic):
 
     a = lhs(F_correction)
     A_corr = assemble(a, keep_diagonal=True)
@@ -73,13 +67,15 @@ def Fluid_correction(mesh_file, VP, A_corr, F_correction, bcs_corr, \
     print "Solving correction velocity"
     solve(A_corr, vp_["n"].vector(), b)
 
+    print "deformation norm", norm(dw_["n"].sub(0, deepcopy=True), "l2")
     return dict(t=t, vp_=vp_)
+
 
 def Solid_momentum(F_solid, Jac_solid, bcs_solid, vp_, \
                 DW, dw_, solid_sol, dw_res, rtol, atol, max_it, T, t, **monolithic):
 
 
-    print "Pressure norm", norm(vp_["n"].sub(0, deepcopy=True), "l2")
+    print "Pressure norm", norm(vp_["n"].sub(1, deepcopy=True), "l2")
     Iter      = 0
     solid_residual   = 1
     solid_rel_res    = solid_residual
@@ -88,11 +84,16 @@ def Solid_momentum(F_solid, Jac_solid, bcs_solid, vp_, \
 
     while solid_rel_res > rtol and solid_residual > atol and Iter < max_it:
 
+        #A, b = assemble_system(Jac_solid, -F_solid, bcs_solid, keep_diagonal=True)
+        #A.ident_zeros()
+        #[bc.apply(dw_["n"].vector()) for bc in bcs_solid]
+        #solve(A, dw_res.vector(), b)
+
         if Iter % 6  == 0:# or (last_rel_res < rel_res and last_residual < residual):
             print "assebmling new JAC"
             A = assemble(Jac_solid, keep_diagonal = True)
-            A.ident_zeros()
             [bc.apply(A) for bc in bcs_solid]
+            A.ident_zeros()
             solid_sol.set_operator(A)
 
         #A = assemble(Jac_solid, keep_diagonal=True)
@@ -103,9 +104,6 @@ def Solid_momentum(F_solid, Jac_solid, bcs_solid, vp_, \
         [bc.apply(b, dw_["n"].vector()) for bc in bcs_solid]
         solid_sol.solve(dw_res.vector(), b)
 
-        #[bc.apply(A, b, dvp_["n"].vector()) for bc in bcs_solid]
-        #solid_sol.solve(A, dw_res.vector(), b)
-
         dw_["n"].vector().axpy(lmbda, dw_res.vector())
         [bc.apply(dw_["n"].vector()) for bc in bcs_solid]
         solid_rel_res = norm(dw_res, 'l2')
@@ -115,13 +113,8 @@ def Solid_momentum(F_solid, Jac_solid, bcs_solid, vp_, \
             print "Newton iteration %d: r (atol) = %.8e (tol = %.3e), r (rel) = %.3e (tol = %.3e) " \
         % (Iter, solid_residual, atol, solid_rel_res, rtol)
         Iter += 1
-
-    #_, vs, ps = dvp_sol.split(True)
-    #v = DVP.sub(1).dofmap().collapse(mesh_file)[1].values()
-    #p = DVP.sub(2).dofmap().collapse(mesh_file)[1].values()
-    #dvp_["n"].vector()[v] = vs.vector()
-    #dvp_["n"].vector()[p] = ps.vector()
-
-
+    print "NEWO"
+    print "Pressure norm", norm(vp_["n"].sub(1, deepcopy=True), "l2")
+    print "deformation norm", norm(dw_["n"].sub(0, deepcopy=True), "l2")
     return dict(t=t, dw_=dw_, \
     solid_rel_res=solid_rel_res, solid_residual=solid_residual)

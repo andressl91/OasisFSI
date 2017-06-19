@@ -8,8 +8,8 @@ def F_(U):
 def J_(U):
 	return det(F_(U))
 
-def sigma_f_u(u,d,mu_f):
-    return  mu_f*(grad(u)*inv(F_(d)) + inv(F_(d)).T*grad(u).T)
+def eps(u, d,mu_f):
+    return  1./2*(grad(u)*inv(F_(d)) + inv(F_(d)).T*grad(u).T)
 
 def sigma_f_p(p, u):
     return -p*Identity(len(u))
@@ -34,7 +34,7 @@ def Fluid_tentative_variation(v_, p_, d_, vp_, v, \
 
 	return dict(F_tentative=F_tentative)
 
-def Fluid_correction_variation(v, p, v_, d_, vp_, psi, eta, dx_f, \
+def Fluid_correction_variation(v, p, v_, d_, vp_, dw_, psi, eta, dx_f, \
     mu_f, rho_f, k, dt, n, dS, **semimp_namespace):
 
 	# Pressure update
@@ -42,8 +42,11 @@ def Fluid_correction_variation(v, p, v_, d_, vp_, psi, eta, dx_f, \
 	F_correction -= p*J_(d_["tilde"])*inner(inv(F_(d_["tilde"])).T, grad(psi))*dx_f
 	F_correction += J_(d_["tilde"])*inner(grad(v), inv(F_(d_["tilde"])).T)*eta*dx_f
 
-	#Use newly computed "n" from step 3.2m first time "tilde"
 	F_correction += J_(d_["tilde"]("+"))*dot(v("+") - \
-	(d_["n"]("-")-d_["n-1"]("-"))/k, n("+"))*eta("+")*dS(5)
+	(dw_["n"].sub(0, deepcopy=True)("-")-dw_["n-1"].sub(0, deepcopy=True)("-"))/k, n("-"))*eta("+")*dS(5)
+
+	#Use newly computed "n" from step 3.2m first time "tilde"
+	#F_correction += J_(d_["tilde"]("+"))*dot(v("+") - \
+	#(d_["n"]("-")-d_["n-1"]("-"))/k, n("+"))*eta("+")*dS(5)
 
 	return dict(F_correction=F_correction)

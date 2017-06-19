@@ -31,7 +31,7 @@ def Fluid_extrapolation(F_extrapolate, DVP, dvp_, bcs_w, mesh_file, \
     solve(A, w_f.vector(), b)
 
     d = DVP.sub(0).dofmap().collapse(mesh_file)[1].values()
-    dvp_["n"].vector()[d] = w_f.vector()
+    dvp_["tilde"].vector()[d] = w_f.vector()
     #dvp_["tilde"].vector()[d] = w_f.vector()
     #Update deformation in mixedspace
     #d_n1 = dvp_["n-1"].sub(1, deepcopy=True)
@@ -77,7 +77,7 @@ def Fluid_correction(mesh_file, DVP, A_corr, F_correction, bcs_corr, \
     print "Solving correction velocity"
     #solve(A_corr, dvp_["n"].vector(), b)
 
-    
+
     solve(A_corr, dvp_sol.vector(), b)
     _, vs, ps = dvp_sol.split(True)
     v = DVP.sub(1).dofmap().collapse(mesh_file)[1].values()
