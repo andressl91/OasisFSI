@@ -12,7 +12,7 @@ d_deg = args.d_deg
 dt = args.dt
 """
 refi = 0
-mesh_name = "base0_nobl"
+mesh_name = "base0"
 mesh_file = Mesh("Mesh/" + mesh_name +".xml")
 #mesh_file = refine(mesh_file)
 #Parameters for each numerical case
@@ -116,11 +116,9 @@ def initiate(v_deg, d_deg, p_deg, dt, theta, dvp_, args, mesh_name, refi, **semi
     bitype = args.bitype
     if args.extravari == "alfa":
         path = "FSI_fresh_results/FSI-1/%(exva)s_%(extype)s/dt-%(dt)g_theta-%(theta)g/%(mesh_name)s_refine_%(refi)d_v_deg_%(v_deg)s_d_deg_%(d_deg)s_p_deg_%(p_deg)s" % vars()
-    if args.extravari == "biharmonic" or args.extravari == "laplace" or args.extravari == "elastic":
+    #if args.extravari == "biharmonic" or args.extravari == "laplace" or args.extravari == "elastic" or args.extravari == "biharmonic2":
+    else:
         path = "FSI_fresh_results/FSI-1/%(exva)s_%(bitype)s/dt-%(dt)g_theta-%(theta)g/%(mesh_name)s_refine_%(refi)d_v_deg_%(v_deg)s_d_deg_%(d_deg)s_p_deg_%(p_deg)s" % vars()
-
-
-
 
     u_file = XDMFFile(mpi_comm_world(), path + "/velocity.xdmf")
     d_file = XDMFFile(mpi_comm_world(), path + "/d.xdmf")
@@ -132,7 +130,7 @@ def initiate(v_deg, d_deg, p_deg, dt, theta, dvp_, args, mesh_name, refi, **semi
     d = dvp_["n-1"].sub(0, deepcopy=True)
     v = dvp_["n-1"].sub(1, deepcopy=True)
     p = dvp_["n-1"].sub(2, deepcopy=True)
-    #p_file.write(p)
+    p_file.write(p)
     d_file.write(d)
     u_file.write(v)
     #u_file << v
@@ -205,7 +203,7 @@ def after_solve(t, P, DVP, dvp_, n,coord,dis_x,dis_y,Drag_list,Lift_list, Det_li
         #u_file << v
         #d_file << d
         #p_file << p
-        #p_file.write(p)
+        p_file.write(p)
         d_file.write(d)
         u_file.write(v)
         #dvp_file << dvp_["n"]
