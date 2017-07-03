@@ -55,9 +55,9 @@ class Inlet(Expression):
     def value_shape(self):
     	return (2,)
 
-def initiate(args, dt, theta, mesh_name, **monolithic):
+def initiate(args, dt, theta, v_deg, p_deg, mesh_name, **monolithic):
     theta = args.theta
-    path = "FSI_fresh_results/CFD-2/dt-%(dt)g_theta-%(theta)g/%(mesh_name)s" % vars()
+    path = "FSI_fresh_results/CFD-2/dt-%(dt)g_theta-%(theta)g/%(mesh_name)s_v_deg_%(v_deg)s_p_deg_%(p_deg)s" % vars()
     return dict(path=path)
 
 def create_bcs(VP, vp_, n, k, Um, H, boundaries, Inlet, **semimp_namespace):

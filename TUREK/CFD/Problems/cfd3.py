@@ -55,9 +55,9 @@ class Inlet(Expression):
     def value_shape(self):
     	return (2,)
 
-def initiate(args, dt, theta, mesh_name, vp_, **monolithic):
+def initiate(args, dt, theta, v_deg, p_deg, mesh_name, vp_, **monolithic):
     theta = args.theta
-    path = "FSI_fresh_results/CFD-3/dt-%(dt)g_theta-%(theta)g/%(mesh_name)s" % vars()
+    path = "FSI_fresh_results/CFD-2/dt-%(dt)g_theta-%(theta)g/%(mesh_name)s_v_deg_%(v_deg)s_p_deg_%(p_deg)s" % vars()
 
     u_file = XDMFFile(mpi_comm_world(), path + "/velocity.xdmf")
     p_file = XDMFFile(mpi_comm_world(), path + "/pressure.xdmf")
