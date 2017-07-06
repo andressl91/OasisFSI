@@ -1,44 +1,24 @@
 from dolfin import *
 
-def solver_setup(F_correction, F_tentative, F_solid_linear, fluid_sol, solid_sol, \
-                 F_solid_nonlinear, DW, dw_, **monolithic):
+def solver_setup(F_correction, F_tentative, fluid_sol, solid_sol, **monolithic):
 
-    F_solid = F_solid_linear + F_solid_nonlinear
 
     a = lhs(F_correction)
     A_corr = assemble(a, keep_diagonal=True)
-    #A_corr.ident_zeros()
     fluid_sol.set_operator(A_corr)
 
     a = lhs(F_tentative)
     A_tent = assemble(a, keep_diagonal=True)
-    A_tent.ident_zeros()
-
-    chi = TrialFunction(DW)
-    Jac_solid = derivative(F_solid, dw_["n"], chi)
-    solid_sol.parameters['reuse_factorization'] = True
+    #A_tent.ident_zeros()
 
 
-    return dict(A_corr=A_corr, A_tent=A_tent, Jac_solid=Jac_solid, fluid_sol=fluid_sol, F_solid=F_solid)
+    return dict(A_corr=A_corr, A_tent=A_tent, fluid_sol=fluid_sol)
 
 def Fluid_extrapolation(F_extrapolate, DW, dw_, vp_, bcs_w, mesh_file, \
                         k, **semimp_namespace):
+    print "No extrapolation"
 
-    a = lhs(F_extrapolate)
-    L = rhs(F_extrapolate)
-    A = assemble(a, keep_diagonal=True)
-    A.ident_zeros()
-    b = assemble(L)
-    [bc.apply(A, b) for bc in bcs_w]
-
-    u_sol = Function(DW)
-    print "Solving fluid extrapolation"
-    solve(A, dw_["tilde"].vector(), b)
-
-    #d = DVP.sub(0).dofmap().collapse(mesh_file)[1].values()
-    #dvp_["n"].vector()[d] = w_f.vector()
-
-    return dict(dw_=dw_)
+    return {}
 
 def Fluid_tentative(F_tentative, A_tent, VP, vp_, bcs_tent, \
      mesh_file, **semimp_namespace):
@@ -63,7 +43,6 @@ def Fluid_correction(mesh_file, VP, A_corr, F_correction, bcs_corr, \
 
     b = assemble(rhs(F_correction))
     [bc.apply(A_corr, b) for bc in bcs_corr]
-
 
     print "Solving correction velocity"
     solve(A_corr, vp_["n"].vector(), b)

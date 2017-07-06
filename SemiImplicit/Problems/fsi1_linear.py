@@ -61,6 +61,7 @@ Barwall.mark(boundaries, 7)
 
 ds = Measure("ds", subdomain_data = boundaries)
 dS = Measure("dS", subdomain_data = boundaries)
+
 n = FacetNormal(mesh_file)
 
 Bar_area = AutoSubDomain(lambda x: (0.19 <= x[1] <= 0.21) and 0.24<= x[0] <= 0.6) # only the "flag" or "bar"
@@ -92,7 +93,7 @@ class Inlet(Expression):
 
 inlet = Inlet(Um)
 
-def initiate(v_deg, d_deg, p_deg, dt, theta, vp_, args, mesh_name, refi, **semimp_namespace):
+def initiate(v_deg, d_deg, p_deg, dt, theta, dw_, vp_, args, mesh_name, refi, **semimp_namespace):
     exva = args.extravari
     extype = args.extype
     bitype = args.bitype
@@ -109,14 +110,14 @@ def initiate(v_deg, d_deg, p_deg, dt, theta, vp_, args, mesh_name, refi, **semim
         tmp_t.parameters["multi_file"] = 0
         tmp_t.parameters["rewrite_function_mesh"] = False
     #d = dvp_["n-1"].sub(0, deepcopy=True)
-    d = vp_["n"].sub(1, deepcopy=True)
-    v = vp_["n"].sub(1, deepcopy=True)
-    p = vp_["n"].sub(0, deepcopy=True)
-    p_file.write(p)
-    d_file.write(d)
-    u_file.write(v)
-    #u_file << v
-    #d_file << d
+    d = dw_["n"].sub(0, deepcopy=True)
+    v = vp_["n"].sub(0, deepcopy=True)
+    p = vp_["n"].sub(1, deepcopy=True)
+    #p_file.write(p)
+    #d_file.write(d)
+    #u_file.write(v)
+    u_file << v
+    d_file << d
 
     return dict(u_file=u_file, d_file=d_file, p_file=p_file, path=path)
 
@@ -137,9 +138,9 @@ def create_bcs(dw_, d_, DW, VP, args, k, Um, H, boundaries, inlet, **semimp_name
     d_n1 = d_["n-1"]
     w_bar = 1./k*(d_tilde - d_n1)
 
-    u_inlet_t  = DirichletBC(VP.sub(0), inlet, boundaries, 3)
-    u_wall_t   = DirichletBC(VP.sub(0), ((0.0, 0.0)), boundaries, 2)
-    u_circ_t   = DirichletBC(VP.sub(0), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
+    u_inlet_t  = DirichletBC(VP.sub(0).collapse(), inlet, boundaries, 3)
+    u_wall_t   = DirichletBC(VP.sub(0).collapse(), ((0.0, 0.0)), boundaries, 2)
+    u_circ_t   = DirichletBC(VP.sub(0).collapse(), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
     u_bar_t    = DirichletBC(VP.sub(0).collapse(), w_bar, boundaries, 5) #No slip on geometry in fluid
 
     bcs_tent = [u_wall_t, u_inlet_t, u_circ_t, u_bar_t]
@@ -149,7 +150,8 @@ def create_bcs(dw_, d_, DW, VP, args, k, Um, H, boundaries, inlet, **semimp_name
     u_wall   = DirichletBC(VP.sub(0), ((0.0, 0.0)), boundaries, 2)
     u_circ   = DirichletBC(VP.sub(0), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
 
-    p_outlet  = DirichletBC(VP.sub(1), (0.0), boundaries, 4)
+    #p_outlet  = DirichletBC(VP.sub(1), -60, boundaries, 4)
+    p_outlet  = DirichletBC(VP.sub(1), (1.0), boundaries, 4)
 
     #Assemble boundary conditions
     bcs_corr = [u_wall, u_inlet, u_circ, \
@@ -167,11 +169,13 @@ def create_bcs(dw_, d_, DW, VP, args, k, Um, H, boundaries, inlet, **semimp_name
                 bcs_solid=bcs_solid)
 
 
-def pre_solve(t, inlet, **semimp_namespace):
+def pre_solve(vp_, n, ds, t, inlet, **semimp_namespace):
     if t < 2:
         inlet.t = t
     else:
         inlet.t = 2
+
+    #print "Pressure 1", assemble(vp_["n-1"].sub(1, deepcopy=True)*dS(5))
 
     return dict(inlet = inlet)
 
@@ -184,15 +188,15 @@ def after_solve(t, P, dw_, vp_, n, coord,dis_x,dis_y,Drag_list,Lift_list, Det_li
     p = vp_["n"].sub(1, deepcopy=True)
     #d, v, p = dvp_["n"].split(True)
     if counter%step ==0:
-        #u_file << v
-        #d_file << d
-        #p_file << p
+        u_file << v
+        d_file << d
+        p_file << p
         #p_file.write(p)
         #d.rename("d", "displacement")
         #v.rename("v", "velocity")
-        d_file.write(d)
-        u_file.write(v)
-        p_file.write(p)
+        #d_file.write(d)
+        #u_file.write(v)
+        #p_file.write(p)
         #dvp_file << dvp_["n"]
         #dvp_file.write(dvp_["n"], "dvp%g"%t)
 
@@ -204,10 +208,11 @@ def after_solve(t, P, dw_, vp_, n, coord,dis_x,dis_y,Drag_list,Lift_list, Det_li
 
     def sigma_f_new(v, p, d, mu_f):
         return -p*Identity(len(v)) + mu_f*(grad(v)*inv(F_(d)) + inv(F_(d)).T*grad(v).T)
+        #return mu_f*(grad(v)*inv(F_(d)) + inv(F_(d)).T*grad(v).T)
 
     #Det = project(J_(d), DVP.sub(0).collapse())
-    Det = project(J_(d), P)
-    Det_list.append((Det.vector().array()).min())
+    #Det = project(J_(d), P)
+    #Det_list.append((Det.vector().array()).min())
 
     """
     Dr = -assemble((sigma_f_new(v,p,d,mu_f)*n)[0]*ds(6))

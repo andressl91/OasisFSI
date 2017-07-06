@@ -26,25 +26,28 @@ def sigma_f(p, u, d, mu_f):
 def Structure_setup(d_, w_, v_, p_, phi, gamma, dS, n, mu_f, \
             vp_, dx_s, mu_s, rho_s, lamda_s, k, mesh_file, theta, **semimp_namespace):
 
-    delta = 1E10
-    theta = 1.0
+	delta = 1E10
+	#theta = 1.0
+	theta = 0.5
 
 
-    F_solid_linear = rho_s/k*inner(w_["n"] - w_["n-1"], phi)*dx_s \
-                   + delta*(1./k)*inner(d_["n"] - d_["n-1"], gamma)*dx_s \
-    			   - delta*inner(Constant(theta)*w_["n"] \
-    			   + Constant(1 - theta)*w_["n-1"], gamma)*dx_s
+	F_solid_linear = rho_s/k*inner(w_["n"] - w_["n-1"], phi)*dx_s \
+	               + delta*(1./k)*inner(d_["n"] - d_["n-1"], gamma)*dx_s \
+				   - delta*inner(Constant(theta)*w_["n"] \
+				   + Constant(1 - theta)*w_["n-1"], gamma)*dx_s
 
-    F_solid_nonlinear = inner(Piola1(Constant(theta)*d_["n"] \
-                      + Constant(1 - theta)*d_["n-1"], lamda_s, mu_s), grad(phi))*dx_s
+	F_solid_nonlinear = inner(Piola1(Constant(theta)*d_["n"] \
+	                  + Constant(1 - theta)*d_["n-1"], lamda_s, mu_s), grad(phi))*dx_s
+
+	u = vp_["tilde"].sub(0)
+	p = vp_["n"].sub(1)
+	F_solid_nonlinear -= inner(J_(d_["tilde"]("+")) * \
+	sigma_f(p("+"),u("+"), d_["tilde"]("+"), mu_f) \
+	*inv(F_(d_["tilde"]("+"))).T*n("+"), phi("+"))*dS(5)
+	#Org
+	#F_solid_nonlinear -= inner(J_(d_["tilde"]("+")) * \
+	#sigma_f(p_["n"]("+"),v_["tilde"]("+"), d_["tilde"]("+"), mu_f) \
+	#*inv(F_(d_["tilde"]("+"))).T*n("+"), phi("+"))*dS(5)
 
 
-    F_solid_nonlinear -= inner(Constant(9.81)*avg(n), phi("-"))*dS(5)
-    print "assemble", assemble(Constant(9.81)*avg(n)[0]*dS(5))
-    #org
-    #F_solid_nonlinear -= inner(J_(d_["tilde"]("+")) * \
-    #sigma_f(p_["n"]("+"),v_["tilde"]("+"), d_["tilde"]("+"), mu_f) \
-    #*inv(F_(d_["tilde"]("+"))).T*n("+"), phi("-"))*dS(5)
-
-
-    return dict(F_solid_linear = F_solid_linear, F_solid_nonlinear = F_solid_nonlinear)
+	return dict(F_solid_linear = F_solid_linear, F_solid_nonlinear = F_solid_nonlinear)

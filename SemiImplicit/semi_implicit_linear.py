@@ -21,22 +21,14 @@ for key in args.__dict__:
 
 vars().update(update_variables)
 
-# Import variationalform and solver
-if args.fluidvari == "fluid_only":
-    print "fluid_only solver imports"
-    from Fluidvariation.projection_linear import *
-    from Structurevariation.thetaCN import *
-    from Domainvariation.domain_update_linear import *
-    from Newtonsolver.fluid_only import *
-    from Extrapolation.alfa import *
 
-else:
-    from Fluidvariation.projection_linear import *
-    from Structurevariation.CN import *
-    from Domainvariation.domain_update_linear import *
-    from Newtonsolver.naive_linear import *
-    from Extrapolation.alfa import *
-    from Problems.fsi1_linear import *
+print "Semi-implicit methods"
+from Fluidvariation.projection_linear import *
+from Structurevariation.CN import *
+from Domainvariation.domain_update_linear import *
+from Newtonsolver.naive_linear import *
+from Extrapolation.alfa import *
+
 
 #exec("from Extrapolation.%s import *" % args.extravari)
 #set_log_active(False)
@@ -79,6 +71,10 @@ for time in ["n", "n-1", "n-2", "tilde", "tilde-1"]:
 v, p = TrialFunctions(VP)
 psi, eta = TestFunctions(VP)
 
+v_tent = TrialFunction(V)
+beta = TestFunction(V)
+v_sol = Function(V)
+
 #Trial and TestFunctions Structure
 #used for extrapolation of solid deformation
 d, w = TrialFunctions(DW)
@@ -102,89 +98,54 @@ vars().update(Fluid_tentative_variation(**vars()))
 vars().update(Fluid_correction_variation(**vars()))
 vars().update(Structure_setup(**vars()))
 vars().update(solver_setup(**vars()))
+
 vars().update(initiate(**vars()))
 vars().update(create_bcs(**vars()))
 
 
-if args.fluidvari == "fluid_only":
-    print "SOLVER FOR FLUID_ONLY"
-    atol = 1e-6; rtol = 1e-6; max_it = 100; lmbda = 1.0
+print "SOLVE FOR LINEAR PROBLEM"
+atol = 1e-6; rtol = 1e-6; max_it = 100; lmbda = 1.0
 
-    counter = 0
-    tic()
-    while t <= T + 1e-8:
-        t += dt
+counter = 0
+tic()
+while t <= T + 1e-8:
+    t += dt
 
-        if MPI.rank(mpi_comm_world()) == 0:
-            print "Solving for timestep %g" % t
+    if MPI.rank(mpi_comm_world()) == 0:
+        print "Solving for timestep %g" % t
 
-        pre_solve(**vars())
-        vars().update(domain_update(**vars()))
-        vars().update(Fluid_extrapolation(**vars()))
-        vars().update(Fluid_tentative(**vars()))
+    pre_solve(**vars())
+    vars().update(domain_update(**vars()))
+    # Including Fluid_extrapolation gives nan press and veloci
+    #vars().update(Fluid_extrapolation(**vars()))
+    vars().update(Fluid_tentative(**vars()))
+
+    solid_residual_last = 1
+    solid_rel_res_last  = solid_residual_last
+
+    test = 0
+    while 1 > test:
         vars().update(Fluid_correction(**vars()))
+        vars().update(Solid_momentum(**vars()))
 
+        test += 1
+        print "BIG ITERATION NUMBER %d" % test
 
-        times = ["n-2", "n-1", "n"]
-        for i, t_tmp in enumerate(times[:-1]):
-            vp_[t_tmp].vector().zero()
-            vp_[t_tmp].vector().axpy(1, vp_[times[i+1]].vector())
-            dw_[t_tmp].vector().zero()
-            dw_[t_tmp].vector().axpy(1, dw_[times[i+1]].vector())
+    times = ["n-2", "n-1", "n"]
+    for i, t_tmp in enumerate(times[:-1]):
+        vp_[t_tmp].vector().zero()
+        vp_[t_tmp].vector().axpy(1, vp_[times[i+1]].vector())
+        dw_[t_tmp].vector().zero()
+        dw_[t_tmp].vector().axpy(1, dw_[times[i+1]].vector())
 
-        vp_["tilde-1"].vector().zero()
-        vp_["tilde-1"].vector().axpy(1, vp_["tilde"].vector())
+    vp_["tilde-1"].vector().zero()
+    vp_["tilde-1"].vector().axpy(1, vp_["tilde"].vector())
 
-        vars().update(after_solve(**vars()))
-        counter +=1
+    vars().update(after_solve(**vars()))
+    counter +=1
 
-    simtime = toc()
-    print "Total Simulation time %g" % simtime
-    #post_process(**vars())
-
-
-else:
-    print "SOLVE FOR LINEAR PROBLEM"
-    atol = 1e-6; rtol = 1e-6; max_it = 100; lmbda = 1.0
-
-    counter = 0
-    tic()
-    while t <= T + 1e-8:
-        t += dt
-
-        if MPI.rank(mpi_comm_world()) == 0:
-            print "Solving for timestep %g" % t
-
-        pre_solve(**vars())
-        vars().update(domain_update(**vars()))
-        vars().update(Fluid_extrapolation(**vars()))
-        vars().update(Fluid_tentative(**vars()))
-
-        solid_residual_last = 1
-        solid_rel_res_last  = solid_residual_last
-
-        test = 0
-        while 3  > test:
-            vars().update(Fluid_correction(**vars()))
-            vars().update(Solid_momentum(**vars()))
-            d_["n"], w_["n"] = split(dw_["n"])
-            v_["n"], p_["n"] = split(vp_["n"])
-            test += 1
-            print "BIG ITERATION NUMBER %d" % test
-
-        times = ["n-2", "n-1", "n"]
-        for i, t_tmp in enumerate(times[:-1]):
-            vp_[t_tmp].vector().zero()
-            vp_[t_tmp].vector().axpy(1, vp_[times[i+1]].vector())
-            dw_[t_tmp].vector().zero()
-            dw_[t_tmp].vector().axpy(1, dw_[times[i+1]].vector())
-
-        vp_["tilde-1"].vector().zero()
-        vp_["tilde-1"].vector().axpy(1, vp_["tilde"].vector())
-
-        vars().update(after_solve(**vars()))
-        counter +=1
-
-    simtime = toc()
-    print "Total Simulation time %g" % simtime
-    #post_process(**vars())
+simtime = toc()
+print "Total Simulation time %g" % simtime
+#_, pp = vp_["n-1"].split(True)
+#plot(pp, interactive=True)
+#post_process(**vars())

@@ -26,7 +26,7 @@ def Fluid_tentative_variation(v_, p_, d_, vp_, v, \
 	F_tentative = rho_f/k*J_(d_["tilde"])*inner(v - v_["n-1"], psi)*dx_f
 
 	F_tentative += rho_f*inner(J_(d_["tilde"])*grad(v)*inv(F_(d_["tilde"])) \
-	             * (v_["tilde-1"]), psi)*dx_f
+	             * (v_["tilde-1"] - 1./k*(d_["tilde"] - d_["n-1"])), psi)*dx_f
 
 	F_tentative += J_(d_["tilde"])*inner(2*mu_f*eps(d_["tilde"], v), eps(d_["tilde"], psi))*dx_f
 
@@ -37,20 +37,11 @@ def Fluid_tentative_variation(v_, p_, d_, vp_, v, \
 def Fluid_correction_variation(v, p, v_, d_, vp_, dw_, psi, eta, dx_f, \
     mu_f, rho_f, k, dt, n, dS, **semimp_namespace):
 
-	F_correction = rho_f/k*inner(v - v_["tilde"], psi)*dx_f
+	# Pressure update
+	F_correction = rho_f/k*J_(d_["tilde"])*inner(v - v_["tilde"], psi)*dx_f
 	F_correction += J_(d_["tilde"])*inner(inv(F_(d_["tilde"])).T*grad(p), psi)*dx_f
 	#F_correction -= p*J_(d_["tilde"])*inner(inv(F_(d_["tilde"])).T, grad(psi))*dx_f
-	F_correction += inner(div(v_["n"]), eta)*dx_f
+	F_correction += inner(div(J_(d_["n"])*inv(F_(d_["n"]))*v), eta)*dx_f
 
-	# Pressure update
-	#F_correction = rho_f/k*J_(d_["tilde"])*inner(v - v_["tilde"], psi)*dx_f
-	#F_correction += J_(d_["tilde"])*inner(inv(F_(d_["tilde"])).T*grad(p), psi)*dx_f
-	#F_correction -= p*J_(d_["tilde"])*inner(inv(F_(d_["tilde"])).T, grad(psi))*dx_f
-	#F_correction += inner(div(J_(d_["n"])*inv(F_(d_["n"]))*v_["n"]), eta)*dx_f
-
-	#essure update
-	#F_correction = rho_f/k*J_(d_["tilde"])*inner(v - v_["tilde"], psi)*dx_f
-#	F_correction -= p*J_(d_["tilde"])*inner(inv(F_(d_["tilde"])).T, grad(psi))*dx_f
-	#F_correction += J_(d_["tilde"])*inner(grad(v), inv(F_(d_["tilde"])).T)*eta*dx_f
 
 	return dict(F_correction=F_correction)

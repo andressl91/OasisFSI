@@ -1,14 +1,6 @@
 from dolfin import *
 import numpy as np
-"""
-from Utils.argpar import *
 
-args = parse()
-v_deg = args.v_deg
-p_deg = args.p_deg
-d_deg = args.d_deg
-dt = args.dt
-"""
 mesh_file = Mesh("Mesh/fluid_new.xml")
 #mesh_file = refine(mesh_file)
 #Parameters for each numerical case
@@ -27,7 +19,7 @@ common = {"mesh": mesh_file,
           "D" : 0.1,
           "H" : 0.41,
           "L" : 2.5,
-          "step": 0 #Which timestep to store solution
+          "step": 1 #Which timestep to store solution
      }
 
 vars().update(common)
@@ -78,43 +70,91 @@ dis_y = []
 Drag_list = []
 Lift_list = []
 #Fluid properties
-U_in = 0.2
 class Inlet(Expression):
-	def __init__(self):
-		self.t = 0
-	def eval(self,value,x):
-		value[0] = 0.5*(1-np.cos(self.t*np.pi/2))*1.5*U_in*x[1]*(H-x[1])/((H/2.0)**2)
-		value[1] = 0
-	def value_shape(self):
-		return (2,)
+    def __init__(self, Um):
+        self.t = 0
+        self.Um = Um
+    def eval(self, value, x):
+      value[0] = 0.5*(1-np.cos(self.t*np.pi/2))*1.5*self.Um*x[1]*(H-x[1])/((H/2.0)**2)
+      value[1] = 0
+    def value_shape(self):
+      return (2,)
+inlet = Inlet(Um)
 
-def initiate(**monolithic):
-    return {}
+def initiate(v_deg, d_deg, p_deg, dt, theta, dw_, vp_, args, mesh_name, refi, **semimp_namespace):
+    exva = args.extravari
+    extype = args.extype
+    bitype = args.bitype
+    if args.extravari == "alfa":
+        path = "FSI_fresh_results/FSI-1/%(exva)s_%(extype)s/dt-%(dt)g_theta-%(theta)g/%(mesh_name)s_refine_%(refi)d_v_deg_%(v_deg)s_d_deg_%(d_deg)s_p_deg_%(p_deg)s" % vars()
+    if args.extravari == "biharmonic" or args.extravari == "laplace" or args.extravari == "elastic" or args.extravari == "biharmonic2":
+        path = "FSI_fresh_results/FSI-1/%(exva)s_%(bitype)s/dt-%(dt)g_theta-%(theta)g/%(mesh_name)s_refine_%(refi)d_v_deg_%(v_deg)s_d_deg_%(d_deg)s_p_deg_%(p_deg)s" % vars()
 
-def create_bcs(DVP, dvp_, n, k, Um, H, boundaries, Inlet, **semimp_namespace):
-    inlet = Inlet()
-    #Fluid velocity conditions
-    u_inlet  = DirichletBC(DVP.sub(1), inlet, boundaries, 3)
-    u_wall   = DirichletBC(DVP.sub(1), ((0.0, 0.0)), boundaries, 2)
-    u_circ   = DirichletBC(DVP.sub(1), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
-    u_barwall= DirichletBC(DVP.sub(1), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
+    u_file = XDMFFile(mpi_comm_world(), path + "/velocity.xdmf")
+    d_file = XDMFFile(mpi_comm_world(), path + "/d.xdmf")
+    p_file = XDMFFile(mpi_comm_world(), path + "/pressure.xdmf")
+    for tmp_t in [u_file, d_file, p_file]:
+        tmp_t.parameters["flush_output"] = True
+        tmp_t.parameters["multi_file"] = 0
+        tmp_t.parameters["rewrite_function_mesh"] = False
+    #d = dvp_["n-1"].sub(0, deepcopy=True)
+    d = dw_["n"].sub(0, deepcopy=True)
+    v = vp_["n"].sub(1, deepcopy=True)
+    p = vp_["n"].sub(0, deepcopy=True)
+    p_file.write(p)
+    d_file.write(d)
+    u_file.write(v)
+    #u_file << v
+    #d_file << d
 
-    #displacement conditions:
-    d_wall    = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 2)
-    d_inlet   = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 3)
-    d_outlet  = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 4)
-    d_circle  = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 6)
-    d_barwall = DirichletBC(DVP.sub(0), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
+    return dict(u_file=u_file, d_file=d_file, p_file=p_file, path=path)
 
-    #Pressure Conditions
-    p_out = DirichletBC(DVP.sub(2), 0, boundaries, 4)
+def create_bcs(dw_, d_, DW, VP, args, k, Um, H, boundaries, inlet, **semimp_namespace):
+    print "Create bcs"
+
+    wm_inlet  = DirichletBC(DW.sub(0), ((0.0, 0.0)), boundaries, 3)
+    wm_outlet = DirichletBC(DW.sub(0), ((0.0, 0.0)), boundaries, 4)
+    wm_wall   = DirichletBC(DW.sub(0), ((0.0, 0.0)), boundaries, 2)
+    wm_circ   = DirichletBC(DW.sub(0), ((0.0, 0.0)), boundaries, 6)
+    wm_bar    = DirichletBC(DW.sub(0).collapse(), d_["tilde"], boundaries, 5)
+    bcs_w = [wm_wall, wm_inlet, wm_outlet, wm_circ, wm_bar]
+
+    # Fluid tentative bcs
+    #d_tilde = dw_["tilde"].sub(0)
+    #d_n1 = dw_["n-1"].sub(0)
+    d_tilde = d_["tilde"]
+    d_n1 = d_["n-1"]
+    w_bar = 1./k*(d_tilde - d_n1)
+
+    u_inlet_t  = DirichletBC(VP.sub(0), inlet, boundaries, 3)
+    u_wall_t   = DirichletBC(VP.sub(0), ((0.0, 0.0)), boundaries, 2)
+    u_circ_t   = DirichletBC(VP.sub(0), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
+    u_bar_t    = DirichletBC(VP.sub(0).collapse(), w_bar, boundaries, 5) #No slip on geometry in fluid
+
+    bcs_tent = [u_wall_t, u_inlet_t, u_circ_t, u_bar_t]
+
+    #Fluid correction bcs
+    u_inlet  = DirichletBC(VP.sub(0), inlet, boundaries, 3)
+    u_wall   = DirichletBC(VP.sub(0), ((0.0, 0.0)), boundaries, 2)
+    u_circ   = DirichletBC(VP.sub(0), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
+
+    #p_outlet  = DirichletBC(VP.sub(1), -60, boundaries, 4)
+    p_outlet  = DirichletBC(VP.sub(1), (0.0), boundaries, 4)
 
     #Assemble boundary conditions
-    bcs = [u_inlet, u_wall, u_circ, u_barwall,\
-           d_wall, d_inlet, d_outlet, d_circle,d_barwall,\
-           p_out]
+    bcs_corr = [u_wall, u_inlet, u_circ, \
+                p_outlet]
 
-    return dict(bcs = bcs, inlet = inlet)
+    bcs_solid = []
+    #if DVP.num_sub_spaces() == 4:
+    if args.bitype == "bc1":
+        u_barwall= DirichletBC(DW.sub(1), ((0.0, 0.0)), boundaries, 7)
+        d_barwall = DirichletBC(DW.sub(0), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
+        for i in [d_barwall, u_barwall]:
+            bcs_solid.append(i)
+
+    return dict(bcs_tent=bcs_tent, bcs_w=bcs_w, bcs_corr=bcs_corr, \
+                bcs_solid=bcs_solid)
 
 def pre_solve(t, inlet, **semimp_namespace):
     if t < 2:
