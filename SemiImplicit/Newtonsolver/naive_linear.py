@@ -8,15 +8,15 @@ def solver_setup(F_extrapolate, F_tentative, F_correction, F_solid_linear, \
 
     a = lhs(F_extrapolate)
     A_extra = assemble(a, keep_diagonal=True)
-    #A_extra.ident_zeros()
+    A_extra.ident_zeros()
 
     a = lhs(F_tentative)
     A_tent = assemble(a, keep_diagonal=True)
-    #A_tent.ident_zeros()
+    A_tent.ident_zeros()
 
     a = lhs(F_correction)
     A_corr = assemble(a, keep_diagonal=True)
-    #A_corr.ident_zeros()
+    A_corr.ident_zeros()
     fluid_sol.set_operator(A_corr)
 
     chi = TrialFunction(DW)
@@ -38,7 +38,9 @@ def Fluid_extrapolation(F_extrapolate, A_extra, DW, dw_, vp_, bcs_w, mesh_file, 
     [bc.apply(A_extra, b) for bc in bcs_w]
 
     print "Solving fluid extrapolation"
+    # BC?
     solve(A_extra, dw_["tilde"].vector(), b)
+    #print dw_["tilde"].vector().array().max()
 
     #d = DVP.sub(0).dofmap().collapse(mesh_file)[1].values()
     #dvp_["n"].vector()[d] = w_f.vector()
@@ -123,6 +125,6 @@ def Solid_momentum(F_solid, Jac_solid, bcs_solid, vp_, \
             print "Newton iteration %d: r (atol) = %.8e (tol = %.3e), r (rel) = %.3e (tol = %.3e) " \
         % (Iter, solid_residual, atol, solid_rel_res, rtol)
         Iter += 1
-
+    #print norm(dw_["n"].sub(1, deepcopy=True))
     return dict(t=t, dw_=dw_, \
     solid_rel_res=solid_rel_res, solid_residual=solid_residual)

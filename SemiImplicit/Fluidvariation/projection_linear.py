@@ -45,8 +45,8 @@ def Fluid_correction_variation(v, p, v_, d_, vp_, dw_, psi, eta, dx_f, \
 	# Pressure update
 	F_correction = rho_f/k*J_(d_["tilde"])*inner(v - v_["tilde"], psi)*dx_f
 
-
-	#F_correction -= p*J_(d_["tilde"])*inner(inv(F_(d_["tilde"])).T, grad(psi))*dx_f
+	# This gives no pressure gradient thorugh the pipe
+	#F_correction -= J_(d_["tilde"])*inner(p*inv(F_(d_["tilde"])).T, grad(psi))*dx_f
 
 	# This gives good velocity profile but no press on flag
 	F_correction += J_(d_["tilde"])*inner(inv(F_(d_["tilde"])).T*grad(p), psi)*dx_f

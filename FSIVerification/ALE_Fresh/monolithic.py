@@ -43,7 +43,7 @@ n = FacetNormal(mesh_file)
 #nu = Constant(mu_f/rho_f)
 
 
-if args.extravari == "biharmonic":
+if args.extravari == "biharmonic" or args.extravari == "biharmonic2":
     print "Biharmonic"
     DVP = MixedFunctionSpace([D, V, P, D])
 
@@ -68,7 +68,7 @@ else :
 
     dvp_ = {}; d_ = {}; v_ = {}; p_ = {}
 
-    for time in ["n", "n-1", "n-2"]:
+    for time in ["n", "n-1", "n-2", "n-3"]:
         dvp = Function(DVP)
         dvp_[time] = dvp
         d, v, p = split(dvp)

@@ -27,6 +27,25 @@ common = {"mesh": mesh_file,
           "step": 1
      }
 
+common = {"mesh": mesh_file,
+           "v_deg": 2,    #Velocity degree
+           "p_deg": 1,    #Pressure degree
+           "d_deg": 2,    #Deformation degree
+           "T": 10.0,          # End time
+           "dt": 0.1,       # Time step
+           "rho_f": 1.0E3,    #
+           "mu_f": 1.0,
+           "rho_s" : Constant(1.0E3),
+           "mu_s" : Constant(0.5E6),
+           "nu_s" : Constant(0.4),
+           "Um" : 0.0,
+           "D" : 0.1,
+           "H" : 0.41,
+           "L" : 2.5,
+     	  "step" : 1,
+           "checkpoint": False
+           }
+
 #"checkpoint": "./FSI_fresh_checkpoints/FSI-1/P-2/dt-0.05/dvpFile.h5"
 vars().update(common)
 lamda_s = nu_s*2*mu_s/(1 - 2.*nu_s)
@@ -104,8 +123,9 @@ def initiate(v_deg, d_deg, p_deg, dt, theta, dw_, vp_, args, mesh_name, refi, **
 
     u_file = XDMFFile(mpi_comm_world(), path + "/velocity.xdmf")
     d_file = XDMFFile(mpi_comm_world(), path + "/d.xdmf")
+    dtilde_file = XDMFFile(mpi_comm_world(), path + "/d_tilde.xdmf")
     p_file = XDMFFile(mpi_comm_world(), path + "/pressure.xdmf")
-    for tmp_t in [u_file, d_file, p_file]:
+    for tmp_t in [u_file, d_file, p_file, dtilde_file]:
         tmp_t.parameters["flush_output"] = True
         tmp_t.parameters["multi_file"] = 0
         tmp_t.parameters["rewrite_function_mesh"] = False
@@ -119,7 +139,7 @@ def initiate(v_deg, d_deg, p_deg, dt, theta, dw_, vp_, args, mesh_name, refi, **
     u_file << v
     d_file << d
 
-    return dict(u_file=u_file, d_file=d_file, p_file=p_file, path=path)
+    return dict(u_file=u_file, d_file=d_file, p_file=p_file, dtilde_file=dtilde_file, path=path)
 
 def create_bcs(dw_, d_, DW, VP, args, k, Um, H, boundaries, inlet, **semimp_namespace):
     print "Create bcs"
@@ -151,7 +171,7 @@ def create_bcs(dw_, d_, DW, VP, args, k, Um, H, boundaries, inlet, **semimp_name
     u_circ   = DirichletBC(VP.sub(0), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
 
     #p_outlet  = DirichletBC(VP.sub(1), -60, boundaries, 4)
-    p_outlet  = DirichletBC(VP.sub(1), (1.0), boundaries, 4)
+    p_outlet  = DirichletBC(VP.sub(1), (0), boundaries, 4) #FIXME Her stod det 1
 
     #Assemble boundary conditions
     bcs_corr = [u_wall, u_inlet, u_circ, \
@@ -170,26 +190,32 @@ def create_bcs(dw_, d_, DW, VP, args, k, Um, H, boundaries, inlet, **semimp_name
 
 
 def pre_solve(vp_, n, ds, t, inlet, **semimp_namespace):
+    """
     if t < 2:
         inlet.t = t
     else:
         inlet.t = 2
-
+    """
+    inlet.t = 0
     #print "Pressure 1", assemble(vp_["n-1"].sub(1, deepcopy=True)*dS(5))
 
     return dict(inlet = inlet)
 
 
 def after_solve(t, P, dw_, vp_, n, coord,dis_x,dis_y,Drag_list,Lift_list, Det_list,\
-                counter, u_file,p_file,d_file, **semimp_namespace):
+                dtilde_file, counter, u_file,p_file,d_file, **semimp_namespace):
 
-    d = dw_["tilde"].sub(0, deepcopy=True)
+    d = dw_["n"].sub(0, deepcopy=True)
+    d_tilde = dw_["tilde"].sub(0, deepcopy=True)
     v = vp_["n"].sub(0, deepcopy=True)
     p = vp_["n"].sub(1, deepcopy=True)
+
+    print "After solve", norm(d)
     #d, v, p = dvp_["n"].split(True)
     if counter%step ==0:
         u_file << v
         d_file << d
+        dtilde_file << d_tilde
         p_file << p
         #p_file.write(p)
         #d.rename("d", "displacement")
@@ -210,6 +236,10 @@ def after_solve(t, P, dw_, vp_, n, coord,dis_x,dis_y,Drag_list,Lift_list, Det_li
         return -p*Identity(len(v)) + mu_f*(grad(v)*inv(F_(d)) + inv(F_(d)).T*grad(v).T)
         #return mu_f*(grad(v)*inv(F_(d)) + inv(F_(d)).T*grad(v).T)
 
+    def sigma_f(p, u, d, mu_f):
+        return  -p*Identity(len(u)) +\
+    	        mu_f*(grad(u)*inv(F_(d)) + inv(F_(d)).T*grad(u).T)
+
     #Det = project(J_(d), DVP.sub(0).collapse())
     #Det = project(J_(d), P)
     #Det_list.append((Det.vector().array()).min())
@@ -228,7 +258,14 @@ def after_solve(t, P, dw_, vp_, n, coord,dis_x,dis_y,Drag_list,Lift_list, Det_li
     Drag_list.append(Dr)
     Lift_list.append(Li)
     Time_list.append(t)
-
+    """
+    d = dw_["tilde"].sub(0)
+    u = vp_["tilde"].sub(0)
+    p = vp_["n"].sub(1)
+    print "FORCES TEST", assemble(J_(d("+")) * \
+    inner(sigma_f(p("+"),u("+"), d("+"), mu_f) \
+    , inv(F_(d("+"))).T)*dS(5))
+    """
     dsx = d(coord)[0]
     dsy = d(coord)[1]
     dis_x.append(dsx)

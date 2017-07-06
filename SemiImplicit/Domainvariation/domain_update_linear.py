@@ -11,7 +11,7 @@ def domain_update(DW, w_, d_, dw_,  k, dt, mesh_file, **semimp_namespace):
 
 	d_n.vector().zero()
 	d_n.vector().axpy(1, d_n1.vector() \
-	            + dt*(3./2*w_n1.vector() - 1./2*w_n2.vector()) )
+	            + dt*(3./2*w_n1.vector() - 1./2*w_n2.vector()))
 
 	d = DW.sub(0).dofmap().collapse(mesh_file)[1].values()
 	dw_["tilde"].vector()[d] = d_n.vector()

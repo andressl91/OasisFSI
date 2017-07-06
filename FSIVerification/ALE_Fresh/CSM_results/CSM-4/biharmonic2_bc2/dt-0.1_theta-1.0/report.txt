@@ -1,0 +1,11 @@
+CSM1 EXPERIMENT
+        T = 4
+dt = 0.1
+v_deg = 2
+v_deg = 2
+p_deg = 1
+
+    theta = 1.0
+f_vari = thetaCN
+s_vari = csm
+e_vari = biharmonic2

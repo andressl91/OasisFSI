@@ -36,14 +36,19 @@ def Structure_setup(d_, w_, v_, p_, phi, gamma, dS, n, mu_f, \
 				   - delta*inner(Constant(theta)*w_["n"] \
 				   + Constant(1 - theta)*w_["n-1"], gamma)*dx_s
 
-	F_solid_nonlinear = inner(Piola1(Constant(theta)*d_["n"] \
-	                  + Constant(1 - theta)*d_["n-1"], lamda_s, mu_s), grad(phi))*dx_s
+	F_solid_nonlinear = Constant(theta)*inner(Piola1(d_["n"], lamda_s, mu_s), grad(phi))*dx_s + \
+					  	Constant(1 - theta)*inner(Piola1(d_["n-1"], lamda_s, mu_s), grad(phi))*dx_s
 
+	F_solid_linear -= rho_s*inner(Constant((0, 10)), phi)*dx_s
+
+	"""
 	u = vp_["tilde"].sub(0)
 	p = vp_["n"].sub(1)
-	F_solid_nonlinear -= inner(J_(d_["tilde"]("+")) * \
-	sigma_f(p("+"),u("+"), d_["tilde"]("+"), mu_f) \
+	F_solid_nonlinear -= -inner(Piola1(d_["n"]("-"), lamda_s, mu_s)*n("+") +\
+	J_(d_["tilde"]("+"))*sigma_f(p("+"),u("+"), d_["tilde"]("+"), mu_f) \
 	*inv(F_(d_["tilde"]("+"))).T*n("+"), phi("+"))*dS(5)
+	"""
+
 	#Org
 	#F_solid_nonlinear -= inner(J_(d_["tilde"]("+")) * \
 	#sigma_f(p_["n"]("+"),v_["tilde"]("+"), d_["tilde"]("+"), mu_f) \

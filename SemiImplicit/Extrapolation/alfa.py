@@ -9,5 +9,4 @@ def extrapolate_setup(extype, mesh_file, d, w, phi, dx_f, **semimp_namespace):
     F_extrapolate = inner(grad(d), grad(phi))*dx_f \
                     - inner(Constant((0, 0)), phi)*dx_f
 
-
     return dict(F_extrapolate=F_extrapolate)

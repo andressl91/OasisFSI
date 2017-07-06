@@ -117,7 +117,7 @@ while t <= T + 1e-8:
     pre_solve(**vars())
     vars().update(domain_update(**vars()))
     # Including Fluid_extrapolation gives nan press and veloci
-    #vars().update(Fluid_extrapolation(**vars()))
+    vars().update(Fluid_extrapolation(**vars()))
     vars().update(Fluid_tentative(**vars()))
 
     solid_residual_last = 1
@@ -140,6 +140,7 @@ while t <= T + 1e-8:
 
     vp_["tilde-1"].vector().zero()
     vp_["tilde-1"].vector().axpy(1, vp_["tilde"].vector())
+    print norm(dw_["n"].sub(0, deepcopy=True))
 
     vars().update(after_solve(**vars()))
     counter +=1

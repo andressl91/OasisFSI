@@ -1,0 +1,12 @@
+FSI3 EXPERIMENT
+    T = 0.01
+dt = 0.001
+v_deg = 2
+v_deg = 2
+p_deg = 1
+
+theta = 1.0
+f_vari = semimp
+s_vari = semimp
+e_vari = laplace
+ time = 20.4391

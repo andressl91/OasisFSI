@@ -1,0 +1,12 @@
+FSI3 EXPERIMENT
+    T = 1
+dt = 0.5
+v_deg = 2
+v_deg = 2
+p_deg = 1
+
+theta = 1.0
+f_vari = thetaCN
+s_vari = thetaCN
+e_vari = donothing
+ time = 19.7161
