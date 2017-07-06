@@ -2,7 +2,6 @@ from dolfin import *
 import numpy as np
 import matplotlib.pyplot as plt
 
-
 refi = 0
 mesh_name = "base0"
 mesh_file = Mesh("Mesh/" + mesh_name +".xml")
@@ -19,7 +18,7 @@ common = {"mesh": mesh_file,
           "rho_s" : Constant(1.0E3),
           "mu_s" : Constant(0.5E6),
           "nu_s" : Constant(0.4),
-          "Um" : 0.2,
+          "Um" : 0,
           "D" : 0.1,
           "H" : 0.41,
           "L" : 2.5,
@@ -64,6 +63,8 @@ dS = Measure("dS", subdomain_data = boundaries)
 
 n = FacetNormal(mesh_file)
 
+body_force = Constant((0.0, 2.0))
+
 Bar_area = AutoSubDomain(lambda x: (0.19 <= x[1] <= 0.21) and 0.24<= x[0] <= 0.6) # only the "flag" or "bar"
 domains = CellFunction("size_t", mesh_file)
 domains.set_all(1)
@@ -78,8 +79,6 @@ Drag_list = []
 Lift_list = []
 Time_list = []
 Det_list = []
-
-body_force = Constant((0.0, 0.0))
 
 #Fluid properties
 

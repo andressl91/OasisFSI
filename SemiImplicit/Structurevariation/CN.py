@@ -21,7 +21,7 @@ def Piola1(U,lamda_s,mu_s):
 
 def sigma_f(p, u, d, mu_f):
     return  -p*Identity(len(u)) +\
-	        mu_f*(grad(u)*inv(F_(d)) + inv(F_(d)).T*grad(u).T)
+            mu_f*(grad(u)*inv(F_(d)) + inv(F_(d)).T*grad(u).T)
 
 def Structure_setup(d_, w_, v_, p_, phi, gamma, dS, n, mu_f, \
             vp_, dx_s, mu_s, rho_s, lamda_s, k, mesh_file, theta, **semimp_namespace):
@@ -32,22 +32,22 @@ def Structure_setup(d_, w_, v_, p_, phi, gamma, dS, n, mu_f, \
 
 
 	F_solid_linear = rho_s/k*inner(w_["n"] - w_["n-1"], phi)*dx_s \
-	               + delta*(1./k)*inner(d_["n"] - d_["n-1"], gamma)*dx_s \
-				   - delta*inner(Constant(theta)*w_["n"] \
-				   + Constant(1 - theta)*w_["n-1"], gamma)*dx_s
+                   + delta*(1./k)*inner(d_["n"] - d_["n-1"], gamma)*dx_s \
+                   - delta*inner(Constant(theta)*w_["n"] \
+                   + Constant(1 - theta)*w_["n-1"], gamma)*dx_s
 
 	F_solid_nonlinear = Constant(theta)*inner(Piola1(d_["n"], lamda_s, mu_s), grad(phi))*dx_s + \
-					  	Constant(1 - theta)*inner(Piola1(d_["n-1"], lamda_s, mu_s), grad(phi))*dx_s
+                        Constant(1 - theta)*inner(Piola1(d_["n-1"], lamda_s, mu_s), grad(phi))*dx_s
 
-	F_solid_linear -= rho_s*inner(Constant((0, 10)), phi)*dx_s
+	F_solid_linear -= rho_s*inner(body_force, phi)*dx_s
 
-	"""
+	#"""
 	u = vp_["tilde"].sub(0)
 	p = vp_["n"].sub(1)
 	F_solid_nonlinear -= -inner(Piola1(d_["n"]("-"), lamda_s, mu_s)*n("+") +\
 	J_(d_["tilde"]("+"))*sigma_f(p("+"),u("+"), d_["tilde"]("+"), mu_f) \
 	*inv(F_(d_["tilde"]("+"))).T*n("+"), phi("+"))*dS(5)
-	"""
+	#"""
 
 	#Org
 	#F_solid_nonlinear -= inner(J_(d_["tilde"]("+")) * \
