@@ -24,6 +24,7 @@ def newtonsolver(F, J_nonlinear, A_pre, A, b, bcs, \
     residual   = 1
     rel_res    = residual
     lmbda = 1
+    last_res = rel_res
 
     while rel_res > rtol and residual > atol and Iter < max_it:
         if Iter % 5  == 0 or last_res > rel_res:
