@@ -140,7 +140,6 @@ while t <= T + 1e-8:
 
     vp_["tilde-1"].vector().zero()
     vp_["tilde-1"].vector().axpy(1, vp_["tilde"].vector())
-    print norm(dw_["n"].sub(0, deepcopy=True))
 
     vars().update(after_solve(**vars()))
     counter +=1

@@ -27,7 +27,8 @@ def solver_setup(F_extrapolate, F_tentative, F_correction, F_solid_linear, \
     return dict(A_extra=A_extra, A_tent=A_tent, A_corr=A_corr, \
     Jac_solid=Jac_solid, fluid_sol=fluid_sol, F_solid=F_solid)
 
-def Fluid_extrapolation(F_extrapolate, A_extra, DW, dw_, vp_, bcs_w, mesh_file, \
+
+def Fluid_extrapolation(F_extrapolate, A_extra, DW, dw_, vp_, d_, bcs_w, mesh_file, \
                         k, **semimp_namespace):
     #a = lhs(F_extrapolate)
     #A_extra = assemble(a, keep_diagonal=True)
@@ -38,14 +39,13 @@ def Fluid_extrapolation(F_extrapolate, A_extra, DW, dw_, vp_, bcs_w, mesh_file, 
     [bc.apply(A_extra, b) for bc in bcs_w]
 
     print "Solving fluid extrapolation"
-    # BC?
     solve(A_extra, dw_["tilde"].vector(), b)
-    #print dw_["tilde"].vector().array().max()
 
     #d = DVP.sub(0).dofmap().collapse(mesh_file)[1].values()
     #dvp_["n"].vector()[d] = w_f.vector()
 
     return dict(dw_=dw_)
+
 
 def Fluid_tentative(F_tentative, A_tent, VP, vp_, bcs_tent, \
      v_sol, mesh_file, **semimp_namespace):
@@ -114,7 +114,6 @@ def Solid_momentum(F_solid, Jac_solid, bcs_solid, vp_, \
 
         [bc.apply(A, b, dw_["n"].vector()) for bc in bcs_solid]
         solid_sol.solve(dw_res.vector(), b)
-
 
         dw_["n"].vector().axpy(lmbda, dw_res.vector())
         [bc.apply(dw_["n"].vector()) for bc in bcs_solid]
