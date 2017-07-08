@@ -31,7 +31,6 @@ for coord in mesh.coordinates():
         print coord
         break
 # BOUNDARIES
-plot(mesh, interactive=True)
 Left = AutoSubDomain(lambda x: "on_boundary" and near(x[0],0))
 
 Allboundaries = DomainBoundary()
