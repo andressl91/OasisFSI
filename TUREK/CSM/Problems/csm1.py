@@ -27,12 +27,10 @@ vars().update(common)
 lamda_s = nu_s*2*mu_s/(1 - 2.*nu_s)
 #plot(mesh, interactive=True)
 for coord in mesh.coordinates():
-    if coord[0]==0.35 and (0.00999<=coord[1]<=0.1001): # to get the point [0.2,0.6] end of bar
+    if coord[0]==0.35 and (0.00999<=coord[1]<=0.011): # to get the point [0.2,0.6] end of bar
         print coord
         break
-# BOUNDARIES
 
-#NOS = AutoSubDomain(lambda x: "on_boundary" and( near(x[1],0) or near(x[1], 0.41)))
 Left = AutoSubDomain(lambda x: "on_boundary" and near(x[0],0))
 
 Allboundaries = DomainBoundary()
@@ -41,9 +39,6 @@ boundaries = FacetFunction("size_t",mesh_file)
 boundaries.set_all(0)
 Allboundaries.mark(boundaries, 1)
 Left.mark(boundaries, 2)
-
-#plot(boundaries, interactive=True)
-
 
 ds = Measure("ds", subdomain_data = boundaries)
 dS = Measure("dS", subdomain_data = boundaries)

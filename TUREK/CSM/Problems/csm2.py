@@ -27,12 +27,11 @@ vars().update(common)
 lamda_s = nu_s*2*mu_s/(1 - 2.*nu_s)
 #plot(mesh, interactive=True)
 for coord in mesh.coordinates():
-    if coord[0]==0.35 and (0.00999<=coord[1]<=0.1001): # to get the point [0.2,0.6] end of bar
+    if coord[0]==0.35 and (0.00999<=coord[1]<=0.011): # to get the point [0.2,0.6] end of bar
         print coord
         break
 # BOUNDARIES
-
-#NOS = AutoSubDomain(lambda x: "on_boundary" and( near(x[1],0) or near(x[1], 0.41)))
+plot(mesh, interactive=True)
 Left = AutoSubDomain(lambda x: "on_boundary" and near(x[0],0))
 
 Allboundaries = DomainBoundary()
@@ -91,15 +90,6 @@ def after_solve(t, path, dv_, n,coord,dis_x,dis_y, \
 
     d = dv_["n"].sub(0, deepcopy=True)
     v = dv_["n"].sub(1, deepcopy=True)
-    #if counter%step ==0:
-#        u_file << v
-#        d_file << d
-        #p_file << p
-        #p_file.write(p)
-        #d_file.write(d)
-        #u_file.write(v)
-        #dv_file << dv_["n"]
-        #dv_file.write(dv_["n"], "dv%g"%t)
 
     Time_list.append(t)
     dsx = d(coord)[0]

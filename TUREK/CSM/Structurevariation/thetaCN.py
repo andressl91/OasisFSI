@@ -25,12 +25,12 @@ def structure_setup(d_, v_, phi, psi, n, rho_s, \
 	delta = 1E10
 
 	F_solid_linear = rho_s/k*inner(v_["n"] - v_["n-1"], psi)*dx \
-	               + delta*(1/k)*inner(d_["n"] - d_["n-1"], phi)*dx \
+	               + delta*(1.0/k)*inner(d_["n"] - d_["n-1"], phi)*dx \
 					   - delta*inner(Constant(theta)*v_["n"] + Constant(1 - theta)*v_["n-1"], phi)*dx
 
 	gravity = Constant((0, -2*rho_s))
 	F_solid_linear -= inner(gravity, psi)*dx
 
-	F_solid_nonlinear = inner(Piola1(Constant(theta)*d_["n"] + Constant(1 - theta)*d_["n-1"], lamda_s, mu_s), grad(psi))*dx
-
+	F_solid_nonlinear = Constant(theta)*inner(Piola1(d_["n"], lamda_s, mu_s), grad(psi))*dx +\
+	Constant(1 - theta)*inner(Piola1(d_["n-1"], lamda_s, mu_s), grad(psi))*dx
 	return dict(F_solid_linear = F_solid_linear, F_solid_nonlinear = F_solid_nonlinear)

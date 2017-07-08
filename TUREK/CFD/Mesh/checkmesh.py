@@ -7,8 +7,8 @@ mesh4 = Mesh("./base3.xml")
 
 
 for i in [mesh1, mesh2, mesh3, mesh4]:
-    V = VectorFunctionSpace(i, "CG", 2)
-    P = FunctionSpace(i, "CG", 1)
+    V = VectorFunctionSpace(i, "CG", 3)
+    P = FunctionSpace(i, "CG", 2)
     W = V*P
     i.init()
     tet_inds = [cell.index() for cell in cells(i)]
