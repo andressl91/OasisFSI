@@ -36,7 +36,7 @@ def newtonsolver(F, J_nonlinear, J_linear, A_pre, A, b, bcs, \
             #form_compiler_parameters = {"quadrature_degree": 4}, \
             #keep_diagonal = True)
             # FIX ASSEMBLE MED HEL JACOBI
-            A = assemble(J_nonlinear + J_linear, tensor=A, keep_diagonal = True)
+            A = assemble(J_nonlinear, tensor=A, keep_diagonal = True)
 
             A.axpy(1.0, A_pre, True)
             A.ident_zeros()
