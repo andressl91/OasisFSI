@@ -1,7 +1,0 @@
-CSM-1 EXPERIMENT
-        T = 6
-dt = 0.1
-v_deg = 2
-v_deg = 2
-
-        theta = 1.0

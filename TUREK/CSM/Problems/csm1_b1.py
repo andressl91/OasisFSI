@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 
-mesh_name = "base0"
+mesh_name = "base1"
 mesh_file = Mesh("Mesh/" + mesh_name +".xml")
 #mesh_file = refine(mesh_file)
 #Parameters for each numerical case

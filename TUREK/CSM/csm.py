@@ -68,6 +68,13 @@ vars().update(solver_setup(**vars()))
 vars().update(initiate(**vars()))
 vars().update(create_bcs(**vars()))
 
+dummy_file = XDMFFile(mpi_comm_world(), path + "/dummy.xdmf")
+for tmp_t in [dummy_file]:
+    tmp_t.parameters["flush_output"] = True
+    tmp_t.parameters["multi_file"] = 0
+    tmp_t.parameters["rewrite_function_mesh"] = False
+
+
 atol = 1e-6; rtol = 1e-6; max_it = 100; lmbda = 1.0
 
 dv_res = Function(VV)

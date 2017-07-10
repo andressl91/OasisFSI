@@ -30,13 +30,13 @@ def newtonsolver(F, J_nonlinear, J_linear, A_pre, A, b, bcs, \
 
     while rel_res > rtol and residual > atol and Iter < max_it:
 
-        if Iter % 3  == 0 or (last_rel_res < rel_res and last_residual < residual):
+        if Iter % 1  == 0 or (last_rel_res < rel_res and last_residual < residual):
             print "assebmling new JAC"
-            #A = assemble(J_nonlinear, tensor=A, \
-            #form_compiler_parameters = {"quadrature_degree": 4}, \
-            #keep_diagonal = True)
+            A = assemble(J_nonlinear, tensor=A, \
+            form_compiler_parameters = {"quadrature_degree": 4}, \
+            keep_diagonal = True)
             # FIX ASSEMBLE MED HEL JACOBI
-            A = assemble(J_nonlinear, tensor=A, keep_diagonal = True)
+            #A = assemble(J_nonlinear, tensor=A, keep_diagonal = True)
 
             A.axpy(1.0, A_pre, True)
             A.ident_zeros()

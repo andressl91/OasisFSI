@@ -3,13 +3,12 @@ from dolfin import *
 mesh1 = Mesh("./base0.xml")
 mesh2 = Mesh("./base1.xml")
 mesh3 = Mesh("./base2.xml")
-mesh4 = Mesh("./base3.xml")
+#mesh4 = Mesh("./base3.xml")
 
 
-for i in [mesh1, mesh2, mesh3, mesh4]:
+for i in [mesh1, mesh2, mesh3]:
     V = VectorFunctionSpace(i, "CG", 3)
-    P = FunctionSpace(i, "CG", 2)
-    W = V*P
+    W = V*V
     i.init()
     tet_inds = [cell.index() for cell in cells(i)]
     facet_inds = [facet.index() for facet in facets(i)]

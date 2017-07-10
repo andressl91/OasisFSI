@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 
-mesh_name = "base0"
+mesh_name = "base1"
 mesh_file = Mesh("Mesh/" + mesh_name +".xml")
 #mesh_file = refine(mesh_file)
 #Parameters for each numerical case
@@ -48,14 +48,18 @@ Time_list = []
 dis_x = []
 dis_y = []
 
-dv_file=HDF5File(mpi_comm_world(), "FSI_fresh_checkpoints/CSM-2/P-"+str(v_deg)+"/dt-"+str(dt)+"/dummy.h5", "w")
-
 def initiate(t, T, args, mesh_file, mesh_name, \
             d_deg, v_deg, dt, dv_, Time_list,**semimp_namespace):
 
     theta = args.theta
-    path = "FSI_fresh_results/CSM-1/dt-%(dt)g_theta-%(theta)g/%(mesh_name)s_d_deg_%(d_deg)s_v_deg_%(v_deg)s" % vars()
-    dummy_file=HDF5File(mpi_comm_world(), path + "/dummy.h5", "w")
+    path = "FSI_fresh_results/CSM-3/dt-%(dt)g_theta-%(theta)g/%(mesh_name)s_d_deg_%(d_deg)s_v_deg_%(v_deg)s" % vars()
+    u_file = XDMFFile(mpi_comm_world(), path + "/v.xdmf")
+    d_file = XDMFFile(mpi_comm_world(), path + "/d.xdmf")
+    for tmp_t in [u_file, d_file]:
+        tmp_t.parameters["flush_output"] = True
+        tmp_t.parameters["multi_file"] = 0
+        tmp_t.parameters["rewrite_function_mesh"] = False
+
     d = dv_["n"].sub(0, deepcopy=True)
     Time_list.append(t)
     dsx = d(coord)[0]
@@ -63,7 +67,7 @@ def initiate(t, T, args, mesh_file, mesh_name, \
     dis_x.append(dsx)
     dis_y.append(dsy)
 
-    return dict(path=path)
+    return dict(path=path, u_file=u_file, d_file=d_file)
 
 def create_bcs(VV, dv_,boundaries,  **semimp_namespace):
 
@@ -82,19 +86,16 @@ def pre_solve(**semimp_namespace):
 
 
 def after_solve(t, path, dv_, n,coord,dis_x,dis_y, \
-                counter, **semimp_namespace):
+                d_file, u_file, counter, **semimp_namespace):
 
     d = dv_["n"].sub(0, deepcopy=True)
     v = dv_["n"].sub(1, deepcopy=True)
-    #if counter%step ==0:
-#        u_file << v
-#        d_file << d
-        #p_file << p
-        #p_file.write(p)
+    if counter%step ==0:
+        u_file << v
+        d_file << d
+
         #d_file.write(d)
         #u_file.write(v)
-        #dv_file << dv_["n"]
-        #dv_file.write(dv_["n"], "dv%g"%t)
 
     Time_list.append(t)
     dsx = d(coord)[0]
@@ -114,7 +115,7 @@ def post_process(path,T,dt, dis_x,dis_y, Time_list,\
     if MPI.rank(mpi_comm_world()) == 0:
 
         f = open(path+"/report.txt", 'w')
-        f.write("""CSM-1 EXPERIMENT
+        f.write("""CSM-3 EXPERIMENT
         T = %(T)g\ndt = %(dt)g\nv_deg = %(d_deg)g\nv_deg = %(v_deg)g\n
         theta = %(theta)s\n""" % vars())
         #f.write("""Runtime = %f """ % fintime)
