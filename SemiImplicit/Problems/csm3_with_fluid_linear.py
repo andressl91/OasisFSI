@@ -112,14 +112,14 @@ def initiate(v_deg, d_deg, p_deg, dt, theta, dw_, vp_, args, mesh_name, refi, **
         tmp_t.parameters["multi_file"] = 0
         tmp_t.parameters["rewrite_function_mesh"] = False
     #d = dvp_["n-1"].sub(0, deepcopy=True)
-    d = dw_["n"].sub(0, deepcopy=True)
-    v = vp_["n"].sub(0, deepcopy=True)
-    p = vp_["n"].sub(1, deepcopy=True)
+    #d = dw_["n"].sub(0, deepcopy=True)
+    #v = vp_["n"].sub(0, deepcopy=True)
+    #p = vp_["n"].sub(1, deepcopy=True)
     #p_file.write(p)
     #d_file.write(d)
     #u_file.write(v)
-    u_file.write(v)
-    d_file.write(d)
+    #u_file.write(v)
+    #d_file.write(d)
 
     return dict(u_file=u_file, d_file=d_file, p_file=p_file, dtilde_file=dtilde_file, path=path)
 

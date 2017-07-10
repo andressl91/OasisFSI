@@ -2,7 +2,6 @@ from dolfin import *
 import numpy as np
 import matplotlib.pyplot as plt
 
-
 refi = 0
 mesh_name = "base0"
 mesh_file = Mesh("Mesh/" + mesh_name +".xml")
@@ -105,66 +104,77 @@ def initiate(v_deg, d_deg, p_deg, dt, theta, dw_, vp_, args, mesh_name, refi, **
         path = "FSI_fresh_results/FSI-1/%(exva)s_%(bitype)s/dt-%(dt)g_theta-%(theta)g/%(mesh_name)s_refine_%(refi)d_v_deg_%(v_deg)s_d_deg_%(d_deg)s_p_deg_%(p_deg)s" % vars()
 
     u_file = XDMFFile(mpi_comm_world(), path + "/velocity.xdmf")
+    v_tilde_file = XDMFFile(mpi_comm_world(), path + "/velocity_tilde.xdmf")
     d_file = XDMFFile(mpi_comm_world(), path + "/d.xdmf")
     dtilde_file = XDMFFile(mpi_comm_world(), path + "/d_tilde.xdmf")
     p_file = XDMFFile(mpi_comm_world(), path + "/pressure.xdmf")
-    for tmp_t in [u_file, d_file, p_file, dtilde_file]:
+    for tmp_t in [u_file, d_file, p_file, dtilde_file, v_tilde_file]:
         tmp_t.parameters["flush_output"] = True
         tmp_t.parameters["multi_file"] = 0
         tmp_t.parameters["rewrite_function_mesh"] = False
     #d = dvp_["n-1"].sub(0, deepcopy=True)
-    d = dw_["n"].sub(0, deepcopy=True)
-    v = vp_["n"].sub(0, deepcopy=True)
-    p = vp_["n"].sub(1, deepcopy=True)
+    #d = dw_["n"].sub(0, deepcopy=True)
+    #v = vp_["n"].sub(0, deepcopy=True)
+    #p = vp_["n"].sub(1, deepcopy=True)
     #p_file.write(p)
     #d_file.write(d)
     #u_file.write(v)
-    u_file.write(v)
-    d_file.write(d)
+    #u_file.write(v)
+    #d_file.write(d)
 
-    return dict(u_file=u_file, d_file=d_file, p_file=p_file, dtilde_file=dtilde_file, path=path)
+    return dict(u_file=u_file, d_file=d_file, p_file=p_file, dtilde_file=dtilde_file,
+                v_tilde_file=v_tilde_file, path=path)
 
 def create_bcs(dw_, d_, DW, VP, args, k, Um, H, boundaries, inlet, **semimp_namespace):
     print "Create bcs"
 
-    wm_inlet  = DirichletBC(DW.sub(0), ((0.0, 0.0)), boundaries, 3)
-    wm_outlet = DirichletBC(DW.sub(0), ((0.0, 0.0)), boundaries, 4)
-    wm_wall   = DirichletBC(DW.sub(0), ((0.0, 0.0)), boundaries, 2)
-    wm_circ   = DirichletBC(DW.sub(0), ((0.0, 0.0)), boundaries, 6)
+    noslip = ((0.0, 0.0))
+    wm_inlet  = DirichletBC(DW.sub(0), noslip, boundaries, 3)
+    wm_outlet = DirichletBC(DW.sub(0), noslip, boundaries, 4)
+    wm_wall   = DirichletBC(DW.sub(0), noslip, boundaries, 2)
+    wm_circ   = DirichletBC(DW.sub(0), noslip, boundaries, 6)
     wm_bar    = DirichletBC(DW.sub(0), dw_["tilde"].sub(0), boundaries, 5)
     bcs_w = [wm_wall, wm_inlet, wm_outlet, wm_circ, wm_bar]
 
     # Fluid tentative bcs
-    #d_tilde = dw_["tilde"].sub(0)
-    #d_n1 = dw_["n-1"].sub(0)
-    d_tilde = d_["tilde"]
-    d_n1 = d_["n-1"]
+    d_tilde = dw_["tilde"].sub(0)
+    d_n1 = dw_["n-1"].sub(0)
+    #d_tilde = d_["tilde"]
+    #d_n1 = d_["n-1"]
     w_bar = 1./k*(d_tilde - d_n1)
+    #from IPython import embed
+    #embed()
+
+    #class w_bar(Expression):
+    #    def eval(self, value, x):
+    #        value[:] = (dw_["tilde"].sub(0)(x) - dw_["n-1"].sub(0)(x))/k
+
+    #    def value_shape(self):
+    #        return (2,)
 
     u_inlet_t  = DirichletBC(VP.sub(0).collapse(), inlet, boundaries, 3)
-    u_wall_t   = DirichletBC(VP.sub(0).collapse(), ((0.0, 0.0)), boundaries, 2)
-    u_circ_t   = DirichletBC(VP.sub(0).collapse(), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
-    u_bar_t    = DirichletBC(VP.sub(0).collapse(), w_bar, boundaries, 5) #No slip on geometry in fluid
+    u_wall_t   = DirichletBC(VP.sub(0).collapse(), noslip, boundaries, 2)
+    u_circ_t   = DirichletBC(VP.sub(0).collapse(), noslip, boundaries, 6)
+    u_bar_t    = DirichletBC(VP.sub(0).collapse(), w_bar, boundaries, 5)
 
     bcs_tent = [u_wall_t, u_inlet_t, u_circ_t, u_bar_t]
 
     #Fluid correction bcs
     u_inlet  = DirichletBC(VP.sub(0), inlet, boundaries, 3)
-    u_wall   = DirichletBC(VP.sub(0), ((0.0, 0.0)), boundaries, 2)
-    u_circ   = DirichletBC(VP.sub(0), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
+    u_wall   = DirichletBC(VP.sub(0), noslip, boundaries, 2)
+    u_circ   = DirichletBC(VP.sub(0), noslip, boundaries, 6) #No slip on geometry in fluid
+    u_bar = DirichletBC(VP.sub(0), noslip, boundaries, 5)
 
-    #p_outlet  = DirichletBC(VP.sub(1), -60, boundaries, 4)
-    p_outlet  = DirichletBC(VP.sub(1), (0), boundaries, 4) #FIXME Her stod det 1
+    p_outlet  = DirichletBC(VP.sub(1), (0), boundaries, 4)
 
     #Assemble boundary conditions
-    bcs_corr = [u_wall, u_inlet, u_circ, \
-                p_outlet]
+    bcs_corr = [u_wall, u_inlet, u_circ, p_outlet]
 
     bcs_solid = []
     #if DVP.num_sub_spaces() == 4:
     if args.bitype == "bc1":
-        u_barwall= DirichletBC(DW.sub(1), ((0.0, 0.0)), boundaries, 7)
-        d_barwall = DirichletBC(DW.sub(0), ((0.0, 0.0)), boundaries, 7) #No slip on geometry in fluid
+        u_barwall= DirichletBC(DW.sub(1), noslip, boundaries, 7)
+        d_barwall = DirichletBC(DW.sub(0), noslip, boundaries, 7) #No slip on geometry in fluid
         for i in [d_barwall, u_barwall]:
             bcs_solid.append(i)
 
@@ -182,12 +192,13 @@ def pre_solve(vp_, n, ds, t, inlet, **semimp_namespace):
     return dict(inlet = inlet)
 
 
-def after_solve(t, P, dw_, vp_, n, coord,dis_x,dis_y,Drag_list,Lift_list, Det_list,\
-                dtilde_file, counter, u_file,p_file,d_file, **semimp_namespace):
+def after_solve(t, P, dw_, vp_, n, coord, dis_x, dis_y, Drag_list, Lift_list, Det_list,\
+                dtilde_file, counter, u_file, p_file, d_file, v_tilde_file, **semimp_namespace):
 
     d = dw_["n"].sub(0, deepcopy=True)
     d_tilde = dw_["tilde"].sub(0, deepcopy=True)
     v = vp_["n"].sub(0, deepcopy=True)
+    v_tilde = vp_["tilde"].sub(0, deepcopy=True)
     p = vp_["n"].sub(1, deepcopy=True)
 
     #d, v, p = dvp_["n"].split(True)
@@ -195,6 +206,7 @@ def after_solve(t, P, dw_, vp_, n, coord,dis_x,dis_y,Drag_list,Lift_list, Det_li
         u_file.write(v)
         d_file.write(d)
         dtilde_file.write(d_tilde)
+        v_tilde_file.write(v_tilde)
         p_file.write(p)
         #p_file.write(p)
         #d.rename("d", "displacement")

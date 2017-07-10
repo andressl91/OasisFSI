@@ -67,7 +67,13 @@ for time in ["n", "n-1", "n-2", "tilde", "tilde-1"]:
     v_[time] = v
     p_[time] = p
 
-#TrialFunction and TestFunctions Fluid
+# Test: Functions for tentativ fluid step
+v_n1 = Function(V)
+v_tent_n1 = Function(V)
+d_n1 = Function(V)
+d_tent = Function(V)
+
+# TrialFunction and TestFunctions Fluid
 v, p = TrialFunctions(VP)
 psi, eta = TestFunctions(VP)
 
@@ -116,6 +122,7 @@ while t <= T + 1e-8:
 
     pre_solve(**vars())
     vars().update(domain_update(**vars()))
+    assign(d_tent, dw_["tilde"].sub(0))
     # Including Fluid_extrapolation gives nan press and veloci
     vars().update(Fluid_extrapolation(**vars()))
     vars().update(Fluid_tentative(**vars()))
@@ -140,6 +147,14 @@ while t <= T + 1e-8:
 
     vp_["tilde-1"].vector().zero()
     vp_["tilde-1"].vector().axpy(1, vp_["tilde"].vector())
+
+    assign(v_n1, vp_["n"].sub(0))
+    assign(v_tent_n1, vp_["tilde"].sub(0))
+    assign(d_n1, dw_["n"].sub(0))
+
+    print "v_n1", v_n1.vector().array().max()
+    print "v_tent_n1", v_tent_n1.vector().array().max()
+    print "w", ((d_tent.vector().array() - d_n1.vector().array()) / dt).max()
 
     vars().update(after_solve(**vars()))
     counter +=1

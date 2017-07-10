@@ -23,7 +23,7 @@ def sigma_f(p, u, d, mu_f):
     return  -p*Identity(len(u)) +\
             mu_f*(grad(u)*inv(F_(d)) + inv(F_(d)).T*grad(u).T)
 
-def Structure_setup(d_, w_, v_, p_, phi, gamma, dS, n, mu_f, \
+def Structure_setup(d_, w_, v_, p_, phi, gamma, dS, n, mu_f, body_force, \
             vp_, dx_s, mu_s, rho_s, lamda_s, k, mesh_file, theta, **semimp_namespace):
 
 	delta = 1E10

@@ -39,7 +39,9 @@ def Fluid_extrapolation(F_extrapolate, A_extra, DW, dw_, vp_, d_, bcs_w, mesh_fi
     [bc.apply(A_extra, b) for bc in bcs_w]
 
     print "Solving fluid extrapolation"
+    print "Before solve", dw_["tilde"].vector().array().max()
     solve(A_extra, dw_["tilde"].vector(), b)
+    print "After solve", dw_["tilde"].vector().array().max()
 
     #d = DVP.sub(0).dofmap().collapse(mesh_file)[1].values()
     #dvp_["n"].vector()[d] = w_f.vector()
@@ -60,7 +62,9 @@ def Fluid_tentative(F_tentative, A_tent, VP, vp_, bcs_tent, \
     [bc.apply(A_tent, b) for bc in bcs_tent]
 
     print "Solving tentative velocity"
+    print "u_tent, before", v_sol.vector().array().max()
     solve(A_tent, v_sol.vector(), b)
+    print "u_tent, after", v_sol.vector().array().max()
 
     tr = VP.sub(0).dofmap().collapse(mesh_file)[1].values()
     vp_["tilde"].vector()[tr] = v_sol.vector()

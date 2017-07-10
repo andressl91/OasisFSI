@@ -18,22 +18,24 @@ def D_U(d, v):
     return 1./2*grad(v)*inv(F_(d))
 
 def Fluid_tentative_variation(v_tent, v_, p_, d_, dw_, vp_, v, \
-    beta, dx_f, mu_f, rho_f, k, dt, **semimp_namespace):
+    beta, dx_f, mu_f, rho_f, k, dt, v_n1, v_tent_n1, d_n1, d_tent, **semimp_namespace):
 
 	#Reuse of TrialFunction w, TestFunction psi
 	#used in extrapolation assuming same degree
 
-	v_n1 = vp_["n-1"].sub(0, deepcopy=True)
-	v_tilde_n1 = vp_["tilde-1"].sub(0, deepcopy=True)
-	d_n1 = dw_["n-1"].sub(0, deepcopy=True)
-	d_tilde = dw_["tilde"].sub(0, deepcopy=True)
+    # FIXME: v_n1 is always zero as it is never updated, deepcopy!!
+	#v_n1 = vp_["n-1"].sub(0) #, deepcopy=True)
+	#v_tilde_n1 = vp_["tilde-1"].sub(0) #, deepcopy=True)
+	#d_n1 = dw_["n-1"].sub(0) #, deepcopy=True)
+	#d_tilde = dw_["tilde"].sub(0) #, deepcopy=True)
 
-	F_tentative = rho_f/k*J_(d_tilde)*inner(v_tent - v_n1, beta)*dx_f
+	F_tentative = rho_f/k*J_(d_tent)*inner(v_tent - v_n1, beta)*dx_f
 
-	F_tentative += rho_f*inner(J_(d_tilde)*grad(v_tent)*inv(F_(d_tilde)) \
-	             * (v_tilde_n1 - 1./k*(d_tilde - d_n1)), beta)*dx_f
+	F_tentative += rho_f*inner(J_(d_tent)*grad(v_tent)*inv(F_(d_tent)) \
+                            * (v_tent_n1 - 1./k*(d_tent - d_n1)), beta)*dx_f
 
-	F_tentative += J_(d_tilde)*inner(2*mu_f*eps(d_tilde, v_tent), eps(d_tilde, beta))*dx_f
+	F_tentative += J_(d_tent)*inner(2*mu_f*eps(d_tent, v_tent),
+                                  eps(d_tent, beta))*dx_f
 
 	F_tentative -= inner(Constant((0, 0)), beta)*dx_f
 
@@ -46,10 +48,10 @@ def Fluid_correction_variation(v, p, v_, d_, vp_, dw_, psi, eta, dx_f, \
 	F_correction = rho_f/k*J_(d_["tilde"])*inner(v - v_["tilde"], psi)*dx_f
 
 	# This gives no pressure gradient thorugh the pipe
-	#F_correction -= J_(d_["tilde"])*inner(p*inv(F_(d_["tilde"])).T, grad(psi))*dx_f
+	F_correction -= J_(d_["tilde"])*inner(p*inv(F_(d_["tilde"])).T, grad(psi))*dx_f
 
-	# This gives good velocity profile but no press on flag
-	F_correction += J_(d_["tilde"])*inner(inv(F_(d_["tilde"])).T*grad(p), psi)*dx_f
+	# This makes the simulation diverge
+    #F_correction += J_(d_["tilde"])*inner(inv(F_(d_["tilde"])).T*grad(p), psi)*dx_f
 
 	F_correction += inner(div(J_(d_["tilde"])*inv(F_(d_["tilde"]))*v), eta)*dx_f
 
