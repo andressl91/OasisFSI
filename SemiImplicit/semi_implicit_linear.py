@@ -38,8 +38,10 @@ k = Constant(dt)
 n = FacetNormal(mesh_file)
 
 # Domains
-D = VectorFunctionSpace(mesh_file, "CG", d_deg)
-V = VectorFunctionSpace(mesh_file, "CG", v_deg)
+
+V = D = VectorFunctionSpace(mesh_file, "CG", d_deg)
+if d_deg != v_deg:
+    V = VectorFunctionSpace(mesh_file, "CG", v_deg)
 P = FunctionSpace(mesh_file, "CG", p_deg)
 
 # Structure Mixedspace
@@ -66,12 +68,6 @@ for time in ["n", "n-1", "n-2", "tilde", "tilde-1"]:
 
     v_[time] = v
     p_[time] = p
-
-# Test: Functions for tentativ fluid step
-v_n1 = Function(V)
-v_tent_n1 = Function(V)
-d_n1 = Function(V)
-d_tent = Function(V)
 
 # TrialFunction and TestFunctions Fluid
 v, p = TrialFunctions(VP)
@@ -122,7 +118,7 @@ while t <= T + 1e-8:
 
     pre_solve(**vars())
     vars().update(domain_update(**vars()))
-    assign(d_tent, dw_["tilde"].sub(0))
+
     # Including Fluid_extrapolation gives nan press and veloci
     vars().update(Fluid_extrapolation(**vars()))
     vars().update(Fluid_tentative(**vars()))
@@ -137,6 +133,7 @@ while t <= T + 1e-8:
 
         test += 1
         print "BIG ITERATION NUMBER %d" % test
+        # FIXME: d and p needs to be updated with this loop
 
     times = ["n-2", "n-1", "n"]
     for i, t_tmp in enumerate(times[:-1]):
@@ -147,14 +144,6 @@ while t <= T + 1e-8:
 
     vp_["tilde-1"].vector().zero()
     vp_["tilde-1"].vector().axpy(1, vp_["tilde"].vector())
-
-    assign(v_n1, vp_["n"].sub(0))
-    assign(v_tent_n1, vp_["tilde"].sub(0))
-    assign(d_n1, dw_["n"].sub(0))
-
-    print "v_n1", v_n1.vector().array().max()
-    print "v_tent_n1", v_tent_n1.vector().array().max()
-    print "w", ((d_tent.vector().array() - d_n1.vector().array()) / dt).max()
 
     vars().update(after_solve(**vars()))
     counter +=1

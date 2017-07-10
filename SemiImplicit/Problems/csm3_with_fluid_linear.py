@@ -58,8 +58,8 @@ Circle.mark(boundaries, 6)
 Barwall.mark(boundaries, 7)
 #plot(boundaries,interactive=True)
 
-ds = Measure("ds", subdomain_data = boundaries)
-dS = Measure("dS", subdomain_data = boundaries)
+ds2 = Measure("ds", subdomain_data = boundaries)
+dS2 = Measure("dS", subdomain_data = boundaries)
 
 n = FacetNormal(mesh_file)
 
@@ -153,7 +153,7 @@ def create_bcs(dw_, d_, DW, VP, args, k, Um, H, boundaries, inlet, **semimp_name
     u_circ   = DirichletBC(VP.sub(0), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
 
     #p_outlet  = DirichletBC(VP.sub(1), -60, boundaries, 4)
-    p_outlet  = DirichletBC(VP.sub(1), (0), boundaries, 4) #FIXME Her stod det 1
+    p_outlet  = DirichletBC(VP.sub(1), (0), boundaries, 4)
 
     #Assemble boundary conditions
     bcs_corr = [u_wall, u_inlet, u_circ, \
@@ -176,7 +176,6 @@ def pre_solve(vp_, n, ds, t, inlet, **semimp_namespace):
         inlet.t = t
     else:
         inlet.t = 2
-    #print "Pressure 1", assemble(vp_["n-1"].sub(1, deepcopy=True)*dS(5))
 
     return dict(inlet = inlet)
 
@@ -228,10 +227,10 @@ def after_solve(t, P, dw_, vp_, n, coord,dis_x,dis_y,Drag_list,Lift_list, Det_li
     Dr += -assemble((sigma_f_new(v("-"),p("-"),d("-"),mu_f)*n("-"))[0]*dS(5))
     Li += -assemble((sigma_f_new(v("-"),p("-"),d("-"),mu_f)*n("-"))[1]*dS(5))
     """
-    Dr = -assemble((sigma_f_new(v,p,d,mu_f)*n)[0]*ds(6))
-    Li = -assemble((sigma_f_new(v,p,d,mu_f)*n)[1]*ds(6))
-    Dr += -assemble((sigma_f_new(v("+"),p("+"),d("+"),mu_f)*n("+"))[0]*dS(5))
-    Li += -assemble((sigma_f_new(v("+"),p("+"),d("+"),mu_f)*n("+"))[1]*dS(5))
+    Dr = -assemble((sigma_f_new(v,p,d,mu_f)*n)[0]*ds2(6))
+    Li = -assemble((sigma_f_new(v,p,d,mu_f)*n)[1]*ds2(6))
+    Dr += -assemble((sigma_f_new(v("+"),p("+"),d("+"),mu_f)*n("+"))[0]*dS2(5))
+    Li += -assemble((sigma_f_new(v("+"),p("+"),d("+"),mu_f)*n("+"))[1]*dS2(5))
     #print "INTEGRAL", assemble(n("+")[1]*dS(5))
     Drag_list.append(Dr)
     Lift_list.append(Li)

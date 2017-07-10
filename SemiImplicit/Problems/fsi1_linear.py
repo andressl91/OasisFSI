@@ -47,7 +47,7 @@ Barwall =  AutoSubDomain(lambda x: "on_boundary" and (( (x[0] - 0.2)*(x[0] - 0.2
 
 Allboundaries = DomainBoundary()
 
-boundaries = FacetFunction("size_t",mesh_file)
+boundaries = FacetFunction("size_t", mesh_file)
 boundaries.set_all(0)
 Allboundaries.mark(boundaries, 1)
 Wall.mark(boundaries, 2)
@@ -58,8 +58,8 @@ Circle.mark(boundaries, 6)
 Barwall.mark(boundaries, 7)
 #plot(boundaries,interactive=True)
 
-ds = Measure("ds", subdomain_data = boundaries)
-dS = Measure("dS", subdomain_data = boundaries)
+ds2 = Measure("ds", subdomain_data = boundaries)
+dS2 = Measure("dS", subdomain_data = boundaries)
 
 n = FacetNormal(mesh_file)
 
@@ -126,6 +126,7 @@ def initiate(v_deg, d_deg, p_deg, dt, theta, dw_, vp_, args, mesh_name, refi, **
                 v_tilde_file=v_tilde_file, path=path)
 
 def create_bcs(dw_, d_, DW, VP, args, k, Um, H, boundaries, inlet, **semimp_namespace):
+    # d_bc_n, d_bc_n1
     print "Create bcs"
 
     noslip = ((0.0, 0.0))
@@ -139,31 +140,20 @@ def create_bcs(dw_, d_, DW, VP, args, k, Um, H, boundaries, inlet, **semimp_name
     # Fluid tentative bcs
     d_tilde = dw_["tilde"].sub(0)
     d_n1 = dw_["n-1"].sub(0)
-    #d_tilde = d_["tilde"]
-    #d_n1 = d_["n-1"]
-    w_bar = 1./k*(d_tilde - d_n1)
-    #from IPython import embed
-    #embed()
+    w_bar_t = 1./k*(d_tilde - d_n1)
 
-    #class w_bar(Expression):
-    #    def eval(self, value, x):
-    #        value[:] = (dw_["tilde"].sub(0)(x) - dw_["n-1"].sub(0)(x))/k
-
-    #    def value_shape(self):
-    #        return (2,)
-
+    # Can be collaped since we are only solving for V
     u_inlet_t  = DirichletBC(VP.sub(0).collapse(), inlet, boundaries, 3)
     u_wall_t   = DirichletBC(VP.sub(0).collapse(), noslip, boundaries, 2)
     u_circ_t   = DirichletBC(VP.sub(0).collapse(), noslip, boundaries, 6)
-    u_bar_t    = DirichletBC(VP.sub(0).collapse(), w_bar, boundaries, 5)
+    u_bar_t    = DirichletBC(VP.sub(0).collapse(), w_bar_t, boundaries, 5)
 
     bcs_tent = [u_wall_t, u_inlet_t, u_circ_t, u_bar_t]
 
-    #Fluid correction bcs
+    # Fluid correction bcs, can not be collapsed
     u_inlet  = DirichletBC(VP.sub(0), inlet, boundaries, 3)
     u_wall   = DirichletBC(VP.sub(0), noslip, boundaries, 2)
     u_circ   = DirichletBC(VP.sub(0), noslip, boundaries, 6) #No slip on geometry in fluid
-    u_bar = DirichletBC(VP.sub(0), noslip, boundaries, 5)
 
     p_outlet  = DirichletBC(VP.sub(1), (0), boundaries, 4)
 
@@ -193,7 +183,8 @@ def pre_solve(vp_, n, ds, t, inlet, **semimp_namespace):
 
 
 def after_solve(t, P, dw_, vp_, n, coord, dis_x, dis_y, Drag_list, Lift_list, Det_list,\
-                dtilde_file, counter, u_file, p_file, d_file, v_tilde_file, **semimp_namespace):
+                dtilde_file, counter, u_file, p_file, d_file, v_tilde_file,
+                d_, **semimp_namespace):
 
     d = dw_["n"].sub(0, deepcopy=True)
     d_tilde = dw_["tilde"].sub(0, deepcopy=True)
@@ -235,28 +226,15 @@ def after_solve(t, P, dw_, vp_, n, coord, dis_x, dis_y, Drag_list, Lift_list, De
     #Det = project(J_(d), P)
     #Det_list.append((Det.vector().array()).min())
 
-    """
-    Dr = -assemble((sigma_f_new(v,p,d,mu_f)*n)[0]*ds(6))
-    Li = -assemble((sigma_f_new(v,p,d,mu_f)*n)[1]*ds(6))
-    Dr += -assemble((sigma_f_new(v("-"),p("-"),d("-"),mu_f)*n("-"))[0]*dS(5))
-    Li += -assemble((sigma_f_new(v("-"),p("-"),d("-"),mu_f)*n("-"))[1]*dS(5))
-    """
-    Dr = -assemble((sigma_f_new(v,p,d,mu_f)*n)[0]*ds(6))
-    Li = -assemble((sigma_f_new(v,p,d,mu_f)*n)[1]*ds(6))
-    Dr += -assemble((sigma_f_new(v("+"),p("+"),d("+"),mu_f)*n("+"))[0]*dS(5))
-    Li += -assemble((sigma_f_new(v("+"),p("+"),d("+"),mu_f)*n("+"))[1]*dS(5))
-    #print "INTEGRAL", assemble(n("+")[1]*dS(5))
+    Dr = -assemble((sigma_f_new(v,p,d,mu_f)*n)[0]*ds2(6))
+    Li = -assemble((sigma_f_new(v,p,d,mu_f)*n)[1]*ds2(6))
+    Dr += -assemble((sigma_f_new(v("+"),p("+"),d("+"),mu_f)*n("+"))[0]*dS2(5))
+    Li += -assemble((sigma_f_new(v("+"),p("+"),d("+"),mu_f)*n("+"))[1]*dS2(5))
+
     Drag_list.append(Dr)
     Lift_list.append(Li)
     Time_list.append(t)
-    """
-    d = dw_["tilde"].sub(0)
-    u = vp_["tilde"].sub(0)
-    p = vp_["n"].sub(1)
-    print "FORCES TEST", assemble(J_(d("+")) * \
-    inner(sigma_f(p("+"),u("+"), d("+"), mu_f) \
-    , inv(F_(d("+"))).T)*dS(5))
-    """
+
     dsx = d(coord)[0]
     dsy = d(coord)[1]
     dis_x.append(dsx)
