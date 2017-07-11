@@ -67,10 +67,11 @@ Bar_area = AutoSubDomain(lambda x: (0.19 <= x[1] <= 0.21) and 0.24<= x[0] <= 0.6
 domains = CellFunction("size_t", mesh_file)
 domains.set_all(1)
 Bar_area.mark(domains, 2) #Overwrites structure domain
+
 dx = Measure("dx", subdomain_data = domains)
-#plot(domains,interactive = True)
 dx_f = dx(1, subdomain_data = domains)
 dx_s = dx(2, subdomain_data = domains)
+
 dis_x = []
 dis_y = []
 Drag_list = []
@@ -94,7 +95,7 @@ class Inlet(Expression):
 
 inlet = Inlet(Um)
 
-def initiate(v_deg, d_deg, p_deg, dt, theta, dw_, vp_, args, mesh_name, refi, **semimp_namespace):
+def initiate(v_deg, V, d_deg, p_deg, dt, theta, dw_, vp_, args, mesh_name, refi, **semimp_namespace):
     exva = args.extravari
     extype = args.extype
     bitype = args.bitype
@@ -108,24 +109,17 @@ def initiate(v_deg, d_deg, p_deg, dt, theta, dw_, vp_, args, mesh_name, refi, **
     d_file = XDMFFile(mpi_comm_world(), path + "/d.xdmf")
     dtilde_file = XDMFFile(mpi_comm_world(), path + "/d_tilde.xdmf")
     p_file = XDMFFile(mpi_comm_world(), path + "/pressure.xdmf")
-    for tmp_t in [u_file, d_file, p_file, dtilde_file, v_tilde_file]:
+    w_file = XDMFFile(mpi_comm_world(), path + "/mesh_velocity.xdmf")
+    for tmp_t in [u_file, d_file, p_file, dtilde_file, v_tilde_file, w_file]:
         tmp_t.parameters["flush_output"] = True
         tmp_t.parameters["multi_file"] = 0
         tmp_t.parameters["rewrite_function_mesh"] = False
-    #d = dvp_["n-1"].sub(0, deepcopy=True)
-    #d = dw_["n"].sub(0, deepcopy=True)
-    #v = vp_["n"].sub(0, deepcopy=True)
-    #p = vp_["n"].sub(1, deepcopy=True)
-    #p_file.write(p)
-    #d_file.write(d)
-    #u_file.write(v)
-    #u_file.write(v)
-    #d_file.write(d)
 
+    w = Function(V)
     return dict(u_file=u_file, d_file=d_file, p_file=p_file, dtilde_file=dtilde_file,
-                v_tilde_file=v_tilde_file, path=path)
+                v_tilde_file=v_tilde_file, w_file=w_file, path=path, w=w)
 
-def create_bcs(dw_, d_, DW, VP, args, k, Um, H, boundaries, inlet, **semimp_namespace):
+def create_bcs(dw_, d_, DW, V, VP, args, k, Um, H, boundaries, inlet, dt, **semimp_namespace):
     # d_bc_n, d_bc_n1
     print "Create bcs"
 
@@ -138,27 +132,59 @@ def create_bcs(dw_, d_, DW, VP, args, k, Um, H, boundaries, inlet, **semimp_name
     bcs_w = [wm_wall, wm_inlet, wm_outlet, wm_circ, wm_bar]
 
     # Fluid tentative bcs
-    d_tilde = dw_["tilde"].sub(0)
-    d_n1 = dw_["n-1"].sub(0)
-    w_bar_t = 1./k*(d_tilde - d_n1)
+    #d_tilde = dw_["tilde"].sub(0)
+    #d_n1 = dw_["n-1"].sub(0)
+    #w_bar_t = (d_tilde - d_n1) / k
 
+    class W_bar(Expression):
+        def eval(self, value, x):
+            value[:] = (dw_["tilde"].sub(0)(x) - dw_["n-1"].sub(0)(x)) / dt
+            #if x[0] == 0.6 and x[1] == 0.2:
+            #    print value, x
+
+        def value_shape(self):
+            return (2, )
+
+    class W_bar2(Expression):
+        def eval(self, value, x):
+            value[:] = (dw_["n"].sub(0)(x) - dw_["n-1"].sub(0)(x)) / dt
+            #if x[0] == 0.6 and x[1] == 0.2:
+            #    print value, x
+
+        def value_shape(self):
+            return (2, )
+
+
+    #class W_bar(Expression):
+    #    def eval(self, value, x):
+    #        value[:] = (dw_["tilde"].sub(0)(x) - dw_["n-1"].sub(0)(x)) / k * n
+    #        #if x[0] == 0.6 and x[1] == 0.2:
+    #        #    print value, x
+    #
+    #    def value_shape(self):
+    #        return (2, )
+
+
+    w_bar = W_bar()
+    w_bar2 = W_bar2()
     # Can be collaped since we are only solving for V
-    u_inlet_t  = DirichletBC(VP.sub(0).collapse(), inlet, boundaries, 3)
-    u_wall_t   = DirichletBC(VP.sub(0).collapse(), noslip, boundaries, 2)
-    u_circ_t   = DirichletBC(VP.sub(0).collapse(), noslip, boundaries, 6)
-    u_bar_t    = DirichletBC(VP.sub(0).collapse(), w_bar_t, boundaries, 5)
+    u_inlet_t = DirichletBC(V, inlet, boundaries, 3)
+    u_wall_t = DirichletBC(V, noslip, boundaries, 2)
+    u_circ_t = DirichletBC(V, noslip, boundaries, 6)
+    u_bar_t = DirichletBC(V, w_bar, boundaries, 5)
 
     bcs_tent = [u_wall_t, u_inlet_t, u_circ_t, u_bar_t]
 
     # Fluid correction bcs, can not be collapsed
-    u_inlet  = DirichletBC(VP.sub(0), inlet, boundaries, 3)
-    u_wall   = DirichletBC(VP.sub(0), noslip, boundaries, 2)
-    u_circ   = DirichletBC(VP.sub(0), noslip, boundaries, 6) #No slip on geometry in fluid
+    u_inlet = DirichletBC(VP.sub(0), inlet, boundaries, 3)
+    u_wall = DirichletBC(VP.sub(0), noslip, boundaries, 2)
+    u_circ = DirichletBC(VP.sub(0), noslip, boundaries, 6)
+    u_bar = DirichletBC(VP.sub(0), w_bar2, boundaries, 5)
 
     p_outlet  = DirichletBC(VP.sub(1), (0), boundaries, 4)
 
     #Assemble boundary conditions
-    bcs_corr = [u_wall, u_inlet, u_circ, p_outlet]
+    bcs_corr = [u_wall, u_inlet, u_circ, p_outlet, u_bar]
 
     bcs_solid = []
     #if DVP.num_sub_spaces() == 4:
@@ -172,41 +198,38 @@ def create_bcs(dw_, d_, DW, VP, args, k, Um, H, boundaries, inlet, **semimp_name
                 bcs_solid=bcs_solid)
 
 
-def pre_solve(vp_, n, ds, t, inlet, **semimp_namespace):
+def pre_solve(vp_, t, inlet, **semimp_namespace):
     if t < 2:
         inlet.t = t
     else:
         inlet.t = 2
-    #print "Pressure 1", assemble(vp_["n-1"].sub(1, deepcopy=True)*dS(5))
 
     return dict(inlet = inlet)
 
 
 def after_solve(t, P, dw_, vp_, n, coord, dis_x, dis_y, Drag_list, Lift_list, Det_list,\
                 dtilde_file, counter, u_file, p_file, d_file, v_tilde_file,
-                d_, **semimp_namespace):
+                d_, w_file, w, dt, **semimp_namespace):
 
     d = dw_["n"].sub(0, deepcopy=True)
+    d_n1 = dw_["n-1"].sub(0, deepcopy=True)
     d_tilde = dw_["tilde"].sub(0, deepcopy=True)
     v = vp_["n"].sub(0, deepcopy=True)
     v_tilde = vp_["tilde"].sub(0, deepcopy=True)
     p = vp_["n"].sub(1, deepcopy=True)
 
-    #d, v, p = dvp_["n"].split(True)
+    w.vector().zero()
+    w.vector().axpy(1, d_tilde.vector())
+    w.vector().axpy(-1, d_n1.vector())
+    w.vector()[:] = w.vector()[:] / dt
+
     if counter%step ==0:
         u_file.write(v)
         d_file.write(d)
         dtilde_file.write(d_tilde)
         v_tilde_file.write(v_tilde)
         p_file.write(p)
-        #p_file.write(p)
-        #d.rename("d", "displacement")
-        #v.rename("v", "velocity")
-        #d_file.write(d)
-        #u_file.write(v)
-        #p_file.write(p)
-        #dvp_file << dvp_["n"]
-        #dvp_file.write(dvp_["n"], "dvp%g"%t)
+        w_file.write(w)
 
     def F_(U):
         return (Identity(len(U)) + grad(U))
@@ -216,7 +239,6 @@ def after_solve(t, P, dw_, vp_, n, coord, dis_x, dis_y, Drag_list, Lift_list, De
 
     def sigma_f_new(v, p, d, mu_f):
         return -p*Identity(len(v)) + mu_f*(grad(v)*inv(F_(d)) + inv(F_(d)).T*grad(v).T)
-        #return mu_f*(grad(v)*inv(F_(d)) + inv(F_(d)).T*grad(v).T)
 
     def sigma_f(p, u, d, mu_f):
         return  -p*Identity(len(u)) +\

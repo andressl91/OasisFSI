@@ -20,7 +20,7 @@ def solver_setup(F_extrapolate, F_tentative, F_correction, F_solid_linear, \
     F_solid = F_solid_linear + F_solid_nonlinear
     chi = TrialFunction(DW)
     Jac_solid = derivative(F_solid, dw_["n"], chi)
-    solid_sol.parameters['reuse_factorization'] = True
+    #solid_sol.parameters['reuse_factorization'] = True
 
     return dict(A_extra=A_extra, A_tent=A_tent, A_corr=A_corr, \
     Jac_solid=Jac_solid, fluid_sol=fluid_sol, F_solid=F_solid)
@@ -58,7 +58,9 @@ def Fluid_tentative(F_tentative, A_tent, VP, vp_, bcs_tent, \
     [bc.apply(A_tent, b) for bc in bcs_tent]
 
     print "Solving tentative velocity"
+    print "Tentative velocity", v_sol.vector().array().max()
     solve(A_tent, v_sol.vector(), b)
+    print "Tentative velocity", v_sol.vector().array().max()
 
     tr = VP.sub(0).dofmap().collapse(mesh_file)[1].values()
     vp_["tilde"].vector()[tr] = v_sol.vector()

@@ -127,13 +127,13 @@ while t <= T + 1e-8:
     solid_rel_res_last  = solid_residual_last
 
     test = 0
-    while 1 > test:
+    w_test = Function(V)
+    while 3 > test:
         vars().update(Fluid_correction(**vars()))
         vars().update(Solid_momentum(**vars()))
 
         test += 1
         print "BIG ITERATION NUMBER %d" % test
-        # FIXME: d and p needs to be updated with this loop
 
     times = ["n-2", "n-1", "n"]
     for i, t_tmp in enumerate(times[:-1]):
@@ -144,6 +144,15 @@ while t <= T + 1e-8:
 
     vp_["tilde-1"].vector().zero()
     vp_["tilde-1"].vector().axpy(1, vp_["tilde"].vector())
+
+    # Check velocity of the structure
+    d_tilde = dw_["tilde"].sub(0, deepcopy=1)
+    d_n1 = dw_["n-1"].sub(0, deepcopy=1)
+    w_test.vector().zero()
+    w_test.vector().axpy(1, d_tilde.vector())
+    w_test.vector().axpy(-1, d_n1.vector())
+    w_test.vector()[:] = w_test.vector()[:] / dt
+    print "w_test", w_test.vector().array().max()
 
     vars().update(after_solve(**vars()))
     counter +=1

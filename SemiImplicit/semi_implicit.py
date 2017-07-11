@@ -109,7 +109,7 @@ while t <= T + 1e-8:
 
     test = 0
     print "BEFORE IT", norm(dvp_["n"].sub(2), "l2")
-    while 5  > test:
+    while 5  < test:
         vars().update(Fluid_correction(**vars()))
         vars().update(Solid_momentum(**vars()))
         print "IT = %d" % test, norm(dvp_["n"].sub(2), "l2")
@@ -119,8 +119,8 @@ while t <= T + 1e-8:
 
     times = ["n-2", "n-1", "n"]
     for i, t_tmp in enumerate(times[:-1]):
-    	dvp_[t_tmp].vector().zero()
-    	dvp_[t_tmp].vector().axpy(1, dvp_[times[i+1]].vector())
+        dvp_[t_tmp].vector().zero()
+        dvp_[t_tmp].vector().axpy(1, dvp_[times[i+1]].vector())
 
     vars().update(after_solve(**vars()))
     counter +=1

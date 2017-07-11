@@ -63,7 +63,7 @@ dS2 = Measure("dS", subdomain_data = boundaries)
 
 n = FacetNormal(mesh_file)
 
-body_force = Constant((0.0, 2.0))
+body_force = Constant((0.0, -2.0))
 
 Bar_area = AutoSubDomain(lambda x: (0.19 <= x[1] <= 0.21) and 0.24<= x[0] <= 0.6) # only the "flag" or "bar"
 domains = CellFunction("size_t", mesh_file)
@@ -134,16 +134,14 @@ def create_bcs(dw_, d_, DW, VP, args, k, Um, H, boundaries, inlet, **semimp_name
     bcs_w = [wm_wall, wm_inlet, wm_outlet, wm_circ, wm_bar]
 
     # Fluid tentative bcs
-    #d_tilde = dw_["tilde"].sub(0)
-    #d_n1 = dw_["n-1"].sub(0)
     d_tilde = d_["tilde"]
     d_n1 = d_["n-1"]
     w_bar = 1./k*(d_tilde - d_n1)
 
     u_inlet_t  = DirichletBC(VP.sub(0).collapse(), inlet, boundaries, 3)
     u_wall_t   = DirichletBC(VP.sub(0).collapse(), ((0.0, 0.0)), boundaries, 2)
-    u_circ_t   = DirichletBC(VP.sub(0).collapse(), ((0.0, 0.0)), boundaries, 6) #No slip on geometry in fluid
-    u_bar_t    = DirichletBC(VP.sub(0).collapse(), w_bar, boundaries, 5) #No slip on geometry in fluid
+    u_circ_t   = DirichletBC(VP.sub(0).collapse(), ((0.0, 0.0)), boundaries, 6)
+    u_bar_t    = DirichletBC(VP.sub(0).collapse(), w_bar, boundaries, 5)
 
     bcs_tent = [u_wall_t, u_inlet_t, u_circ_t, u_bar_t]
 

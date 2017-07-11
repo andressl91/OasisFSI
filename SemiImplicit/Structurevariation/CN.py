@@ -34,7 +34,7 @@ def Structure_setup(d_, w_, v_, p_, phi, gamma, dS2, n, mu_f, body_force, \
 
     delta = 1E10
     #theta = 1.0
-    theta = 0.5
+    theta = 1
 
     F_solid_linear = rho_s/k*inner(w_["n"] - w_["n-1"], phi)*dx_s \
                    + delta*(1./k)*inner(d_["n"] - d_["n-1"], gamma)*dx_s \
@@ -49,8 +49,9 @@ def Structure_setup(d_, w_, v_, p_, phi, gamma, dS2, n, mu_f, body_force, \
 
     u = vp_["tilde"].sub(0)
     p = vp_["n"].sub(1)
-    F_solid_nonlinear += inner(Piola1(d_["n"]("-"), lamda_s, mu_s)*n("+") -\
-                        J_(d_["tilde"]("+"))*sigma_f(p("+"), u("+"), d_["tilde"]("+"), mu_f) \
-                        *inv(F_(d_["tilde"]("+"))).T*n("+"), phi("+"))*dS2(5)
+    F_solid_nonlinear -= inner( \
+                         #Piola1(d_["n"]("-"), lamda_s, mu_s)*n("+") -\
+                         J_(d_["tilde"]("+"))*sigma_f(p("+"), u("+"), d_["tilde"]("+"), mu_f) \
+                         *inv(F_(d_["tilde"]("+"))).T*n("+"), phi("+"))*dS2(5)
 
     return dict(F_solid_linear=F_solid_linear, F_solid_nonlinear=F_solid_nonlinear)
