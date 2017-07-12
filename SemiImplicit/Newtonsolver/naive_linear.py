@@ -42,7 +42,7 @@ def Fluid_extrapolation(F_extrapolate, A_extra, DW, dw_, vp_, d_, bcs_w, mesh_fi
     #d = DVP.sub(0).dofmap().collapse(mesh_file)[1].values()
     #dvp_["n"].vector()[d] = w_f.vector()
 
-    return dict(dw_=dw_)
+    return {} #dict(dw_=dw_)
 
 
 def Fluid_tentative(F_tentative, A_tent, VP, vp_, bcs_tent, \
@@ -58,14 +58,12 @@ def Fluid_tentative(F_tentative, A_tent, VP, vp_, bcs_tent, \
     [bc.apply(A_tent, b) for bc in bcs_tent]
 
     print "Solving tentative velocity"
-    print "Tentative velocity", v_sol.vector().array().max()
     solve(A_tent, v_sol.vector(), b)
-    print "Tentative velocity", v_sol.vector().array().max()
 
     tr = VP.sub(0).dofmap().collapse(mesh_file)[1].values()
     vp_["tilde"].vector()[tr] = v_sol.vector()
 
-    return dict(vp_=vp_)
+    return {} #dict(vp_=vp_)
 
 
 def Fluid_correction(mesh_file, VP, A_corr, F_correction, bcs_corr, \
@@ -81,7 +79,7 @@ def Fluid_correction(mesh_file, VP, A_corr, F_correction, bcs_corr, \
     print "Solving correction velocity"
     solve(A_corr, vp_["n"].vector(), b)
 
-    return dict(t=t, vp_=vp_)
+    return {} #dict(t=t, vp_=vp_)
 
 
 def Solid_momentum(F_solid, Jac_solid, bcs_solid, vp_, \
@@ -125,4 +123,4 @@ def Solid_momentum(F_solid, Jac_solid, bcs_solid, vp_, \
         % (Iter, solid_residual, atol, solid_rel_res, rtol)
         Iter += 1
     #print norm(dw_["n"].sub(1, deepcopy=True))
-    return dict(t=t, dw_=dw_, solid_rel_res=solid_rel_res, solid_residual=solid_residual)
+    return {} #dict(t=t, dw_=dw_, solid_rel_res=solid_rel_res, solid_residual=solid_residual)

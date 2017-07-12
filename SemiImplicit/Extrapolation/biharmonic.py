@@ -6,10 +6,10 @@ MPI, mpi_comm_world
 
 def extrapolate_setup(F_fluid_linear, extype, mesh_file, d_, w_, phi, gamma, beta, dx_f, **semimp_namespace):
     def F_(U):
-    	return Identity(len(U)) + grad(U)
+        return Identity(len(U)) + grad(U)
 
     def J_(U):
-    	return det(F_(U))
+        return det(F_(U))
 
     alfa_u = 0.01
     F_ext1 = alfa_u*inner(w_["n"], beta)*dx_f - alfa_u*inner(grad(d_["n"]), grad(beta))*dx_f

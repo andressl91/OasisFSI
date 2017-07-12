@@ -3,6 +3,8 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 
+# TODO: There should not be any global variable in this file
+
 refi = 0
 mesh_name = "base0"
 mesh_file = Mesh("Mesh/" + mesh_name +".xml")
@@ -96,19 +98,20 @@ class Inlet(Expression):
 
 inlet = Inlet(Um)
 
-def initiate(v_deg, V, d_deg, p_deg, dt, theta, dw_, vp_, args, mesh_name, refi, **semimp_namespace):
+def initiate(v_deg, V, d_deg, p_deg, dt, theta, vpd_, args, mesh_name, refi, **semimp_namespace):
+    # Set path based on solver parameters
     exva = args.extravari
     extype = args.extype
     bitype = args.bitype
-    if args.extravari == "alfa":
-        path = "FSI_fresh_results/FSI-1/%(exva)s_%(extype)s/dt-%(dt)g_theta-%(theta)g/%(mesh_name)s_refine_%(refi)d_v_deg_%(v_deg)s_d_deg_%(d_deg)s_p_deg_%(p_deg)s" % vars()
-    if args.extravari == "biharmonic" or args.extravari == "laplace" or args.extravari == "elastic" or args.extravari == "biharmonic2":
-        path = "FSI_fresh_results/FSI-1/%(exva)s_%(bitype)s/dt-%(dt)g_theta-%(theta)g/%(mesh_name)s_refine_%(refi)d_v_deg_%(v_deg)s_d_deg_%(d_deg)s_p_deg_%(p_deg)s" % vars()
+    path = "FSI_fresh_results/FSI-1/%(exva)s_%(extype)s/dt-%(dt)g_theta-%(theta)g/%(mesh_name)s_refine_%(refi)d_v_deg_%(v_deg)s_d_deg_%(d_deg)s_p_deg_%(p_deg)s" % vars()
+
+    # Create folders if they do not exists
     if MPI.rank(mpi_comm_world()) == 0:
         if not os.path.exists(path):
             os.makedirs(path)
     MPI.barrier(mpi_comm_world())
 
+    # Files to store results
     u_file = XDMFFile(mpi_comm_world(), path + "/velocity.xdmf")
     v_tilde_file = XDMFFile(mpi_comm_world(), path + "/velocity_tilde.xdmf")
     d_file = XDMFFile(mpi_comm_world(), path + "/d.xdmf")
@@ -120,25 +123,24 @@ def initiate(v_deg, V, d_deg, p_deg, dt, theta, dw_, vp_, args, mesh_name, refi,
         tmp_t.parameters["multi_file"] = 0
         tmp_t.parameters["rewrite_function_mesh"] = False
 
+    # Function to compute w_tilde (for testing)
     w_test = Function(V)
+
     return dict(u_file=u_file, d_file=d_file, p_file=p_file, dtilde_file=dtilde_file,
                 v_tilde_file=v_tilde_file, w_file=w_file, path=path,
                 w_test=w_test)
 
-def create_bcs(dw_, d_, DW, V, VP, args, k, Um, H, boundaries, inlet, dt, **semimp_namespace):
+def create_bcs(vpd_, VPD, D, V, args, boundaries, inlet, dt, **semimp_namespace):
     # d_bc_n, d_bc_n1
     print "Create bcs"
 
     noslip = ((0.0, 0.0))
-    wm_inlet  = DirichletBC(DW.sub(0), noslip, boundaries, 3)
-    wm_outlet = DirichletBC(DW.sub(0), noslip, boundaries, 4)
-    wm_wall   = DirichletBC(DW.sub(0), noslip, boundaries, 2)
-    wm_circ   = DirichletBC(DW.sub(0), noslip, boundaries, 6)
-    wm_bar    = DirichletBC(DW.sub(0), dw_["tilde"].sub(0), boundaries, 5)
+    wm_inlet  = DirichletBC(D, noslip, boundaries, 3)
+    wm_outlet = DirichletBC(D, noslip, boundaries, 4)
+    wm_wall   = DirichletBC(D, noslip, boundaries, 2)
+    wm_circ   = DirichletBC(D, noslip, boundaries, 6)
+    wm_bar    = DirichletBC(D, vpd_["tilde"].sub(2), boundaries, 5)
     bcs_w = [wm_wall, wm_inlet, wm_outlet, wm_circ, wm_bar]
-
-    print "k", k
-    print "dt", dt
 
     # Fluid tentative bcs
     #d_tilde = dw_["tilde"].sub(0)
@@ -147,7 +149,7 @@ def create_bcs(dw_, d_, DW, V, VP, args, k, Um, H, boundaries, inlet, dt, **semi
 
     class W_bar(Expression):
         def eval(self, value, x):
-            value[:] = (dw_["tilde"].sub(0)(x) - dw_["n-1"].sub(0)(x)) / dt
+            value[:] = (vpd_["tilde"].sub(2)(x) - vpd_["n-1"].sub(2)(x)) / dt
             #if x[0] == 0.6 and x[1] == 0.2:
             #    print value, x
 
@@ -156,17 +158,17 @@ def create_bcs(dw_, d_, DW, V, VP, args, k, Um, H, boundaries, inlet, dt, **semi
 
     class W_bar2(Expression):
         def eval(self, value, x):
-            value[:] = (dw_["n"].sub(0)(x) - dw_["n-1"].sub(0)(x)) / dt
+            value[:] = (vpd_["n"].sub(2)(x) - vpd_["n-1"].sub(2)(x)) / dt
             #if x[0] == 0.6 and x[1] == 0.2:
             #    print value, x
 
         def value_shape(self):
             return (2, )
 
-
     w_bar = W_bar()
     w_bar2 = W_bar2()
 
+    # Tentative velocity
     u_inlet_t = DirichletBC(V, inlet, boundaries, 3)
     u_wall_t = DirichletBC(V, noslip, boundaries, 2)
     u_circ_t = DirichletBC(V, noslip, boundaries, 6)
@@ -174,30 +176,21 @@ def create_bcs(dw_, d_, DW, V, VP, args, k, Um, H, boundaries, inlet, dt, **semi
 
     bcs_tent = [u_wall_t, u_inlet_t, u_circ_t, u_bar_t]
 
-    # Fluid correction bcs, can not be collapsed
-    u_inlet = DirichletBC(VP.sub(0), inlet, boundaries, 3)
-    u_wall = DirichletBC(VP.sub(0), noslip, boundaries, 2)
-    u_circ = DirichletBC(VP.sub(0), noslip, boundaries, 6)
-    u_bar = DirichletBC(VP.sub(0), w_bar2, boundaries, 5)
+    # Coupled
+    u_inlet = DirichletBC(VPD.sub(0), inlet, boundaries, 3)
+    u_wall = DirichletBC(VPD.sub(0), noslip, boundaries, 2)
+    u_circ = DirichletBC(VPD.sub(0), noslip, boundaries, 6)
+    #u_bar = DirichletBC(VPD.sub(0), w_bar2, boundaries, 5)
 
-    p_outlet  = DirichletBC(VP.sub(1), (0), boundaries, 4)
+    p_outlet  = DirichletBC(VPD.sub(1), (0), boundaries, 4)
 
-    #Assemble boundary conditions
-    bcs_corr = [u_wall, u_inlet, u_circ, p_outlet, u_bar]
+    d_barwall = DirichletBC(VPD.sub(2), noslip, boundaries, 7)
 
-    bcs_solid = []
-    #if DVP.num_sub_spaces() == 4:
-    if args.bitype == "bc1":
-        u_barwall= DirichletBC(DW.sub(1), noslip, boundaries, 7)
-        d_barwall = DirichletBC(DW.sub(0), noslip, boundaries, 7) #No slip on geometry in fluid
-        for i in [d_barwall, u_barwall]:
-            bcs_solid.append(i)
-
-    return dict(bcs_tent=bcs_tent, bcs_w=bcs_w, bcs_corr=bcs_corr, \
-                bcs_solid=bcs_solid)
+    bcs_coupled = [u_wall, u_inlet, u_circ, p_outlet, d_barwall] #, u_bar]
+    return dict(bcs_tent=bcs_tent, bcs_w=bcs_w, bcs_coupled=bcs_coupled)
 
 
-def pre_solve(vp_, t, inlet, **semimp_namespace):
+def pre_solve(t, inlet, **semimp_namespace):
     if t < 2:
         inlet.t = t
     else:
@@ -206,16 +199,16 @@ def pre_solve(vp_, t, inlet, **semimp_namespace):
     return dict(inlet = inlet)
 
 
-def after_solve(t, P, dw_, vp_, n, coord, dis_x, dis_y, Drag_list, Lift_list, Det_list,\
+def after_solve(t, P, vpd_, n, coord, dis_x, dis_y, Drag_list, Lift_list, Det_list,\
                 dtilde_file, counter, u_file, p_file, d_file, v_tilde_file,
-                d_, w_file, w_test, dt, **semimp_namespace):
+                w_file, w_test, dt, **semimp_namespace):
 
-    d = dw_["n"].sub(0, deepcopy=True)
-    d_n1 = dw_["n-1"].sub(0, deepcopy=True)
-    d_tilde = dw_["tilde"].sub(0, deepcopy=True)
-    v = vp_["n"].sub(0, deepcopy=True)
-    v_tilde = vp_["tilde"].sub(0, deepcopy=True)
-    p = vp_["n"].sub(1, deepcopy=True)
+    d_tilde = vpd_["tilde"].sub(0, deepcopy=True)
+    v = vpd_["n"].sub(0, deepcopy=True)
+    v_tilde = vpd_["tilde"].sub(0, deepcopy=True)
+    p = vpd_["n"].sub(1, deepcopy=True)
+    d = vpd_["n"].sub(2, deepcopy=True)
+    d_n1 = vpd_["n-1"].sub(2, deepcopy=True)
 
     w_test.vector().zero()
     w_test.vector().axpy(1, d_tilde.vector())
@@ -247,10 +240,10 @@ def after_solve(t, P, dw_, vp_, n, coord, dis_x, dis_y, Drag_list, Lift_list, De
     #Det = project(J_(d), P)
     #Det_list.append((Det.vector().array()).min())
 
-    Dr = -assemble((sigma_f_new(v,p,d,mu_f)*n)[0]*ds2(6))
-    Li = -assemble((sigma_f_new(v,p,d,mu_f)*n)[1]*ds2(6))
-    Dr += -assemble((sigma_f_new(v("+"),p("+"),d("+"),mu_f)*n("+"))[0]*dS2(5))
-    Li += -assemble((sigma_f_new(v("+"),p("+"),d("+"),mu_f)*n("+"))[1]*dS2(5))
+    Dr = -assemble((sigma_f_new(v, p, d, mu_f)*n)[0]*ds2(6))
+    Li = -assemble((sigma_f_new(v, p, d, mu_f)*n)[1]*ds2(6))
+    Dr += -assemble((sigma_f_new(v("+"), p("+"), d("+"), mu_f)*n("+"))[0]*dS2(5))
+    Li += -assemble((sigma_f_new(v("+"), p("+"), d("+"), mu_f)*n("+"))[1]*dS2(5))
 
     Drag_list.append(Dr)
     Lift_list.append(Li)
@@ -267,10 +260,8 @@ def after_solve(t, P, dw_, vp_, n, coord, dis_x, dis_y, Drag_list, Lift_list, De
     return {}
 
 
-def post_process(path,T,dt,Det_list,dis_x,dis_y, Drag_list,Lift_list, Time_list,\
-                mesh_name, args, simtime,v_deg, p_deg, d_deg, dvp_file,**semimp_namespace):
-    #dvp_file.close()
-    #time_list = np.linspace(0,T,T/dt+1)
+def post_process(path, T, dt, Det_list, dis_x, dis_y, Drag_list, Lift_list, Time_list,\
+                mesh_name, args, simtime, v_deg, p_deg, d_deg, vpd_file, **semimp_namespace):
     theta = args.theta
     f_scheme = args.fluidvari
     s_scheme = args.solidvari
@@ -279,7 +270,7 @@ def post_process(path,T,dt,Det_list,dis_x,dis_y, Drag_list,Lift_list, Time_list,
     f.write("""FSI3 EXPERIMENT
     T = %(T)g\ndt = %(dt)g\nv_deg = %(d_deg)g\nv_deg = %(v_deg)g\np_deg = %(p_deg)g\n
 theta = %(theta)s\nf_vari = %(f_scheme)s\ns_vari = %(s_scheme)s\ne_vari = %(e_scheme)s\n time = %(simtime)g""" % vars())
-    #f.write("""Runtime = %f """ % fintime)
+    f.write("\nRuntime = %f" % fintime)
     f.close()
 
     np.savetxt(path + '/Lift.txt', Lift_list, delimiter=',')

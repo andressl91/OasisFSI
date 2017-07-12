@@ -6,12 +6,14 @@ MPI, mpi_comm_world, CellVolume
 
 def extrapolate_setup(F_fluid_linear, extype, mesh_file, d_, phi, gamma, dx_f, **semimp_namespace):
     def F_(U):
-    	return Identity(len(U)) + grad(U)
+        return Identity(len(U)) + grad(U)
 
     def J_(U):
-    	return det(F_(U))
+        return det(F_(U))
+
     def eps(U):
         return 0.5*(grad(U)*inv(F_(U)) + inv(F_(U)).T*grad(U).T)
+
     def STVK(U, alfa_mu, alfa_lam):
         return alfa_lam*tr(eps(U))*Identity(len(U)) + 2.0*alfa_mu*eps(U)
         #return F_(U)*(alfa_lam*tr(eps(U))*Identity(len(U)) + 2.0*alfa_mu*eps(U))
