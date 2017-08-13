@@ -4,8 +4,6 @@ def solver_setup(F_extrapolate, F_tentative, F_correction, F_solid_linear, \
                  fluid_sol, solid_sol, \
                  F_solid_nonlinear, DW, dw_, **monolithic):
 
-    F_solid = F_solid_linear + F_solid_nonlinear
-
     a = lhs(F_extrapolate)
     A_extra = assemble(a, keep_diagonal=True)
     A_extra.ident_zeros()
@@ -19,10 +17,10 @@ def solver_setup(F_extrapolate, F_tentative, F_correction, F_solid_linear, \
     A_corr.ident_zeros()
     fluid_sol.set_operator(A_corr)
 
+    F_solid = F_solid_linear + F_solid_nonlinear
     chi = TrialFunction(DW)
     Jac_solid = derivative(F_solid, dw_["n"], chi)
-    solid_sol.parameters['reuse_factorization'] = True
-
+    #solid_sol.parameters['reuse_factorization'] = True
 
     return dict(A_extra=A_extra, A_tent=A_tent, A_corr=A_corr, \
     Jac_solid=Jac_solid, fluid_sol=fluid_sol, F_solid=F_solid)
@@ -44,7 +42,7 @@ def Fluid_extrapolation(F_extrapolate, A_extra, DW, dw_, vp_, d_, bcs_w, mesh_fi
     #d = DVP.sub(0).dofmap().collapse(mesh_file)[1].values()
     #dvp_["n"].vector()[d] = w_f.vector()
 
-    return dict(dw_=dw_)
+    return {} #dict(dw_=dw_)
 
 
 def Fluid_tentative(F_tentative, A_tent, VP, vp_, bcs_tent, \
@@ -65,7 +63,7 @@ def Fluid_tentative(F_tentative, A_tent, VP, vp_, bcs_tent, \
     tr = VP.sub(0).dofmap().collapse(mesh_file)[1].values()
     vp_["tilde"].vector()[tr] = v_sol.vector()
 
-    return dict(vp_=vp_)
+    return {} #dict(vp_=vp_)
 
 
 def Fluid_correction(mesh_file, VP, A_corr, F_correction, bcs_corr, \
@@ -81,15 +79,15 @@ def Fluid_correction(mesh_file, VP, A_corr, F_correction, bcs_corr, \
     print "Solving correction velocity"
     solve(A_corr, vp_["n"].vector(), b)
 
-    return dict(t=t, vp_=vp_)
+    return {} #dict(t=t, vp_=vp_)
 
 
 def Solid_momentum(F_solid, Jac_solid, bcs_solid, vp_, \
                 n, DW, dw_, solid_sol, dw_res, rtol, atol, max_it, T, t, **monolithic):
 
-    Iter      = 0
-    solid_residual   = 1
-    solid_rel_res    = solid_residual
+    Iter = 0
+    solid_residual = 1
+    solid_rel_res = solid_residual
     lmbda = 1
     print "Solid momentum\n"
 
@@ -125,5 +123,4 @@ def Solid_momentum(F_solid, Jac_solid, bcs_solid, vp_, \
         % (Iter, solid_residual, atol, solid_rel_res, rtol)
         Iter += 1
     #print norm(dw_["n"].sub(1, deepcopy=True))
-    return dict(t=t, dw_=dw_, \
-    solid_rel_res=solid_rel_res, solid_residual=solid_residual)
+    return {} #dict(t=t, dw_=dw_, solid_rel_res=solid_rel_res, solid_residual=solid_residual)

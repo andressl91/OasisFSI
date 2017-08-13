@@ -127,12 +127,12 @@ def initiate(v_deg, d_deg, p_deg, dt, theta, dvp_, args, mesh_name, refi, **semi
         tmp_t.parameters["flush_output"] = True
         tmp_t.parameters["multi_file"] = 0
         tmp_t.parameters["rewrite_function_mesh"] = False
-    d = dvp_["n-1"].sub(0, deepcopy=True)
-    v = dvp_["n-1"].sub(1, deepcopy=True)
-    p = dvp_["n-1"].sub(2, deepcopy=True)
-    p_file.write(p)
-    d_file.write(d)
-    u_file.write(v)
+    #d = dvp_["n-1"].sub(0, deepcopy=True)
+    #v = dvp_["n-1"].sub(1, deepcopy=True)
+    #p = dvp_["n-1"].sub(2, deepcopy=True)
+    #p_file.write(p)
+    #d_file.write(d)
+    #u_file.write(v)
     #u_file << v
     #d_file << d
 

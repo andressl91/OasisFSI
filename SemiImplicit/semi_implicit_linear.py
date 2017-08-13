@@ -38,8 +38,10 @@ k = Constant(dt)
 n = FacetNormal(mesh_file)
 
 # Domains
-D = VectorFunctionSpace(mesh_file, "CG", d_deg)
-V = VectorFunctionSpace(mesh_file, "CG", v_deg)
+
+V = D = VectorFunctionSpace(mesh_file, "CG", d_deg)
+if d_deg != v_deg:
+    V = VectorFunctionSpace(mesh_file, "CG", v_deg)
 P = FunctionSpace(mesh_file, "CG", p_deg)
 
 # Structure Mixedspace
@@ -67,7 +69,7 @@ for time in ["n", "n-1", "n-2", "tilde", "tilde-1"]:
     v_[time] = v
     p_[time] = p
 
-#TrialFunction and TestFunctions Fluid
+# TrialFunction and TestFunctions Fluid
 v, p = TrialFunctions(VP)
 psi, eta = TestFunctions(VP)
 
@@ -116,6 +118,7 @@ while t <= T + 1e-8:
 
     pre_solve(**vars())
     vars().update(domain_update(**vars()))
+
     # Including Fluid_extrapolation gives nan press and veloci
     vars().update(Fluid_extrapolation(**vars()))
     vars().update(Fluid_tentative(**vars()))
@@ -124,7 +127,8 @@ while t <= T + 1e-8:
     solid_rel_res_last  = solid_residual_last
 
     test = 0
-    while 1 > test:
+    w_test = Function(V)
+    while 3 > test:
         vars().update(Fluid_correction(**vars()))
         vars().update(Solid_momentum(**vars()))
 
@@ -140,6 +144,15 @@ while t <= T + 1e-8:
 
     vp_["tilde-1"].vector().zero()
     vp_["tilde-1"].vector().axpy(1, vp_["tilde"].vector())
+
+    # Check velocity of the structure
+    d_tilde = dw_["tilde"].sub(0, deepcopy=1)
+    d_n1 = dw_["n-1"].sub(0, deepcopy=1)
+    w_test.vector().zero()
+    w_test.vector().axpy(1, d_tilde.vector())
+    w_test.vector().axpy(-1, d_n1.vector())
+    w_test.vector()[:] = w_test.vector()[:] / dt
+    print "w_test", w_test.vector().array().max()
 
     vars().update(after_solve(**vars()))
     counter +=1
