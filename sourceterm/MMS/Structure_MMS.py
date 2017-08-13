@@ -1,24 +1,6 @@
-from fenics import *
-import mshr
+from dolfin import *
 import numpy as np
 set_log_active(False)
-import argparse
-from argparse import RawTextHelpFormatter
-
-def parse():
-    parser = argparse.ArgumentParser(description="MMS of ALE\n",\
-     formatter_class=RawTextHelpFormatter, \
-      epilog="############################################################################\n"
-      "Example --> python ALE_MMS.py -source_term 0 -var_form 1\n"
-      "############################################################################")
-    group = parser.add_argument_group('Parameters')
-    group.add_argument("-var_form",  type=int, help="Which form to use  --> Default=0, no mapping", default=0)
-    group.add_argument("-source_term",  type=int, help="Which source_term to use  --> Default=0, no mapping", default=0)
-
-    return parser.parse_args()
-args = parse()
-var_form = args.var_form
-source_term = args.source_term
 
 I = Identity(2)
 def F_(U):
@@ -40,7 +22,7 @@ def solver(N, dt, T):
 
     x = SpatialCoordinate(mesh)
 
-    V = VectorFunctionSpace(mesh, "CG", 1)
+    V = VectorFunctionSpace(mesh, "CG", 2)
     W = V*V
     n = FacetNormal(mesh)
 
@@ -53,44 +35,42 @@ def solver(N, dt, T):
 
     k = Constant(dt)
     t_step = dt
-    t = Constant(dt)
+
     mu_s = 1
     rho_s = 1
     lamda_s = 1
 
-    d_x = "cos(x[1])*sin(t)"
-    d_y = "cos(x[0])*sin(t)"
 
-    u_x = "cos(x[1])*cos(t)"
-    u_y = "cos(x[0])*cos(t)"
+    t = Constant(dt)
 
-    d_e = Expression((d_x, d_y), degree = 3, t = 0)
-    u_e = Expression((u_x, u_y), degree = 3, t = 0)
-    
-    #assign(ud0.sub(1), project(d_e, V))
-    #assign(ud0.sub(0), project(u_e, V))
-
-    u0 = interpolate(u_e, V)
-    d0 = interpolate(d_e,V)
-
-    exec("d_x = " + d_x)
-    exec("d_y = " + d_y)
-    exec("u_x = " + u_x)
-    exec("u_y = " + u_y)
-
+    d_x = t*t*t*x[0]*x[0]*x[1]*x[1]; d_y = t*t*t*x[0]*x[0]*x[1]*x[1]
+    u_x = 3*t*t*x[0]*x[0]*x[1]*x[1]; u_y = 3*t*t*x[0]*x[0]*x[1]*x[1]
     u_vec = as_vector([u_x, u_y])
     d_vec = as_vector([d_x, d_y])
+ 
+    d_x = "t*t*t*x[0]*x[0]*x[1]*x[1]"; d_y = "t*t*t*x[0]*x[0]*x[1]*x[1]"
+    u_x = "3*t*t*x[0]*x[0]*x[1]*x[1]"; u_y = "3*t*t*x[0]*x[0]*x[1]*x[1]"
+    "INCREASE COMPLEXITY; TRI TRIGONO"
     
+    d_e = Expression((d_x, d_y), degree = 2, t = 0)
+    u_e = Expression((u_x, u_y), degree = 2, t = 0)
+
+    assign(ud0.sub(1), project(d_e, V))
+    assign(ud0.sub(0), project(u_e, V))
+
+
     # Create right hand side f
-    f1 =rho_s*diff(u_vec, t) - div(P1(d_vec,lamda_s,mu_s))
+    f1 = rho_s*diff(u_vec, t) - div(P1(d_vec,lamda_s,mu_s))
     #f2 = diff(d_vec, t) - u_vec # is zero when d and u is created to be zero
 
     delta = 1E10
-    F_lin = (rho_s/k)*inner(u-u0,phi)*dx
+    F_lin = (rho_s/dt)*inner(u-u0,phi)*dx
     F_lin += delta*((1.0/k)*inner(d-d0,psi)*dx - inner(u,psi)*dx)
     F_lin -= inner(f1, phi)*dx #+ inner(f2, psi)*dx
 
-    F_nonlin = -inner(div(P1(d,lamda_s,mu_s)), phi)*dx
+    #F_nonlin = -inner(div(P1(d,lamda_s,mu_s)), phi)*dx
+    F_nonlin = inner(P1(d,lamda_s,mu_s), grad(phi))*dx
+
 
     bcs = [DirichletBC(W.sub(0), u_e, "on_boundary"), \
            DirichletBC(W.sub(1), d_e, "on_boundary")]
@@ -105,10 +85,6 @@ def solver(N, dt, T):
         tmp_t.parameters["flush_output"] = True
         tmp_t.parameters["multi_file"] = 1
         tmp_t.parameters["rewrite_function_mesh"] = False
-
-    d_diff = Function(V)
-    u_diff = Function(V)
-
 
     F = F_lin + F_nonlin
 
@@ -135,6 +111,7 @@ def solver(N, dt, T):
     while t_step <= T:
         u_e.t = t_step
         d_e.t = t_step
+        print type(t)
         t.assign(t_step)
 
         Iter      = 0
@@ -146,16 +123,17 @@ def solver(N, dt, T):
 
         while rel_res > rtol and residual > atol and Iter < max_it:
 
-            if Iter % 3  == 0 or (last_rel_res < rel_res and last_residual < residual):
+            if Iter % 1  == 0 or (last_rel_res < rel_res and last_residual < residual):
             #    print "assebmling new JAC"
                 #A = assemble(J_nonlinear, tensor=A, \
                 #form_compiler_parameters = {"quadrature_degree": 4}, \
                 #keep_diagonal = True)
 
+                #A = assemble(J_nonlinear, tensor=A, keep_diagonal = True)
                 A = assemble(J, keep_diagonal = True)
 
                 #A.axpy(1.0, A_pre, True)
-                A.ident_zeros()
+                
                 [bc.apply(A) for bc in bcs]
                 up_sol.set_operator(A)
 
@@ -181,10 +159,9 @@ def solver(N, dt, T):
                 print "Newton iteration %d: r (atol) = %.3e (tol = %.3e), r (rel) = %.3e (tol = %.3e) " \
             % (Iter, residual, atol, rel_res, rtol)
             Iter += 1
-        
-        #ud0.assign(ud)
+
+        ud0.assign(ud)
         u_, d_ = ud.split(True)
-        u0.assign(u_); d0.assign(d_)
 
         L2_u.append(errornorm(u_e, u_, norm_type="l2", degree_rise = 3))
         L2_d.append(errornorm(d_e, d_, norm_type="l2", degree_rise = 3))
@@ -195,7 +172,7 @@ def solver(N, dt, T):
     E_d.append(np.mean(L2_d))
     h.append(mesh.hmin())
 
-test = "time"
+test = "space"
 #Space
 if test == "space":
     #N = [4,8,16,32,64]
@@ -205,9 +182,9 @@ if test == "space":
 
 else:
     test = "time"
-    N = [100]
-    dt = [0.04, 0.02, 0.01]
-    T = 0.08
+    N = [30]
+    dt = [0.004, 0.002, 0.001]
+    T = 0.008
 
 E_u = [];  E_d = []; h = []
 
@@ -222,7 +199,7 @@ for i in E_u:
     print "Errornorm Velocity L2", i
 
 print
-
+print h, E_u
 for i in range(len(E_u) - 1):
     if test == "space":
         r_u = np.log(E_u[i+1]/E_u[i]) / np.log(h[i+1]/h[i])
@@ -242,37 +219,4 @@ for i in range(len(E_d) - 1):
         r_d = np.log(E_d[i+1]/E_d[i]) / np.log(h[i+1]/h[i])
     if test == "time":
         r_d = np.log(E_d[i+1]/E_d[i]) / np.log(dt[i+1]/dt[i])
-    print "Convergence Velocity", r_u
-
-"""
-print "Checking Convergence in time"
-
-N = [64]
-dt = [8.0E-4, 4E-4, 2E-4, 1E-4, 0.5E-4]
-T = 1.0E-2
-E_u = [];  E_d = []; h = []
-for n in N:
-    for t in dt:
-        print "Solving for t = %g, N = %d" % (t, n)
-        solver(n, t, T)
-
-for i in E_u:
-    print "Errornorm Velocity L2", i
-
-print
-
-for i in range(len(E_u) - 1):
-    r_u = np.log(E_u[i+1]/E_u[i]) / np.log(dt[i+1]/dt[i])
-    print "Convergence Velocity", r_u
-
-print
-
-for i in E_d:
-    print "Errornorm Deformation L2", i
-
-print
-
-for i in range(len(E_d) - 1):
-    r_d = np.log(E_d[i+1]/E_d[i]) / np.log(dt[i+1]/dt[i])
-
-    print "Convergence Deformation", r_d"""
+    print "Convergence Deformation:", r_d
